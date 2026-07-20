@@ -1,0 +1,98 @@
+project_id,project_name,client_name,project_type,project_manager,location,project_status,baseline_start_date,baseline_completion_date,actual_start_date,actual_completion_date,original_contract_value,original_budget
+P001,Juniper Retail 01,Wasatch Health Partners,High-End Residential,Priya Shah,Sandy,completed,2023-02-26,2023-10-23,2023-03-12,2023-11-13,1344000,1136900
+P002,Wasatch Renovation 02,Juniper Hospitality,Tenant Improvement,Priya Shah,Sandy,completed,2023-02-09,2023-05-09,2023-02-10,2023-05-19,858000,663600
+P003,Summit Center 03,Intermountain Office Holdings,Healthcare Renovation,Elena Martinez,Provo,completed,2023-12-04,2024-07-05,2023-12-13,2024-07-08,1659000,1453700
+P004,Juniper Medical 04,Cottonwood Capital,Tenant Improvement,Elena Martinez,Park City,completed,2024-05-05,2024-10-03,2024-05-18,2024-10-26,1139000,870600
+P005,Summit Residences 05,Peakview Residential,Healthcare Renovation,Marcus Reed,Sandy,Complete,2024-10-16,2025-05-17,2024-10-19,2025-07-13,2723000,2296200
+P006,Granite Commons 06,Wasatch Health Partners,Commercial Renovation,Priya Shah,Salt Lake City,completed,2024-01-15,2024-08-24,2024-01-21,2024-09-23,1629000,1285700
+P007,Wasatch Renovation 07,Juniper Hospitality,Healthcare Renovation,Daniel Kim,Provo,completed,2023-09-28,2024-03-09,2023-10-03,2024-05-09,2553000,2014500
+P008,Bonneville Renovation 08,Juniper Hospitality,Healthcare Renovation,Elena Martinez,Provo,completed,2023-12-29,2024-06-04,2024-01-03,2024-06-07,2693000,2319000
+P009,Wasatch Retail 09,Peakview Residential,Tenant Improvement,Marcus Reed,Salt Lake City,completed,2023-06-03,2023-12-28,2023-06-07,2024-02-15,709000,553600
+P010,Juniper Office 10,Canyon Retail Group,Commercial Renovation,Priya Shah,Provo,completed,2025-04-28,2025-09-17,2025-05-10,2025-09-15,696000,539400
+P011,Granite Residences 11,Bonneville Property Co.,Commercial Renovation,Daniel Kim,Ogden,completed,2024-03-09,2024-09-22,2024-03-22,2024-10-29,989000,830000
+P012,Canyon Retail 12,Intermountain Office Holdings,Healthcare Renovation,Priya Shah,Provo,completed,2023-10-28,2024-05-22,2023-10-31,2024-06-18,1189000,1022800
+P013,Aspen Renovation 13,Redstone Communities,Healthcare Renovation,Priya Shah,Park City,completed,2023-03-21,8/10/2023,2023-03-18,2023-08-26,2720000,2217400
+P014,Bonneville Lodge 14,Juniper Hospitality,Healthcare Renovation,Priya Shah,Ogden,completed,2024-12-07,2025-04-05,2024-12-05,2025-04-23,2837000,2438200
+P015,Juniper Residences 15,Beehive Development,Tenant Improvement,Daniel Kim,Park City,completed,2023-06-24,2023-12-21,2023-06-29,2024-01-09,1282000,1018700
+P016,Wasatch Lodge 16,Summit Dental Group,Commercial Renovation,Daniel Kim,Ogden,completed,2024-07-05,2024-12-28,2024-07-10,2025-02-13,569000,442300
+P017,Summit Retail 17,Bonneville Property Co.,High-End Residential,Elena Martinez,Sandy,completed,2024-04-26,2024-12-09,2024-05-10,2025-01-21,1394000,1197800
+P018,Wasatch Renovation 18,Beehive Development,Multifamily Renovation,Marcus Reed,Salt Lake City,completed,2024-03-23,2024-12-25,2024-03-28,2025-01-28,1428000,1211300
+P019,Wasatch Center 19,Bonneville Property Co.,High-End Residential,Daniel Kim,Lehi,completed,2024-03-10,2024-07-13,2024-03-13,2024-09-01,455000,394800
+P020,Wasatch Commons 20,Juniper Hospitality,High-End Residential,Priya Shah,Park City,completed,2023-05-04,2023-11-18,2023-05-18,2023-12-08,853000,674900
+P021,Copper Center 21,Cottonwood Capital,High-End Residential,Marcus Reed,Park City,completed,2023-05-29,2023-09-16,2023-06-06,2023-10-18,2304000,1810100
+P022,Juniper Medical 22,Canyon Retail Group,Multifamily Renovation,Priya Shah,Provo,completed,2024-12-24,2025-04-27,2024-12-22,2025-05-29,3773000,2917000
+P023,Summit Office 23,Cottonwood Capital,Multifamily Renovation,Priya Shah,Sandy,completed,2023-02-22,2023-09-25,2023-02-19,2023-11-02,3290000,2552700
+P024,Aspen Retail 24,Canyon Retail Group,Tenant Improvement,Priya Shah,Ogden,completed,2024-12-29,2025-06-09,2025-01-11,2025-07-03,1387000,1128100
+P025,Aspen Medical 25,Canyon Retail Group,Multifamily Renovation,Olivia Bennett,Park City,completed,2024-03-19,2024-12-17,2024-03-18,2025-01-27,2696000,2210300
+P026,Granite Commons 26,Beehive Development,Multifamily Renovation,Daniel Kim,Ogden,completed,2024-04-12,2024-08-20,2024-04-21,2024-10-01,3583000,2879900
+P027,Canyon Renovation 27,Intermountain Office Holdings,Tenant improvements,Elena Martinez,Park City,completed,2023-01-13,2023-06-30,2023-01-28,2023-07-20,2029000,1718100
+P028,Copper Office 28,Juniper Hospitality,Tenant Improvement,Daniel Kim,Provo,completed,2024-08-05,2025-01-16,2024-08-02,2025-02-15,276000,223600
+P029,Copper Center 29,Redstone Communities,Healthcare Renovation,Daniel Kim,Provo,completed,2024-08-24,2025-03-22,2024-08-29,2025-05-05,1056000,886900
+P030,Granite Center 30,Intermountain Office Holdings,High-End Residential,Priya Shah,Ogden,completed,2024-04-28,2024-10-21,2024-05-07,2024-12-19,1734000,1504000
+P031,Summit Lodge 31,Wasatch Health Partners,Commercial Renovation,Elena Martinez ,Lehi,completed,2023-06-19,2024-02-21,2023-06-21,2024-03-14,630000,531000
+P032,Granite Residences 32,Canyon Retail Group,Commercial Renovation,Daniel Kim,Provo,completed,2023-11-29,2024-07-09,2023-12-10,2024-08-19,2030000,1719500
+P033,Bonneville Retail 33,Juniper Hospitality,Tenant Improvement,Marcus Reed,Salt Lake City,completed,2023-11-23,2024-02-28,2023-12-07,2024-03-05,982000,850500
+P034,Bonneville Office 34,Wasatch Health Partners,Commercial Renovation,Olivia Bennett,Provo,completed,2025-07-14,2026-02-07,2025-07-21,2026-02-10,697000,537400
+P035,Aspen Office 35,Wasatch Health Partners,Commercial Renovation,Elena Martinez,Park City,completed,2024-12-17,2025-05-03,2024-12-18,2025-05-20,1297000,1041900
+P036,Bonneville Commons 36,Canyon Retail Group,Commercial Renovation,Daniel Kim,Lehi,completed,2023-03-21,2023-11-19,2023-03-20,2023-12-21,2574000,2127800
+P037,Wasatch Medical 37,Summit Dental Group,Commercial Renovation,Olivia Bennett,Ogden,completed,2024-03-27,2024-11-09,2024-03-24,2024-12-24,1172000,981900
+P038,Canyon Renovation 38,Intermountain Office Holdings,Tenant Improvement,Daniel Kim,Lehi,completed,2023-09-10,2024-04-17,2023-09-18,2024-06-07,725000,628200
+P039,Granite Commons 39,Canyon Retail Group,Tenant Improvement,Elena Martinez,Sandy,completed,2023-04-18,2023-10-19,2023-04-20,2023-10-19,714000,580900
+P040,Summit Commons 40,Summit Dental Group,High-End Residential,Priya Shah,Provo,completed,2024-02-22,2024-09-22,2024-02-21,2024-09-29,1314000,1038100
+P041,Canyon Office 41,Wasatch Health Partners,Healthcare Renovation,Olivia Bennett,Park City,completed,2024-06-01,2024-11-29,2024-06-11,2024-12-31,1721000,1449600
+P042,Juniper Residences 42,Canyon Retail Group,Commercial Renovation,Daniel Kim,Ogden,completed,2024-08-20,2025-01-03,2024-09-02,2025-01-27,2510000,2013900
+P043,Granite Medical 43,Redstone Communities,Commercial Renovation,Priya Shah,Salt Lake City,completed,2024-02-14,2024-07-29,2024-02-27,2024-08-06,1065000,911300
+P044,Copper Medical 44,Peakview Residential,Tenant Improvement,Elena Martinez,Ogden,completed,2024-03-31,2024-08-13,2024-04-13,2024-09-16,581000,460400
+P045,Bonneville Office 45,Redstone Communities,Tenant Improvement,Elena Martinez,Salt Lake City,completed,2023-02-20,2023-09-21,2023-02-18,2023-08-30,1396000,1176000
+P046,Granite Lodge 46,Wasatch Health Partners,Commercial Renovation,Elena Martinez,Lehi,completed,2023-09-02,2024-05-19,2023-09-07,2024-07-06,1123000,909200
+P047,Granite Lodge 47,Juniper Hospitality,Healthcare Renovation,Elena Martinez,Park City,completed,2023-08-01,2024-02-03,2023-08-04,2024-03-02,2602000,2261400
+P048,Bonneville Office 48,Peakview Residential,Tenant Improvement,Elena Martinez,Salt Lake City,completed,2025-05-24,2025-08-19,2025-06-08,2025-08-30,588000,493800
+P049,Wasatch Commons 49,Bonneville Property Co.,Commercial Renovation,Marcus Reed,Salt Lake City,completed,2023-10-12,2024-03-03,2023-10-09,2024-04-19,1400000,1074400
+P050,Granite Lodge 50,Peakview Residential,Tenant Improvement,Elena Martinez,Ogden,completed,2024-08-09,2024-12-27,2024-08-19,2025-01-16,1386000,1067400
+P051,Aspen Retail 51,Summit Dental Group,Tenant Improvement,Marcus Reed,Ogden,completed,2023-04-08,2023-09-01,2023-04-17,2023-10-13,565000,428200
+P052,Summit Medical 52,Beehive Development,,Marcus Reed,Salt Lake City,completed,2023-10-25,2024-02-12,2023-10-22,2024-04-06,2006000,1550200
+P053,Wasatch Center 53,Canyon Retail Group,Commercial Renovation,Marcus Reed,Park City,completed,2024-06-01,2024-10-24,2024-05-31,2024-10-30,1865000,1575100
+P054,Granite Office 54,Wasatch Health Partners,High-End Residential,Elena Martinez,Ogden,completed,2024-11-25,2025-05-02,2024-11-22,2025-05-03,533000,409800
+P055,Canyon Lodge 55,Intermountain Office Holdings,Commercial Renovation,Daniel Kim,Ogden,completed,2023-05-06,2023-10-06,2023-05-09,2023-10-31,1536000,1274300
+P056,Wasatch Office 56,Summit Dental Group,Tenant Improvement,Priya Shah,Sandy,completed,2024-06-06,2024-12-01,2024-06-17,2024-11-30,450000,347300
+P057,Juniper Commons 57,Wasatch Health Partners,Tenant Improvement,Elena Martinez,Sandy,completed,2025-07-04,2026-01-02,2025-07-08,2026-02-06,979000,791800
+P058,Bonneville Medical 58,Redstone Communities,Tenant Improvement,Olivia Bennett,Park City,completed,2025-01-06,2025-09-12,2025-01-20,2025-10-20,509000,396100
+P059,Aspen Residences 59,Cottonwood Capital,Tenant Improvement,Olivia Bennett,Provo,completed,2024-09-02,2024-12-30,2024-09-15,2025-01-15,632000,520500
+P060,Canyon Retail 60,Bonneville Property Co.,Multifamily Renovation,Daniel Kim,Salt Lake City,completed,2023-08-27,2024-04-10,2023-09-01,2024-05-09,1671000,1349500
+P061,Summit Center 61,Cottonwood Capital,Healthcare Renovation,Olivia Bennett,Park City,completed,2024-11-16,2025-05-22,2024-11-18,2025-06-26,2786000,2411800
+P062,Granite Residences 62,Intermountain Office Holdings,Healthcare Renovation,Marcus Reed,Salt Lake City,completed,2024-04-08,2024-11-27,2024-04-17,2024-12-28,2843000,2217400
+P063,Summit Office 63,Juniper Hospitality,Tenant Improvement,Marcus Reed,Sandy,completed,2025-04-18,2025-07-30,2025-04-29,2025-08-13,1347000,1069400
+P064,Juniper Commons 64,Summit Dental Group,Commercial Renovation,Priya Shah,Park City,completed,2024-09-06,2025-02-21,2024-09-04,2025-03-30,1537000,1328400
+P065,Aspen Lodge 65,Juniper Hospitality,Commercial Renovation,Marcus Reed,Provo,completed,2025-02-14,2025-06-25,2025-02-12,2025-07-02,828000,678600
+P066,Canyon Medical 66,Juniper Hospitality,Tenant Improvement,Elena Martinez,Ogden,completed,2023-12-21,2024-07-04,2023-12-23,2024-06-18,"$672,000",582700
+P067,Copper Office 67,Beehive Development,Commercial Renovation,Elena Martinez,Lehi,completed,2023-04-09,2023-08-14,2023-04-21,2023-08-23,727000,575600
+P068,Aspen Lodge 68,Beehive Development,High-End Residential,Priya Shah,Salt Lake City,completed,2024-05-05,2025-01-07,2024-05-07,2025-01-13,989000,808700
+P069,Bonneville Retail 69,Summit Dental Group,Commercial Renovation,Elena Martinez,Provo,completed,2024-07-26,2025-03-25,2024-08-10,2025-04-15,899000,711400
+P070,Granite Commons 70,Redstone Communities,Healthcare Renovation,Marcus Reed,Lehi,completed,2024-04-06,2024-11-06,2024-04-07,2024-11-20,1388000,1205000
+P071,Wasatch Office 71,Wasatch Health Partners,Healthcare Renovation,Olivia Bennett,Sandy,completed,2023-08-11,2023-12-05,2023-08-15,2024-01-22,754000,637000
+P072,Aspen Office 72,Cottonwood Capital,Healthcare Renovation,Olivia Bennett,Lehi,completed,2024-04-02,2024-07-28,2024-04-01,2024-09-10,1168000,901700
+P073,Canyon Commons 73,Redstone Communities,Multifamily Renovation,Marcus Reed,Lehi,completed,2025-07-12,2026-02-06,2025-07-26,2026-03-22,2219000,1886300
+P074,Copper Center 74,Beehive Development,Commercial Renovation,Olivia Bennett,Provo,completed,2024-06-18,2024-10-12,2024-06-15,2024-11-10,1553000,1299500
+P075,Granite Lodge 75,Canyon Retail Group,Multifamily Renovation,Priya Shah,Lehi,completed,2024-08-04,2025-03-24,2024-08-06,2025-04-24,2579000,2086600
+P076,Granite Center 76,Summit Dental Group,Commercial Renovation,Priya Shah,Sandy,active,2025-09-14,2026-03-17,2025-09-13,,1233000,1044900
+P077,Canyon Residences 77,Bonneville Property Co.,Commercial Renovation,Elena Martinez,Park City,active,2025-08-27,2026-04-06,2025-09-06,,1094000,914600
+P078,Aspen Residences 78,Beehive Development,Multifamily Renovation,Priya Shah,Ogden,active,2025-08-27,2026-07-16,2025-08-30,,1443000,1219600
+P079,Canyon Center 79,Wasatch Health Partners,Commercial Renovation,Elena Martinez,Provo,active,2026-03-04,2026-07-05,2026-03-10,,1641000,1276800
+P080,Aspen Lodge 80,Intermountain Office Holdings,Tenant Improvement,Olivia Bennett,Park City,active,2026-02-08,2026-07-27,2026-02-22,,576000,436600
+P081,Canyon Center 81,Intermountain Office Holdings,Commercial Renovation,Priya Shah,Sandy,active,2025-12-01,2026-08-06,2025-12-01,,938000,756500
+P082,Wasatch Retail 82,Juniper Hospitality,High-End Residential,Daniel Kim,Salt Lake City, active ,2025-12-01,2026-06-19,2025-12-04,,1922000,1483500
+P083,Wasatch Renovation 83,Beehive Development,Commercial Renovation,Daniel Kim,Park City,active,2025-10-10,2026-02-07,2025-10-12,,1299000,1115000
+P084,Bonneville Renovation 84,Wasatch Health Partners,Multifamily Renovation,Elena Martinez,Ogden,active,2025-11-04,2026-03-23,2025-11-18,,1172000,917500
+P085,Summit Residences 85,Beehive Development,Multifamily Renovation,Olivia Bennett,Provo,active,2025-08-29,2026-02-15,2025-08-30,,1100000,887300
+P086,Copper Center 86,Redstone Communities,Tenant Improvement,Elena Martinez,Salt Lake City,active,2026-04-19,2026-07-28,2026-04-25,,465000,401900
+P087,Copper Office 87,Bonneville Property Co.,Multifamily Renovation,Elena Martinez,Salt Lake City,active,2026-02-22,2026-11-17,2026-02-24,,2704000,2317900
+P088,Copper Center 88,Intermountain Office Holdings,Commercial Renovation,Priya Shah,Salt Lake City,active,2026-03-09,2026-07-26,2026-03-12,,814000,699600
+P089,Aspen Center 89,Beehive Development,Multifamily Renovation,Elena Martinez,Provo,active,2026-04-18,2026-12-18,2026-04-26,,1271000,978700
+P090,Canyon Office 90,Canyon Retail Group,Multifamily Renovation,Marcus Reed,Ogden,active,2025-08-02,2025-11-30,2025-08-15,,1046000,890400
+P091,Granite Medical 91,Beehive Development,Commercial Renovation,Daniel Kim,Provo,active,2025-09-02,2026-03-12,2025-09-06,,2164000,1745500
+P092,Copper Retail 92,Peakview Residential,Commercial Renovation,Daniel Kim,Park City,active,2025-10-07,2026-02-09,2025-10-14,,1044000,801100
+P093,Granite Office 93,Bonneville Property Co.,Multifamily Renovation,Daniel Kim,Lehi,active,2025-12-28,2026-08-22,2025-12-25,,2871000,2457900
+P094,Copper Commons 94,Canyon Retail Group,Healthcare Renovation,Priya Shah,Salt Lake City,On Hold,2026-01-15,2026-08-31,2026-01-27,,2087000,1762000
+P095,Summit Lodge 95,Cottonwood Capital,Tenant Improvement,Elena Martinez,Lehi,on_hold,2025-11-11,2026-06-27,2025-11-23,,689000,530000
+P096,Granite Center 96,Wasatch Health Partners,Healthcare Renovation,Elena Martinez,Ogden,on_hold,2026-04-11,2026-09-11,2026-04-15,,2799000,2207100
+P042,Juniper Residences 42,Canyon Retail Group,Commercial Renovation,Daniel Kim,Ogden,completed,2024-08-20,2025-01-03,2024-09-02,2025-01-27,2510000,2013900

@@ -1,0 +1,147 @@
+change_order_id,project_id,requested_date,change_order_type,reason,status,requested_revenue_change,estimated_cost_change,approved_revenue_change,approval_date,billed_amount,billed_date
+CO0001,P001,2023-04-28,additive,Design revision,approved,24599.72,18030.57,23877.11,,23877.11,2023-06-02
+CO0002,P003,2024-03-14,additive,Code requirement,approved,66486.53,55336.96,66067.84,2024-04-24,66067.84,2024-05-09
+CO0003,P004,2024-05-31,additive,Unforeseen site condition,approved,12404.55,7307.98,12018.41,2024-06-30,12018.41,2024-07-26
+CO0004,P004,2024-09-23,additive,Schedule acceleration,approved,59977.07,49415.11,57918.86,2024-10-29,0,
+CO0005,P005,2025-02-20,deductive,Design revision,pending,-88388.88,-74803.78,,,,
+CO0006,P005,2024-12-11,additive,Unforeseen site condition,approved,160974.5,96551.32,155885.02,2024-12-31,155885.02,2025-02-01
+CO0007,P005,2025-06-06,additive,Unforeseen site condition,approved,76830.43,59052.1,71637.66,2025-06-18,71637.66,2025-07-21
+CO0008,P005,2025-05-12,additive,Design revision,approved,30133.38,22930.81,27865.48,2025-06-13,27865.48,2025-06-15
+CO0009,P007,2024-03-22,additive,Owner scope change,approved,133454.77,111924.59,128050.35,2024-04-09,128050.35,2024-04-29
+CO0010,P007,2024-04-27,additive,Owner scope change,approved,50990.26,39077.2,50944.81,2024-05-11,0,
+CO0011,P007,2023-12-05,additive,Design revision,withdrawn,135391.42,91868.38,,,,
+CO0012,P010,2025-05-26,additive,Code requirement,approved,29957.24,23625.65,27992.87,2025-06-11,27992.87,2025-07-07
+CO0013,P010,2025-06-17,additive,Code requirement,approved,32134.08,24764.73,29775.68,2025-07-21,14887.84,2025-07-25
+CO0014,P012,2024-06-05,additive,Design revision,approved,32660.21,23840.33,31148.38,2024-07-09,0,
+CO0015,P012,2024-02-01,additive,Design revision,approved,73875.37,61639.97,72519.33,2024-02-09,72519.33,2024-03-10
+CO0016,P012,2023-12-09,additive,Owner scope change,approved,42081.11,29784.15,39432.62,2024-01-02,39432.62,2024-01-14
+CO0017,P012,2024-04-07,additive,Unforeseen site condition,withdrawn,30314.7,18125.27,,,,
+CO0018,P014,2025-04-11,deductive,Owner scope change,rejected,-69785.49,-55163.58,,,,
+CO0019,P015,2023-07-23,additive,Owner scope change,approved,61552.21,52340.34,58267.33,2023-08-23,58267.33,2023-09-23
+CO0020,P016,2024-11-15,additive,Code requirement,approved,22144.79,15876.28,21111.99,2024-11-29,21111.99,2024-12-20
+CO0021,P017,2024-10-10,additive,Unforeseen site condition,approved,48743.25,30282.56,46656.41,2024-11-08,46656.41,2024-11-16
+CO0022,P017,2024-09-01,additive,Material substitution,Approved,53851.33,32710.56,53507.72,2024-10-03,0,
+CO0023,P017,2024-05-23,additive,Material substitution,withdrawn,23330.07,16134.82,,,,
+CO0024,P017,2024-05-22,additive,Schedule acceleration,pending,11313.7,7562.48,,,,
+CO0025,P019,2024-07-18,deductive,Design revision,approved,-14919.54,-11011.72,-14417.16,2024-08-19,-14417.16,2024-09-15
+CO0026,P019,2024-05-17,deductive,Code requirement,approved,-10871.44,-8812.65,-10355.18,2024-05-23,-10355.18,2024-06-26
+CO0027,P019,2024-05-22,additive,Code requirement,rejected,8384.43,6112.01,,,,
+CO0028,P019,2024-08-01,additive,Material substitution,approved,18699.43,15289.86,17909.36,2024-08-04,17909.36,2024-08-22
+CO0029,P019,2024-06-12,additive,Owner scope change,approved,28236.5,22987.11,26585.74,2024-06-21,13292.87,2024-06-27
+CO0030,P019,2024-08-25,additive,Code requirement,approved,12456.71,10688.05,11886.56,2024-09-07,0,
+CO0031,P020,2023-11-01,additive,Unforeseen site condition,approved,51964.15,34078.36,47911.78,2023-11-27,0,
+CO0032,P020,2023-10-27,additive,Material substitution,approved,20794.2,13252.38,19408.37,2023-12-02,9704.18,2023-12-08
+CO0033,P020,2023-09-14,additive,Design revision,approved,44253.58,35333.19,43975.98,2023-09-26,43975.98,2023-10-15
+CO0034,P021,2023-09-19,additive,Design revision,approved,33315.72,21878.53,31427.33,2023-10-31,0,
+CO0035,P021,2023-09-08,additive,Owner scope change,approved,116163.35,83415.75,111795.02,2023-09-22,111795.02,2023-09-30
+CO0036,P021,2023-08-15,additive,Unforeseen site condition,approved,127368.47,99606.66,124153.22,2023-09-22,124153.22,2023-10-05
+CO0037,P021,2023-06-20,additive,Code requirement,withdrawn,130598.57,105794.26,,,,
+CO0038,P021,2023-07-10,additive,Design revision,approved,83078.45,58478.92,78069.65,2023-08-15,39034.82,2023-08-19
+CO0039,P022,2025-05-01,additive,Material substitution,rejected,201500.62,124992.57,,,,
+CO0040,P022,2025-01-23,additive,Design revision,approved,108707.07,72672.68,102049.05,2025-02-14,51024.53,2025-02-16
+CO0041,P023,2023-07-10,additive,Unforeseen site condition,rejected,141365.91,93058.88,,,,
+CO0042,P024,2025-04-19,additive,Owner scope change,approved,86266.87,64302.46,82163.28,2025-05-05,82163.28,2025-05-12
+CO0043,P025,2024-07-07,additive,Owner scope change,approved,85550.57,59046.51,81075.22,2024-07-16,81075.22,2024-07-18
+CO0044,P026,2024-09-01,additive,Unforeseen site condition,approved,158432.46,111370.72,158368.2,2024-09-28,158368.2,2024-10-25
+CO0045,P026,2024-09-07,additive,Unforeseen site condition,approved,66830.8,47582.96,62573.95,2024-10-08,0,
+CO0046,P027,2023-05-01,additive,Design revision,approved,70955.12,47872.65,65796.71,2023-05-09,65796.71,2023-05-19
+CO0047,P027,2023-04-06,additive,Code requirement,withdrawn,114730.65,72848.59,,,,
+CO0048,P028,2024-10-25,additive,Unforeseen site condition,PENDING ,13444.52,9954.9,,,,
+CO0049,P028,2024-12-23,additive,Owner scope change,approved,16799.65,12485.69,16051.94,2025-01-16,16051.94,2025-01-26
+CO0050,P029,2025-05-03,deductive,Code requirement,approved,-57835.09,-39518.13,-55885.13,2025-05-16,0,
+CO0051,P030,2024-07-24,additive,Unforeseen site condition,approved,76655.19,61743.28,70554.76,2024-08-13,35277.38,2024-08-30
+CO0052,P030,2024-08-29,additive,Unforeseen site condition,approved,81343.22,54790.34,78425.97,2024-10-05,78425.97,2024-10-14
+CO0053,P030,2024-09-29,additive,Code requirement,approved,40241.97,24857.92,38704.11,2024-10-15,19352.06,2024-10-25
+CO0054,P030,2024-07-19,additive,Design revision,approved,86748.49,68906.36,85171.49,2024-08-20,42585.75,2024-09-12
+CO0055,P030,2024-07-19,additive,Material substitution,approved,84567.46,65086.14,82860.4,2024-08-28,82860.4,2024-09-02
+CO0056,P030,2024-10-26,additive,Owner scope change,approved,71172.33,52117.33,69065.25,2024-11-19,69065.25,2024-12-19
+CO0057,P032,2024-03-01,additive,Code requirement,approved,94822,58790.34,93268.8,2024-04-03,46634.4,2024-04-07
+CO0058,P032,2024-04-08,additive,Design revision,withdrawn,37684.72,25494.08,,,,
+CO0059,P032,2024-01-09,additive,Unforeseen site condition,approved,90716.37,70799.63,89492.8,2024-01-22,89492.8,2024-02-05
+CO0060,P033,2024-02-04,additive,Unforeseen site condition,rejected,48605.35,30980.81,,,,
+CO0061,P037,2024-05-02,additive,Design revision,approved,16841.8,12726.33,16320.35,2024-05-18,16320.35,2024-06-01
+CO0062,P037,2024-04-05,additive,Owner scope change,withdrawn,33160.67,21654.57,,,,
+CO0063,P038,2024-05-28,additive,Design revision,approved,20646.85,14450.22,19451.19,2024-06-27,0,
+CO0064,P039,2023-08-04,additive,Owner scope change,rejected,"$43,428.72",34678.37,,,,
+CO0065,P040,2024-05-21,additive,Code requirement,approved,45881.83,26677.77,44481.45,2024-06-22,44481.45,2024-07-15
+CO0066,P040,2024-03-02,additive,Unforeseen site condition,rejected,58577.1,44969.71,,,,
+CO0067,P041,2024-12-13,additive,Owner scope change,withdrawn,96411.83,60325.08,,,,
+CO0068,P041,2024-12-08,additive,Unforeseen site condition,approved,70651.53,48834.03,68560.94,2025-01-13,0,
+CO0069,P041,2024-07-11,additive,Owner scope change,withdrawn,74615.62,55750.38,,,,
+CO0070,P041,2024-07-10,additive,Design revision,rejected,58383.83,39466.04,,,,
+CO0071,P042,2024-12-24,additive,Owner scope change,approved,105217.76,64232.21,97085.21,2025-01-29,0,
+CO0072,P043,2024-03-24,additive,Design revision,approved,28269.25,17645.46,27322.86,2024-04-09,27322.86,2024-04-18
+CO0073,P045,2023-06-06,additive,Code requirement,pending,59104.62,40007.65,,,,
+CO0074,P046,2024-06-05,additive,Owner scope change,approved,36993.24,25703.98,35244.66,2024-06-28,35244.66,2024-08-01
+CO0075,P046,2024-01-05,additive,Design revision,approved,68930.16,41767.25,66831.29,2024-01-24,66831.29,2024-02-03
+CO0076,P046,2023-12-13,additive,Owner scope change,approved,71210.24,50512.51,70012.98,2024-01-09,70012.98,2024-01-27
+CO0077,P047,2023-09-03,additive,Unforeseen site condition,withdrawn,145071.97,85991.14,,,,
+CO0078,P048,2025-08-04,additive,Unforeseen site condition,pending,16019.35,12005.97,,,,
+CO0079,P048,2025-07-28,additive,Owner scope change,approved,34638.46,29767.94,32896.55,2025-08-31,0,
+CO0080,P049,2023-12-04,deductive,Owner scope change,approved,-55005.53,-35242.9,-53575.59,2023-12-12,-53575.59,2024-01-15
+CO0081,P049,2023-10-27,additive,Owner scope change,rejected,57029.69,41506.15,,,,
+CO0082,P050,2024-10-20,additive,Code requirement,approved,18239.1,11354.91,18196.81,2024-11-04,9098.41,2024-11-07
+CO0083,P052,2024-03-15,additive,Schedule acceleration,pending,41892.05,32064.61,,,,
+CO0084,P052,2024-01-02,additive,Owner scope change,pending,123009.63,103640.38,,,,
+CO0085,P052,2024-03-01,additive,Code requirement,approved,92717.4,58606.7,92583.46,2024-03-04,46291.73,2024-03-15
+CO0086,P052,2024-02-10,additive,Unforeseen site condition,approved,49310.5,39253.32,48098.5,2024-02-23,48098.5,2024-02-28
+CO0087,P053,2024-08-01,deductive,Design revision,approved,-64353.6,-47517.24,-63283.43,2024-08-06,-31641.72,2024-08-15
+CO0088,P054,2025-02-03,additive,Design revision,approved,12454.38,7771.3,12022.19,2025-03-01,0,
+CO0089,P054,2024-12-08,additive,Design revision,withdrawn,5522.41,4602.56,,,,
+CO0090,P056,2024-09-21,additive,Material substitution,pending,6133.71,4742.08,,,,
+CO0091,P056,2024-07-27,additive,Design revision,approved,19917.35,11711.26,19623.42,2024-07-31,19623.42,2024-08-24
+CO0092,P060,2024-04-27,additive,Material substitution,approved,78291.3,47948.43,77073.27,2024-06-05,0,
+CO0093,P061,2025-02-17,additive,Owner scope change,approved,134493.17,95375.54,125409.71,2025-03-26,125409.71,2025-04-28
+CO0094,P061,2025-01-23,additive,Owner scope change,approved,101751.78,70271.7,94477.46,2025-02-23,0,
+CO0095,P061,2025-04-16,deductive,Owner scope change,approved,-180146.05,-122322.75,-177978.63,2025-05-27,0,
+CO0096,P061,2025-03-03,deductive,Owner scope change,approved,-135916.29,-94602.57,-133652.67,2025-03-19,-133652.67,2025-04-09
+CO0097,P062,2024-12-19,additive,Code requirement,approved,44337.16,34631.18,42958.41,2024-12-29,0,
+CO0098,P062,2024-12-15,additive,Unforeseen site condition,approved,108610.98,69026.78,106961.45,2024-12-19,53480.72,2024-12-29
+CO0099,P062,2024-06-26,additive,Owner scope change,approved,80021.27,64559.25,77813.32,2024-07-01,38906.66,2024-07-08
+CO0100,P062,2024-12-27,additive,Schedule acceleration,withdrawn,75970.21,55139.51,,,,
+CO0101,P062,2024-12-23,additive,Unforeseen site condition,approved,138655.69,103523.41,128935.31,2025-01-20,0,
+CO0102,P063,2025-06-02,additive,Unforeseen site condition,approved,16037.11,10892.16,15369.96,2025-06-26,15369.96,2025-07-13
+CO0103,P064,2025-01-03,additive,Design revision,approved,51960.03,33971.58,49854.64,2025-02-03,49854.64,2025-02-19
+CO0104,P066,2024-06-02,additive,Schedule acceleration,approved,18007.47,13418.64,17632.75,2024-07-14,0,
+CO0105,P067,2023-07-18,additive,Owner scope change,approved,21462.61,18062.9,21351.16,2023-08-22,21351.16,2023-09-15
+CO0106,P068,2024-12-03,additive,Schedule acceleration,approved,17433.75,11327.54,17253.84,2025-01-08,17253.84,2025-01-27
+CO0107,P068,2024-10-27,additive,Unforeseen site condition,approved,57467.19,44361.63,55639.84,2024-11-09,55639.84,2024-12-04
+CO0108,P069,2024-10-30,deductive,Code requirement,approved,-46534.2,-39681.57,-43759.35,2024-12-05,-43759.35,2024-12-13
+CO0109,P069,2024-09-28,additive,Unforeseen site condition,approved,13901.71,9292.39,13772.97,2024-11-03,0,
+CO0110,P070,2024-10-09,additive,Unforeseen site condition,approved,52095.27,40975.29,51225.43,2024-11-05,25612.72,2024-12-07
+CO0111,P071,2024-01-15,additive,Design revision,approved,7473.65,5302.78,6910.66,2024-02-07,0,
+CO0112,P071,2023-12-06,additive,Unforeseen site condition,approved,9870.52,6534.43,9512.33,2024-01-09,9512.33,2024-01-29
+CO0113,P071,2023-11-19,additive,Schedule acceleration,approved,14766.2,9985.83,14132.48,2023-12-09,14132.48,2024-01-06
+CO0114,P072,2024-05-22,additive,Owner scope change,approved,49816.87,41266.17,46688.73,2024-06-29,0,
+CO0115,P072,2024-06-05,additive,Owner scope change,approved,65289.89,43890.96,62639.59,2024-06-11,31319.79,2024-07-11
+CO0116,P072,2024-06-16,additive,Unforeseen site condition,approved,72336.59,55940.44,71218.03,2024-07-11,71218.03,2024-08-13
+CO0117,P076,2026-01-25,additive,Owner scope change,approved,65946.71,52540.52,64662.61,2026-02-21,64662.61,2026-03-13
+CO0118,P077,2026-06-15,additive,Code requirement,approved,11127.35,8933.39,10781.8,2026-06-20,0,
+CO0119,P077,2026-05-11,deductive,Owner scope change,approved,-37075.27,-26587.53,-36633.22,2026-06-21,-36633.22,2026-07-09
+CO0120,P078,2026-06-15,additive,Owner scope change,pending,46803.11,30304.76,,,,
+CO0121,P078,2026-04-24,additive,Unforeseen site condition,approved,32955.03,25399.45,32782.77,2026-05-07,32782.77,2026-05-11
+CO0122,P078,2026-01-27,additive,Design revision,rejected,51976.76,34371.49,,,,
+CO0123,P081,2026-03-14,additive,Owner scope change,withdrawn,55382.87,36998.52,,,,
+CO0124,P081,2026-01-19,additive,Owner scope change,pending,24076.93,20015.16,,,,
+CO0125,P082,2026-01-08,additive,Owner scope change,approved,104902.28,61779.14,96678.34,2026-02-11,48339.17,2026-02-18
+CO0126,P085,2025-09-16,additive,Design revision,withdrawn,40207.73,33610.54,,,,
+CO0127,P085,2026-05-09,additive,Design revision,approved,16384.25,12947.43,16342.08,2026-06-02,16342.08,2026-06-21
+CO0128,P085,2025-11-26,additive,Owner scope change,rejected,43150.33,26200.33,,,,
+CO0129,P087,2026-05-10,additive,Unforeseen site condition,approved,34761.79,23462.63,32779.66,2026-06-10,16389.83,2026-06-16
+CO0130,P088,2026-04-22,deductive,Material substitution,approved,-6753.32,-4742.42,-6389.43,2026-05-21,-3194.72,2026-06-12
+CO0131,P088,2026-05-01,additive,Unforeseen site condition,approved,11646.3,8337.07,11642.58,2026-06-08,11642.58,2026-06-13
+CO0132,P090,2025-09-23,additive,Owner scope change,approved,66087.77,45557.28,61533.02,2025-10-13,61533.02,2025-11-03
+CO0133,P090,2025-10-03,additive,Owner scope change,pending,40446.03,29836.28,,,,
+CO0134,P090,2025-11-01,additive,Design revision,withdrawn,25146.07,18713.18,,,,
+CO0135,P090,2025-10-01,additive,Design revision,pending,20277.72,13718.64,,,,
+CO0136,P091,2025-09-16,additive,Owner scope change,approved,51984.16,41226.86,49001.55,2025-10-14,24500.78,2025-11-01
+CO0137,P091,2026-03-23,additive,Unforeseen site condition,approved,83551.23,63581.47,79024.71,2026-04-05,79024.71,2026-04-27
+CO0138,P092,2026-01-19,additive,Owner scope change,withdrawn,60179.13,38955.9,,,,
+CO0139,P092,2026-01-09,additive,Design revision,approved,21255.96,14677.46,20046.95,2026-01-19,20046.95,2026-01-22
+CO0140,P093,2026-06-25,additive,Owner scope change,pending,118913.44,94580.44,,,,
+CO0141,P094,2026-03-02,additive,Code requirement,approved,89865.26,65979.38,85895.29,2026-03-06,85895.29,2026-03-23
+CO0142,P094,2026-04-18,additive,Material substitution,approved,78712.99,60951.82,77631.15,2026-05-19,38815.57,2026-06-01
+CO0143,P094,2026-03-05,additive,Owner scope change,rejected,19107.59,13842.95,,,,
+CO0144,P096,2026-06-03,additive,Code requirement,rejected,73363.19,46729.8,,,,
+CO0013,P010,2025-06-17,additive,Code requirement,approved,32134.08,24764.73,29775.68,2025-07-21,14887.84,2025-07-25
+CO9999,P994,2026-04-18,additive,Owner scope change,pending,48000,33000,,,,
