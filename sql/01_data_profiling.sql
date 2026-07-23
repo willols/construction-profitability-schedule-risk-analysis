@@ -15,6 +15,17 @@
 --
 -- Reporting cutoff: June 30, 2026
 --
+-- Reporting-cutoff policy:
+-- - Actual activity dated on or before June 30, 2026, will be included in
+--   cutoff-based analysis.
+-- - Actual activity after the cutoff will remain in the raw data but will be
+--   excluded from cutoff-based calculations.
+-- - Future planned dates will remain because they represent expectations known
+--   at the cutoff and are necessary for schedule-risk analysis.
+-- - The raw CSVs will be preserved to maintain an auditable source, make the
+--   analysis reproducible, and prevent uncertainty about what the client
+--   originally provided.
+--
 -- Data-handling rule:
 -- Treat all raw CSV files as immutable source data. Apply any corrections or
 -- standardization only in cleaned outputs.
@@ -22,7 +33,7 @@
 -- Profiling scope:
 -- Inspect column names, inferred data types, row counts, grain, key uniqueness,
 -- duplicates, missing values, categorical consistency, date ranges, numeric
--- anomalies, and relationships between files..
+-- anomalies, and relationships between files.
 
 
 -- Investigation 1: Inspect the column names and data types DuckDB infers
@@ -153,7 +164,7 @@ WHERE project_type IS NULL;
 -- projects that were not completed by the reporting cutoff.
 SELECT
     project_status,
-    COUNT(*) AS missing_data_row_count
+    COUNT(*) AS missing_date_row_count
 FROM read_csv_auto('data/raw/projects.csv')
 WHERE actual_completion_date IS NULL
 GROUP BY project_status;
@@ -214,7 +225,7 @@ WHERE baseline_completion_date IS NOT NULL
 
 
 -- Investigation 5B: Identify values preventing original_contract_value
--- from being numberic.
+-- from being numeric.
 SELECT
     project_id,
     original_contract_value,
@@ -264,13 +275,144 @@ WHERE TRY_CAST(baseline_completion_date AS DATE) IS NOT NULL
 --   P042 duplicate, although no baseline-order violation was found.
 
 
+-- Investigation 6B: Identify projects whose actual_completion_date
+-- occurs before actual_start_date, excluding projects with no
+-- actual_completion_date.
+SELECT
+    project_id,
+    actual_completion_date,
+    actual_start_date
+FROM read_csv_auto('data/raw/projects.csv')
+WHERE actual_completion_date IS NOT NULL
+    AND actual_completion_date < actual_start_date;
+
+-- Findings:
+-- - No projects with a recorded actual_completion_date had an
+--   actual_completion_date before actual_start_date.
+-- - Projects without an actual_completion_date were excluded because their
+--   actual date ordering could not be evaluated.
+
+
+-- Investigation 7A: Identify the minimum and maximum actual_start_date
+-- and actual_completion_date values to detect potentially unreasonable
+-- date boundaries that require further investigation.
+SELECT
+    MIN(actual_start_date) AS minimum_actual_start_date,
+    MAX(actual_start_date) AS maximum_actual_start_date,
+    MIN(actual_completion_date) AS minimum_actual_completion_date,
+    MAX(actual_completion_date) AS maximum_actual_completion_date
+FROM read_csv_auto('data/raw/projects.csv');
+
+-- Findings:
+-- - actual_start_date ranges from 2023-01-28 to 2026-04-26.
+-- - Among non-NULL values, actual_completion_date ranges from 2023-05-19
+--   to 2026-03-22.
+-- - No actual-date boundary extends beyond the June 30, 2026,
+--   reporting cutoff, and no obviously unreasonable boundary was identified.
+-- - These aggregate boundaries may come from different projects and should not
+--   be interpreted as dates belonging to the same project.
+
+
+-- Investigation 7B: Identify the minimum and maximum baseline_start_date and
+-- safely converted baseline_completion_date values to detect potentially
+-- unreasonable date boundaries, excluding completion values that cannot be
+-- converted to DATE.
+SELECT
+    MIN(baseline_start_date) AS minimum_baseline_start_date,
+    MAX(baseline_start_date) AS maximum_baseline_start_date,
+    MIN(TRY_CAST(baseline_completion_date AS DATE)) AS minimum_baseline_completion_date,
+    MAX(TRY_CAST(baseline_completion_date AS DATE)) AS maximum_baseline_completion_date
+FROM read_csv_auto('data/raw/projects.csv');
+
+-- Findings:
+-- - baseline_start_date ranges from 2023-01-13 to 2026-04-19.
+-- - Among safely parsed values, baseline_completion_date ranges from
+--   2023-05-09 to 2026-12-18.
+-- - The maximum baseline_completion_date extends beyond the June 30, 2026,
+--   reporting cutoff, but this is not a violation because baseline dates are
+--   planned dates that may reasonably extend beyond the cutoff.
+-- - P013's ambiguous baseline_completion_date was excluded from the safely
+--   parsed completion-date range because it could not be reliably converted.
+-- - No obviously unreasonable boundary was identified among the safely parsed
+--   baseline dates.
+
+
+-- Investigation 8: Numeric anomalies in projects.csv
+
+-- Investigation 8A: Identify the minimum and maximum original_contract_value
+-- and original_budget values after safely normalizing and converting contract
+-- values to DECIMAL, to detect potentially unreasonable amounts.
+SELECT
+    MIN(
+        TRY_CAST(
+            REPLACE(
+                REPLACE(original_contract_value, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        )
+    ) AS minimum_original_contract_value,
+    MAX(
+        TRY_CAST(
+            REPLACE(
+                REPLACE(original_contract_value, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        )
+    ) AS maximum_original_contract_value,
+    MIN(original_budget) AS minimum_original_budget,
+    MAX(original_budget) AS maximum_original_budget
+FROM read_csv_auto('data/raw/projects.csv');
+
+-- Findings:
+-- - After normalization, original_contract_value ranges from 276,000.00
+--   to 3,773,000.00.
+-- - original_budget ranges from 223,600.00 to 2,917,000.00.
+-- - Both minimums are positive, so no zero or negative values were identified
+--   among the processed contract values and budgets.
+-- - P066's formatted value of $672,000 was successfully normalized and
+--   included in the contract-value range.
+-- - No obviously unreasonable numeric boundary was identified.
+
+
+-- Investigation 8B: Identify projects whose original_budget exceeds the
+-- safely normalized original_contract_value, flagging potential negative
+-- planned margins that require further investigation.
+SELECT
+    project_id,
+    TRY_CAST(
+        REPLACE(
+            REPLACE(original_contract_value, '$', ''),
+            ',',
+            ''
+        ) AS DECIMAL(18, 2)
+    ) AS standardized_original_contract_value,
+    original_budget
+FROM read_csv_auto('data/raw/projects.csv')
+WHERE original_budget > standardized_original_contract_value;
+
+-- Findings:
+-- - The query returned zero rows.
+-- - No project had an original_budget greater than its normalized
+--   original_contract_value, so no planned negative margin was identified
+--   from the original amounts.
+-- - P066's formatted contract value of $672,000 was normalized and included
+--   in the comparison.
+-- - These results do not establish actual profitability, which will depend on
+--   actual costs, change orders, and other financial activity.
+
+
 -- Next steps:
--- Create Investigation 6B to identify actual_completion_date values that occur
--- before actual_start_date, excluding rows with no actual completion date.
--- Run Investigation 6B and draft its findings.
--- Continue profiling project date ranges and numeric anomalies.
+-- Begin profiling project_budgets.csv, starting with its inferred schema, row
+-- count, grain, key uniqueness, duplicates, and missing values.
+-- Continue profiling cost_transactions.csv, labor_entries.csv,
+-- project_updates.csv, and change_orders.csv.
+-- Apply the reporting-cutoff policy when evaluating dated activity fields.
 -- Keep P013's ambiguous baseline_completion_date unresolved until its intended
 -- date format can be confirmed.
--- Apply all corrections only in cleaned outputs, including the P042 duplicate,
--- P052's missing project_type, project_status standardization, and P066's
--- formatted contract value.
+-- Apply corrections only in cleaned outputs, including removal of the exact
+-- P042 duplicate, treatment of P052's missing project_type, project_status
+-- standardization, and normalization of P066's contract value.
+-- Create cleaned outputs after all six raw files and their key relationships
+-- have been profiled.
