@@ -1,12 +1,14 @@
 # Project Status
 
-Last updated: July 23, 2026
+Last updated: July 24, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
-`projects.csv` is complete. Five supplied CSV files remain to be profiled before
-cleaned outputs and cross-file business analysis are created.
+`projects.csv` is complete. Profiling of `project_budgets.csv` is complete
+through schema, grain, key uniqueness, duplicates, missing values, and
+categorical consistency. Its monetary values and relationships still require
+investigation. Four additional raw CSV files have not yet been profiled.
 
 ## Reporting Cutoff
 
@@ -22,9 +24,10 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Completed
 
 - Profiled the inferred schema and sample values in `projects.csv`.
-- Confirmed 97 raw rows and 96 distinct project IDs.
+- Confirmed 97 raw project rows and 96 distinct project IDs.
 - Confirmed that P042 is an exact duplicate in the immutable raw data.
-- Profiled missing values and investigated P052's missing `project_type`.
+- Profiled project-level missing values and investigated P052's missing
+  `project_type`.
 - Profiled and interpreted raw `project_status` variations.
 - Diagnosed P013's ambiguous `baseline_completion_date`.
 - Diagnosed and safely normalized P066's formatted contract value in profiling
@@ -35,8 +38,18 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Tested whether any original budget exceeds its normalized original contract
   value.
 - Documented the reporting-cutoff policy.
+- Began profiling `project_budgets.csv`.
+- Completed its schema inspection.
+- Assessed its row count, expected grain, and candidate-key uniqueness.
+- Identified and inspected its duplicated `budget_line_id`.
+- Profiled NULL, blank, and whitespace-only values.
+- Identified and inspected the row with a missing `original_budget_amount`.
+- Profiled `cost_category` values for formatting and consistency.
+- Completed `project_budgets.csv` documentation through Investigation 12.
 
 ## Key Findings
+
+### Projects
 
 - P052's missing `project_type` cannot be reliably inferred from its other
   attributes.
@@ -57,7 +70,40 @@ The reporting cutoff is June 30, 2026, inclusive.
 - No zero or negative processed contract value or budget was identified.
 - No original budget exceeds its normalized original contract value.
 
+### Project Budgets
+
+- `project_budgets.csv` contains 674 rows, 673 distinct `budget_line_id`
+  values, 97 distinct `project_id` values, and 673 distinct `project_id` and
+  `cost_category` combinations.
+- One row is expected to represent one budget line for one project and one cost
+  category.
+- BUD-P031-01 appears twice. The two rows match across all six columns,
+  confirming an exact duplicate.
+- The BUD-P031-01 duplicate explains both one-row candidate-key discrepancies.
+- No NULL, blank, or whitespace-only values were identified in
+  `budget_line_id`, `project_id`, `cost_category`, or
+  `approved_budget_change`.
+- No missing `revised_budget_amount` values were identified.
+- BUD-P057-04 is the only row with a missing `original_budget_amount`.
+- BUD-P057-04 has an `approved_budget_change` of 0 and a
+  `revised_budget_amount` of 31672.
+- If revised budget equals original budget plus approved change, the implied
+  original amount for BUD-P057-04 is 31672. This relationship has not yet been
+  validated.
+- Eleven distinct raw `cost_category` labels were identified. Seven appear to
+  be canonical categories.
+- Four inconsistent category variants were identified:
+  - `General conditions` → `General Conditions`
+  - `Materials ` → `Materials`
+  - `labor` → `Labor`
+  - `Sub-Contractors` → `Subcontractors`
+- `approved_budget_change` was inferred as `VARCHAR`, and
+  `revised_budget_amount` was inferred as `DOUBLE`; both require further
+  investigation before cleaned-data types are selected.
+
 ## Unresolved Items
+
+### Projects
 
 - Keep P013's ambiguous baseline completion date unresolved until its intended
   format is confirmed.
@@ -65,7 +111,24 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Treat P052 as unknown if a non-NULL project type is required in cleaned data.
 - Implement explicit cleaned-output mappings for project statuses.
 - Normalize P066's contract value in cleaned data.
-- Profile `project_budgets.csv`.
+
+### Project Budgets
+
+- Determine why `approved_budget_change` was inferred as `VARCHAR`.
+- Inspect `revised_budget_amount` and select appropriate cleaned-data types for
+  the monetary columns.
+- Validate the relationship among `original_budget_amount`,
+  `approved_budget_change`, and `revised_budget_amount`.
+- Keep BUD-P057-04's missing `original_budget_amount` unresolved until the
+  monetary relationship has been validated.
+- Retain only one BUD-P031-01 row in cleaned data.
+- Standardize the four inconsistent `cost_category` variants in cleaned data.
+- Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
+  distinct project IDs in `projects.csv` during relationship testing.
+- Complete the remaining `project_budgets.csv` profiling investigations.
+
+### Remaining Work
+
 - Profile `cost_transactions.csv`.
 - Profile `labor_entries.csv`.
 - Profile `project_updates.csv`.
@@ -76,15 +139,17 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the first attempt at the
-Investigation 9 purpose comment for `project_budgets.csv`. Begin by inspecting
-the raw file's column names and DuckDB-inferred data types. Then profile its row
-count, grain, key uniqueness, duplicates, and missing values.
+Investigation 13 purpose comment. Investigation 13 will determine why
+`approved_budget_change` was inferred as `VARCHAR` by inspecting its raw values
+and numeric parseability. Do not write the SQL query until the purpose comment
+has been reviewed.
 
 ## Latest Analysis Commit
 
-- Commit: [`2ab81d844c57ca701e21fccd644ace42c0dfeca9`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/2ab81d844c57ca701e21fccd644ace42c0dfeca9)
-- Message: `Complete projects data profiling`
-- Date: July 23, 2026
+- Commit:
+  [`d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84)
+- Message: `Profile project budget structure and quality`
+- Date: July 24, 2026
 
 ## End-of-Session Update Routine
 

@@ -2,6 +2,83 @@
 
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
+## July 24, 2026
+
+### Work Completed
+
+- Began profiling `project_budgets.csv`.
+- Completed its schema inspection.
+- Assessed row count, expected grain, and candidate-key uniqueness.
+- Checked `budget_line_id` for missing and duplicated values.
+- Identified the duplicated key and compared the complete affected records.
+- Profiled NULL, blank, and whitespace-only values across the file.
+- Identified and inspected the row with a missing `original_budget_amount`.
+- Profiled `cost_category` values for formatting and consistency.
+- Completed documentation through Investigation 12.
+
+### Decisions and Reasoning
+
+- One row is expected to represent one budget line for one project and one cost
+  category.
+- `budget_line_id` is the intended row-level key, while `project_id` may repeat
+  because one project can contain multiple budget lines.
+- A difference between total rows and a distinct-key count does not immediately
+  prove duplication because `COUNT(DISTINCT column)` excludes NULL values.
+  Missing-key and duplicate checks must be performed separately.
+- Broad cross-file relationship checks will generally wait until the standalone
+  profiling of the relevant files is complete.
+- The raw CSVs remain immutable. Duplicate removal, category standardization,
+  and any monetary type conversions belong only in cleaned outputs.
+- BUD-P057-04's missing `original_budget_amount` will remain unresolved until
+  the relationship among the three monetary fields is validated.
+- `approved_budget_change` and `revised_budget_amount` require further
+  investigation before their cleaned-data types are selected.
+
+### Key Results
+
+- `project_budgets.csv` contains 674 raw rows, 673 distinct `budget_line_id`
+  values, 97 distinct `project_id` values, and 673 distinct `project_id` and
+  `cost_category` combinations.
+- No NULL, blank, or whitespace-only `budget_line_id` values were identified.
+- BUD-P031-01 appears twice. The two rows match across all six columns,
+  confirming an exact duplicate.
+- The BUD-P031-01 duplicate explains both one-row discrepancies in the
+  candidate-key counts.
+- No missing or blank values were identified in `project_id`, `cost_category`,
+  or `approved_budget_change`.
+- No missing `revised_budget_amount` values were identified.
+- BUD-P057-04 is the only row with a missing `original_budget_amount`.
+- BUD-P057-04 has an `approved_budget_change` of 0 and a
+  `revised_budget_amount` of 31672.
+- If revised budget equals original budget plus approved change, the implied
+  original amount for BUD-P057-04 is 31672. This relationship has not yet been
+  validated, so no imputation decision has been made.
+- Eleven distinct raw `cost_category` labels were identified. Seven appear to
+  be canonical: Labor, Equipment, Permits & Fees, Other, Subcontractors,
+  Materials, and General Conditions.
+- Four inconsistent category variants were identified, each appearing once:
+  - `General conditions` → `General Conditions`
+  - `Materials ` → `Materials`
+  - `labor` → `Labor`
+  - `Sub-Contractors` → `Subcontractors`
+
+### Verification and Closeout
+
+- `git diff --check` returned no output.
+- The complete `sql/01_data_profiling.sql` file executed successfully with no
+  errors.
+- Only `sql/01_data_profiling.sql` was included in the analysis commit.
+- Commit
+  [`d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84)
+  was pushed to `main` with the message
+  `Profile project budget structure and quality`.
+
+### Next Session
+
+Begin Investigation 13 by determining why `approved_budget_change` was inferred
+as `VARCHAR`. Then inspect `revised_budget_amount` and validate the relationship
+among `original_budget_amount`, `approved_budget_change`, and
+`revised_budget_amount` before resolving BUD-P057-04's missing original amount.
 
 ## July 23, 2026
 
