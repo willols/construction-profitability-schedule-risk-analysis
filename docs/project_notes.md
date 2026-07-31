@@ -2,6 +2,59 @@
 
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
+
+## July 31, 2026
+
+### Work Completed
+
+- Resumed `project_budgets.csv` profiling after the travel break.
+- Completed Investigation 13 to determine why `approved_budget_change` was
+  inferred as `VARCHAR`.
+- Completed Investigation 13A to validate the candidate normalization rule.
+- Updated the profiling file's next steps.
+
+### Decisions and Reasoning
+
+- The raw CSV remains immutable; monetary formatting will be removed only in
+  cleaned outputs and profiling calculations.
+- `REPLACE()` normalizes the formatted text but does not change its data type.
+  Numeric conversion must still occur after normalization.
+- `DECIMAL(18, 2)` was used to test numeric parseability; the final cleaned
+  monetary type has not yet been selected.
+- `revised_budget_amount` must be investigated before the monetary-field
+  relationship and BUD-P057-04's missing original amount can be resolved.
+
+### Key Results
+
+- `$3,485.49` is the only populated `approved_budget_change` value that fails
+  direct conversion to `DECIMAL(18, 2)`, and it appears once.
+- The currency symbol and thousands separator explain why DuckDB inferred the
+  column as `VARCHAR`.
+- After removing `$` and `,`, zero populated values failed conversion to
+  `DECIMAL(18, 2)`.
+- The normalization rule is therefore validated for all observed populated
+  `approved_budget_change` values.
+
+### Verification and Closeout
+
+- `git diff --check` returned no output.
+- The complete profiling SQL file executed through the DuckDB CLI with exit
+  code 0.
+- Analysis commit
+  [`9e84a97410cad5b81abd357e3cd647c45fb31619`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/9e84a97410cad5b81abd357e3cd647c45fb31619)
+  was pushed to `main` with the message
+  `Profile approved budget change formatting`.
+- Correction commit
+  [`52a08ac4164bd7279d95e0ea6c91229d229c44ef`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/52a08ac4164bd7279d95e0ea6c91229d229c44ef)
+  removed a duplicated `SELECT` line and was pushed to `main`.
+
+### Next Session
+
+Begin Investigation 14 by writing its purpose comment. Investigate
+`revised_budget_amount` precision and numeric compatibility before selecting a
+cleaned monetary type. Do not write the SQL query until the purpose comment has
+been reviewed.
+
 ## July 24, 2026
 
 ### Work Completed

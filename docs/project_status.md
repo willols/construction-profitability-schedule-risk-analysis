@@ -1,13 +1,14 @@
 # Project Status
 
-Last updated: July 24, 2026
+Last updated: July 31, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
 `projects.csv` is complete. Profiling of `project_budgets.csv` is complete
-through schema, grain, key uniqueness, duplicates, missing values, and
-categorical consistency. Its monetary values and relationships still require
+through schema, grain, key uniqueness, duplicates, missing values, categorical
+consistency, and validation of the `approved_budget_change` normalization
+rule. The remaining monetary types and relationships still require
 investigation. Four additional raw CSV files have not yet been profiled.
 
 ## Reporting Cutoff
@@ -45,7 +46,11 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Profiled NULL, blank, and whitespace-only values.
 - Identified and inspected the row with a missing `original_budget_amount`.
 - Profiled `cost_category` values for formatting and consistency.
-- Completed `project_budgets.csv` documentation through Investigation 12.
+- Completed `project_budgets.csv` documentation through Investigation 13A.
+- Identified the formatted value responsible for `approved_budget_change` being
+  inferred as `VARCHAR`.
+- Validated the candidate normalization rule across all populated
+  `approved_budget_change` values.
 
 ## Key Findings
 
@@ -97,9 +102,12 @@ The reporting cutoff is June 30, 2026, inclusive.
   - `Materials ` → `Materials`
   - `labor` → `Labor`
   - `Sub-Contractors` → `Subcontractors`
-- `approved_budget_change` was inferred as `VARCHAR`, and
-  `revised_budget_amount` was inferred as `DOUBLE`; both require further
-  investigation before cleaned-data types are selected.
+- `$3,485.49` is the only populated `approved_budget_change` value that fails
+  direct conversion to `DECIMAL(18, 2)`, and it appears once.
+- Removing the currency symbol and thousands separator produced zero remaining
+  conversion failures across all populated values.
+- The normalization rule is validated, but the final cleaned monetary type and
+  `revised_budget_amount` precision remain unresolved.
 
 ## Unresolved Items
 
@@ -114,7 +122,6 @@ The reporting cutoff is June 30, 2026, inclusive.
 
 ### Project Budgets
 
-- Determine why `approved_budget_change` was inferred as `VARCHAR`.
 - Inspect `revised_budget_amount` and select appropriate cleaned-data types for
   the monetary columns.
 - Validate the relationship among `original_budget_amount`,
@@ -139,10 +146,10 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the first attempt at the
-Investigation 13 purpose comment. Investigation 13 will determine why
-`approved_budget_change` was inferred as `VARCHAR` by inspecting its raw values
-and numeric parseability. Do not write the SQL query until the purpose comment
-has been reviewed.
+Investigation 14 purpose comment. Investigation 14 will inspect
+`revised_budget_amount` precision and numeric compatibility before selecting a
+cleaned monetary type. Do not write the SQL query until the purpose comment has
+been reviewed.
 
 ## Latest Analysis Commit
 
