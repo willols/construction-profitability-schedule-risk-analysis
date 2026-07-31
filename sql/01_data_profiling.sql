@@ -605,11 +605,71 @@ ORDER BY row_count DESC, cost_category;
 --   remains unchanged.
 
 
+-- Investigation 13: Investigate approved_budget_change type inference and numeric parseability
+-- Purpose:
+-- - Identify the raw values or formatting patterns that caused DuckDB to infer
+--   approved_budget_change as VARCHAR.
+-- - Determine whether all non-NULL, non-blank values can be safely parsed as numeric.
+-- - Use the findings to define required cleaning rules and inform the selection of
+--   an appropriate exact numeric type for the cleaned dataset.
+SELECT
+    approved_budget_change,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE
+    approved_budget_change IS NOT NULL
+    AND TRY_CAST(approved_budget_change AS DECIMAL(18, 2)) IS NULL
+GROUP BY approved_budget_change
+ORDER BY
+    row_count DESC,
+    approved_budget_change;
+
+-- Findings:
+-- - $3,485.49 is the only populated value that fails direct numeric parsing,
+--   and it appears once.
+-- - The currency symbol and thousands separator prevent direct conversion to
+--   DECIMAL and explain why DuckDB inferred the column as VARCHAR.
+-- - The candidate cleaning rule is to remove both formatting characters before
+--   converting the normalized value to a numeric type; this rule still requires
+--   validation across the full column.
+
+
+-- Investigation 13A: Validate approved_budget_change normalization
+-- Purpose:
+-- - Test whether removing currency symbols and thousands separators from populated
+--   approved_budget_change values allows them to be safely converted to DECIMAL.
+-- - Identify any values that remain unparseable after normalization; zero returned
+--   rows would validate the candidate cleaning rule for the observed column values.
+SELECT
+SELECT
+    approved_budget_change,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE
+    approved_budget_change IS NOT NULL
+    AND TRY_CAST(
+        REPLACE(
+            REPLACE(approved_budget_change, '$', ''),
+            ',',
+            ''
+        ) AS DECIMAL(18, 2)
+    ) IS NULL
+GROUP BY approved_budget_change
+ORDER BY row_count DESC, approved_budget_change;
+
+-- Findings:
+-- - The query returned zero rows, meaning no populated approved_budget_change
+--   values remained unparseable after removing currency symbols and thousands
+--   separators.
+-- - This validates the candidate normalization rule for all observed populated
+--   values before conversion to an exact numeric type.
+
+
 -- Next steps:
--- - Begin Investigation 13 by determining why approved_budget_change was
---   inferred as VARCHAR.
--- - Inspect revised_budget_amount and validate the relationship among the three
---   monetary fields.
+-- - Begin Investigation 14 by inspecting revised_budget_amount precision and
+--   numeric compatibility before selecting a cleaned monetary type.
+-- - Validate the relationship among original_budget_amount, normalized
+--   approved_budget_change, and revised_budget_amount.
 -- - Keep BUD-P057-04's missing original_budget_amount unresolved until the
 --   monetary relationship has been validated.
 -- - In cleaned data, retain only one BUD-P031-01 row and standardize the four
