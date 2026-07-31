@@ -641,7 +641,6 @@ ORDER BY
 -- - Identify any values that remain unparseable after normalization; zero returned
 --   rows would validate the candidate cleaning rule for the observed column values.
 SELECT
-SELECT
     approved_budget_change,
     COUNT(*) AS row_count
 FROM read_csv_auto('data/raw/project_budgets.csv')
