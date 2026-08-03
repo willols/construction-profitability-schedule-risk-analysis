@@ -1,15 +1,21 @@
 # Project Status
 
-Last updated: July 31, 2026
+Last updated: August 3, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
-`projects.csv` is complete. Profiling of `project_budgets.csv` is complete
-through schema, grain, key uniqueness, duplicates, missing values, categorical
-consistency, and validation of the `approved_budget_change` normalization
-rule. The remaining monetary types and relationships still require
-investigation. Four additional raw CSV files have not yet been profiled.
+`projects.csv` and `project_budgets.csv` is complete.
+
+For `project_budgets.csv`, schema, grain, candidate-key uniqueness, duplicates,
+missing values, categorical consistency, monetary normalization, precision, and
+the relationship among `original_budget_amount`, normalized
+`approved_budget_change`, and `revised_budget_amount` have been validated.
+
+Of the 674 source rows, 673 satisfy the expected monetary relationship, zero
+are genuine mismatches, and one is untestable because its
+
+Four additional raw CSV files have not yet been profiled.
 
 ## Reporting Cutoff
 
@@ -46,11 +52,30 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Profiled NULL, blank, and whitespace-only values.
 - Identified and inspected the row with a missing `original_budget_amount`.
 - Profiled `cost_category` values for formatting and consistency.
-- Completed `project_budgets.csv` documentation through Investigation 13A.
 - Identified the formatted value responsible for `approved_budget_change` being
   inferred as `VARCHAR`.
 - Validated the candidate normalization rule across all populated
   `approved_budget_change` values.
+- Completed Investigation 14 by profiling the range, NULL count, and
+  fractional values in `revised_budget_amount`.
+- Completed Investigation 14B by testing whether any
+  `revised_budget_amount` values contain meaningful precision beyond two
+  decimal places.
+- Began Investigation 15 to validate the relationship among the three monetary
+  fields.
+- Completed Investigation 15A by inspecting BUD-P031-01 and BUD-P057-04.
+- Completed Investigation 15B and confirmed that zero testable rows have
+  monetary calculation mismatches.
+- Completed Investigation 15C and classified 673 rows as matching, zero as
+  mismatching, and one as untestable.
+- Confirmed that the classification counts reconcile to all 674 source rows.
+- Completed Investigation 15D and calculated an inferred candidate
+  `original_budget_amount` of 31,672.00 for BUD-P057-04.
+- Decided to preserve BUD-P057-04's source NULL and treat the candidate as
+  inferred rather than observed.
+- Completed Investigation 16 by profiling maximum absolute monetary values.
+- Selected `DECIMAL(10, 2)` for cleaned `project_budgets` monetary fields.
+- Completed the first-pass standalone profiling of `project_budgets.csv`.
 
 ## Key Findings
 
@@ -92,9 +117,6 @@ The reporting cutoff is June 30, 2026, inclusive.
 - BUD-P057-04 is the only row with a missing `original_budget_amount`.
 - BUD-P057-04 has an `approved_budget_change` of 0 and a
   `revised_budget_amount` of 31672.
-- If revised budget equals original budget plus approved change, the implied
-  original amount for BUD-P057-04 is 31672. This relationship has not yet been
-  validated.
 - Eleven distinct raw `cost_category` labels were identified. Seven appear to
   be canonical categories.
 - Four inconsistent category variants were identified:
@@ -106,8 +128,34 @@ The reporting cutoff is June 30, 2026, inclusive.
   direct conversion to `DECIMAL(18, 2)`, and it appears once.
 - Removing the currency symbol and thousands separator produced zero remaining
   conversion failures across all populated values.
-- The normalization rule is validated, but the final cleaned monetary type and
-  `revised_budget_amount` precision remain unresolved.
+- `revised_budget_amount` ranges from 6,957.72 to 886,036.18.
+- A total of 406 `revised_budget_amount` values contain a fractional component,
+  confirming that the column should not be stored as an integer.
+- Zero `revised_budget_amount` values changed when rounded to two decimal
+  places.
+- A scale of 2 can therefore preserve all observed
+  `revised_budget_amount` values without rounding.
+- Investigation 15B returned zero genuine mismatch rows among testable records.
+- Of the 674 source rows, 673 are matching, zero are mismatching, and one is
+  untestable.
+- The matching, mismatching, and untestable counts reconcile to all 674 source
+  rows.
+- BUD-P057-04 is the only untestable row because its
+  `original_budget_amount` is NULL.
+- BUD-P057-04 has a normalized `approved_budget_change` of 0.00 and a
+  normalized `revised_budget_amount` of 31,672.00.
+- Subtracting the approved change from the revised amount produces an inferred
+  candidate `original_budget_amount` of 31,672.00.
+- The candidate is not source-confirmed. The source NULL will be preserved, and
+  the candidate will be flagged as inferred if used for analysis.
+- The maximum absolute observed monetary values are 845,930.00 for
+  `original_budget_amount`, 104,800.44 for normalized
+  `approved_budget_change`, and 886,036.18 for `revised_budget_amount`.
+- The inferred candidate maximum is 31,672.00.
+- Observed values require at most six digits before the decimal and a scale of
+  two.
+- `DECIMAL(8, 2)` is the minimum compatible type, but `DECIMAL(10, 2)` was
+  selected to provide reasonable future headroom.
 
 ## Unresolved Items
 
@@ -122,17 +170,14 @@ The reporting cutoff is June 30, 2026, inclusive.
 
 ### Project Budgets
 
-- Inspect `revised_budget_amount` and select appropriate cleaned-data types for
-  the monetary columns.
-- Validate the relationship among `original_budget_amount`,
-  `approved_budget_change`, and `revised_budget_amount`.
-- Keep BUD-P057-04's missing `original_budget_amount` unresolved until the
-  monetary relationship has been validated.
 - Retain only one BUD-P031-01 row in cleaned data.
 - Standardize the four inconsistent `cost_category` variants in cleaned data.
+- Normalize `approved_budget_change` by removing `$` and `,` before conversion.
+- Convert cleaned monetary fields to `DECIMAL(10, 2)`.
+- Preserve BUD-P057-04's source NULL. If its inferred candidate is used for
+  analysis, expose it separately and flag it as inferred.
 - Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
   distinct project IDs in `projects.csv` during relationship testing.
-- Complete the remaining `project_budgets.csv` profiling investigations.
 
 ### Remaining Work
 
@@ -145,18 +190,30 @@ The reporting cutoff is June 30, 2026, inclusive.
 
 ## Exact Next Task
 
-Open `sql/01_data_profiling.sql` and write the first attempt at the
-Investigation 14 purpose comment. Investigation 14 will inspect
-`revised_budget_amount` precision and numeric compatibility before selecting a
-cleaned monetary type. Do not write the SQL query until the purpose comment has
-been reviewed.
+Open `sql/01_data_profiling.sql` and begin Investigation 17 by writing the
+purpose comment for the initial profiling of `cost_transactions.csv`.
+
+The investigation will inspect the inferred schema, sample values, row count,
+expected grain, and likely transaction identifier before deeper profiling
+begins.
+
+Do not write the SQL query until the purpose comment has been reviewed.
 
 ## Latest Analysis Commit
 
+The latest analysis commit is:
+
 - Commit:
-  [`d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/d156d59afd1aa76ebfb8e55c14ffe62efbbc1c84)
-- Message: `Profile project budget structure and quality`
-- Date: July 24, 2026
+  [`4e41cbd3043803186da819b204d99278dcea66a8`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/4e41cbd3043803186da819b204d99278dcea66a8)
+- Message: `Complete project budget monetary profiling`
+- Date: August 3, 2026
+
+The latest correction commit is:
+
+- Commit:
+  [`52a08ac4164bd7279d95e0ea6c91229d229c44ef`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/52a08ac4164bd7279d95e0ea6c91229d229c44ef)
+- Message: `Fix budget normalization query`
+- Date: July 31, 2026
 
 ## End-of-Session Update Routine
 

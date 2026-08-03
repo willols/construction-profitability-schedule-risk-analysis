@@ -3,6 +3,146 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 3, 2026
+
+### Work Completed
+
+- Completed Investigation 15B to identify genuine monetary calculation
+  mismatches across all testable `project_budgets.csv` rows.
+- Completed Investigation 15C to classify and count matching, mismatching, and
+  untestable rows.
+- Completed Investigation 15D to assess the missing
+  `original_budget_amount` in BUD-P057-04.
+- Completed Investigation 16 to determine the required monetary precision.
+- Documented the completed first-pass standalone profiling of
+  `project_budgets.csv`.
+
+### Decisions and Reasoning
+
+- Zero monetary values remain testable because zero can represent no approved
+  budget change.
+- Rows with missing required monetary values are untestable rather than genuine
+  mismatches.
+- BUD-P057-04's source `original_budget_amount` will remain NULL because the
+  source value is unknown.
+- An inferred candidate may be used for analysis only if it is stored or exposed
+  separately and clearly flagged as inferred rather than observed.
+- `DECIMAL(8, 2)` is the minimum type that supports all observed monetary
+  values, but it leaves limited future headroom.
+- `DECIMAL(10, 2)` was selected for cleaned `project_budgets` monetary fields.
+- `approved_budget_change` will be normalized by removing `$` and `,` before
+  conversion to `DECIMAL(10, 2)`.
+- Raw CSV files remain immutable. Duplicate removal, category standardization,
+  monetary conversion, and inferred-value handling will occur only in cleaned
+  outputs.
+
+### Key Results
+
+- Investigation 15B returned zero genuine calculation mismatches.
+- Investigation 15C classified 673 rows as matching, zero as mismatching, and
+  one as untestable.
+- The category counts reconcile to all 674 source rows.
+- BUD-P057-04 is the only untestable row because its
+  `original_budget_amount` is NULL.
+- BUD-P057-04 has a normalized `approved_budget_change` of 0.00 and a
+  normalized `revised_budget_amount` of 31,672.00.
+- The inferred candidate `original_budget_amount` for BUD-P057-04 is 31,672.00.
+- The maximum absolute values are 845,930.00 for `original_budget_amount`,
+  104,800.44 for normalized `approved_budget_change`, 886,036.18 for
+  `revised_budget_amount`, and 31,672.00 for the inferred candidate.
+- The observed values require no more than six digits before the decimal and a
+  scale of two.
+- The first-pass standalone profiling of `project_budgets.csv` is complete.
+
+### Verification and Closeout
+
+- `git diff --check` returned no output.
+- The complete `sql/01_data_profiling.sql` file executed through the DuckDB CLI
+  with exit code 0.
+- Only `sql/01_data_profiling.sql` was included in the analysis commit.
+- Analysis commit
+  [`4e41cbd3043803186da819b204d99278dcea66a8`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/4e41cbd3043803186da819b204d99278dcea66a8)
+  was pushed to `main` with the message
+  `Complete project budget monetary profiling`.
+
+### Next Session
+
+Begin Investigation 17 by writing the purpose comment for the initial profiling
+of `cost_transactions.csv`. Inspect its inferred schema, sample values, row
+count, expected grain, and likely transaction identifier before beginning
+deeper profiling.
+
+## August 2, 2026
+
+### Work Completed
+
+- Resumed `project_budgets.csv` profiling with Investigation 14.
+- Profiled the range, completeness, and fractional values in
+  `revised_budget_amount`.
+- Completed Investigation 14B to determine whether any
+  `revised_budget_amount` values contain meaningful precision beyond two
+  decimal places.
+- Began Investigation 15 to validate the relationship among
+  `original_budget_amount`, normalized `approved_budget_change`, and
+  `revised_budget_amount`.
+- Completed Investigation 15A by inspecting the known duplicate
+  BUD-P031-01 and the missing-value row BUD-P057-04.
+
+### Decisions and Reasoning
+
+- `revised_budget_amount` must use a decimal-compatible monetary type because
+  the column contains fractional values.
+- The cleaned monetary type can use a scale of 2 because rounding all
+  `revised_budget_amount` values to two decimal places did not alter any
+  observed values.
+- The final `DECIMAL` precision has not yet been selected.
+- The expected revised budget is calculated as `original_budget_amount` plus
+  normalized `approved_budget_change`.
+- `approved_budget_change` must be normalized by removing `$` and `,` before
+  converting it to `DECIMAL(18, 2)` for profiling calculations.
+- Known duplicates, untestable rows, and genuine calculation mismatches must be
+  evaluated separately.
+- BUD-P057-04 cannot currently be classified as a calculation match or
+  mismatch because its `original_budget_amount` is NULL.
+- The raw CSV remains immutable; all normalization, duplicate removal, and type
+  conversion will occur only in cleaned outputs or profiling calculations.
+
+### Key Results
+
+- `project_budgets.csv` contains 674 rows.
+- `revised_budget_amount` ranges from 6,957.72 to 886,036.18.
+- No NULL `revised_budget_amount` values were identified.
+- A total of 406 `revised_budget_amount` values contain a fractional component.
+- Zero rows changed when `revised_budget_amount` was rounded to two decimal
+  places.
+- A scale of 2 can therefore preserve all observed
+  `revised_budget_amount` values without rounding.
+- BUD-P031-01 appears twice with identical monetary values, confirming the
+  previously identified exact duplicate.
+- Both BUD-P031-01 rows satisfy the expected budget calculation:
+  `132750 + 0 = 132750`.
+- BUD-P057-04 has a NULL `original_budget_amount`, an
+  `approved_budget_change` of 0, and a `revised_budget_amount` of 31672.
+- The calculated revised amount for BUD-P057-04 is NULL because arithmetic
+  involving a NULL value produces NULL.
+- BUD-P057-04 must remain unresolved until the monetary relationship has been
+  validated across the remaining testable rows.
+
+### Next Session
+
+Begin Investigation 15B by identifying testable rows where the calculated
+revised budget does not equal `revised_budget_amount`. Exclude rows with missing
+required values from the mismatch test and document them separately.
+
+Then summarize the number of matching, mismatching, and untestable rows. Use the
+validated ranges to select the final `DECIMAL` precision and scale for the
+cleaned monetary columns.
+
+After completing the monetary relationship analysis, retain only one
+BUD-P031-01 row in cleaned data, standardize the four inconsistent
+`cost_category` variants, and finish `project_budgets.csv` profiling before
+continuing with the remaining four raw CSV files.
+
 ## July 31, 2026
 
 ### Work Completed
