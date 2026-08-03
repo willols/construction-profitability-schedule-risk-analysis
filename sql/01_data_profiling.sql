@@ -664,15 +664,389 @@ ORDER BY row_count DESC, approved_budget_change;
 --   values before conversion to an exact numeric type.
 
 
--- Next steps:
--- - Begin Investigation 14 by inspecting revised_budget_amount precision and
---   numeric compatibility before selecting a cleaned monetary type.
--- - Validate the relationship among original_budget_amount, normalized
---   approved_budget_change, and revised_budget_amount.
--- - Keep BUD-P057-04's missing original_budget_amount unresolved until the
---   monetary relationship has been validated.
--- - In cleaned data, retain only one BUD-P031-01 row and standardize the four
---   inconsistent cost_category variants.
--- - After completing project_budgets.csv profiling, continue with the remaining
---   four raw CSV files.
--- - Preserve all raw CSV files as immutable source data.
+-- Investigation 14A: Inspect revised_budget_amount precision and range
+--
+-- Purpose:
+-- Determine whether revised_budget_amount contains fractional values,
+-- missing values, or potentially unreasonable minimum or maximum amounts.
+-- Use the results to select an appropriate monetary data type before
+-- validating the budget calculation relationship.
+SELECT
+    COUNT(*) AS row_count,
+    MIN(revised_budget_amount) AS minimum_revised_budget_amount,
+    MAX(revised_budget_amount) AS maximum_revised_budget_amount,
+    COUNT(*) FILTER (
+        WHERE revised_budget_amount IS NULL
+    ) AS null_count,
+    COUNT(*) FILTER (
+        WHERE revised_budget_amount <> TRUNC(revised_budget_amount)
+    ) AS values_with_fractional_amount
+FROM read_csv_auto('data/raw/project_budgets.csv');
+-- Findings:
+-- - project_budgets.csv contains 674 rows.
+-- - revised_budget_amount contains no NULL values.
+-- - Values range from 6,957.72 to 886,036.18.
+-- - 406 values contain a fractional component, confirming that
+--   revised_budget_amount should not be stored as an integer.
+-- - A fixed-point DECIMAL type is likely appropriate for cleaned monetary
+--   values, but the maximum number of decimal places must still be confirmed
+--   before selecting the final precision and scale.
+
+
+-- Investigation 14B: Inspect decimal precision in revised_budget_amount
+--
+-- Purpose:
+-- - Determine whether any values contain more than two decimal places.
+-- - Confirm that the column can be converted to an appropriate DECIMAL type
+--   without altering the original monetary values.
+SELECT
+    revised_budget_amount,
+    ROUND(revised_budget_amount, 2) AS rounded_revised_budget_amount
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE revised_budget_amount <> rounded_revised_budget_amount;
+
+-- Findings:
+-- - Zero rows were returned, confirming that no revised_budget_amount values
+--   changed when rounded to two decimal places.
+-- - A scale of 2 can preserve all current values without rounding.
+-- - The final DECIMAL precision has not yet been selected.
+
+
+-- Investigation 15A: Inspect known duplicate and missing-value rows
+--
+-- Purpose:
+-- - Inspect BUD-P031-01 to confirm how the known duplicate behaves in the
+--   budget calculation.
+-- - Inspect BUD-P057-04 to determine how its missing
+--   original_budget_amount affects validation.
+-- - Confirm whether these known data-quality issues should be treated as
+--   calculation mismatches or handled separately.
+
+SELECT
+    budget_line_id,
+    original_budget_amount,
+    approved_budget_change,
+    TRY_CAST(
+        REPLACE(
+            REPLACE(approved_budget_change, '$', ''),
+            ',',
+            ''
+        ) AS DECIMAL(18, 2)
+    ) AS normalized_approved_budget_change,
+    revised_budget_amount,
+    original_budget_amount
+        + normalized_approved_budget_change
+        AS calculated_revised_budget_amount
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE budget_line_id IN ('BUD-P057-04', 'BUD-P031-01');
+
+-- Findings:
+-- - BUD-P031-01 appears twice with identical monetary values, confirming
+--   the previously identified exact duplicate.
+-- - Both BUD-P031-01 rows satisfy the expected calculation:
+--   original_budget_amount plus approved_budget_change equals
+--   revised_budget_amount.
+-- - BUD-P057-04 has a NULL original_budget_amount.
+-- - Its calculated_revised_budget_amount is therefore also NULL because
+--   arithmetic involving NULL produces NULL.
+-- - BUD-P057-04 cannot currently be classified as a calculation match or
+--   mismatch and must be handled separately during cleaning.
+
+
+-- Investigation 15B: Identify testable rows with budget calculation mismatches
+-- Purpose:
+-- - Test whether original_budget_amount plus normalized approved_budget_change
+--   equals revised_budget_amount.
+-- - Keep zero values because they are valid and testable monetary amounts.
+-- - Exclude rows with NULLs in required monetary fields because the expected
+--   revised amount cannot be calculated.
+-- - Return testable rows where the calculated and recorded revised amounts differ.
+WITH normalized_budgets AS (
+    SELECT
+        budget_line_id,
+        CAST(original_budget_amount AS DECIMAL(18, 2))
+            AS original_budget_amount,
+        approved_budget_change,
+        TRY_CAST(
+            REPLACE(
+                REPLACE(approved_budget_change, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        ) AS normalized_approved_budget_change,
+        CAST(revised_budget_amount AS DECIMAL(18, 2))
+            AS revised_budget_amount
+    FROM read_csv_auto('data/raw/project_budgets.csv')
+),
+
+testable_budgets AS (
+    SELECT
+        budget_line_id,
+        original_budget_amount,
+        approved_budget_change,
+        normalized_approved_budget_change,
+        revised_budget_amount,
+        original_budget_amount
+            + normalized_approved_budget_change
+            AS calculated_revised_budget_amount
+    FROM normalized_budgets
+    WHERE original_budget_amount IS NOT NULL
+      AND normalized_approved_budget_change IS NOT NULL
+      AND revised_budget_amount IS NOT NULL
+)
+
+SELECT
+    budget_line_id,
+    original_budget_amount,
+    approved_budget_change,
+    normalized_approved_budget_change,
+    revised_budget_amount,
+    calculated_revised_budget_amount,
+    revised_budget_amount
+        - calculated_revised_budget_amount AS variance_amount
+FROM testable_budgets
+WHERE revised_budget_amount <> calculated_revised_budget_amount
+ORDER BY ABS(variance_amount) DESC, budget_line_id;
+
+-- Findings:
+-- - Zero mismatch rows were returned, confirming that all testable rows satisfy
+--   original_budget_amount + normalized approved_budget_change
+--   = revised_budget_amount.
+-- - This result does not validate budget line BUD-P057-04 because its
+--   original_budget_amount is NULL, so the row was excluded as untestable.
+
+
+-- Investigation 15C: Count matching, mismatching, and untestable rows
+-- Purpose:
+-- - Classify every project_budgets row as matching, mismatching, or untestable.
+-- - Matching rows have all required values and satisfy original_budget_amount
+--   + normalized approved_budget_change = revised_budget_amount.
+-- - Mismatching rows have all required values but do not satisfy the expected
+--   budget calculation.
+-- - Untestable rows have a missing required value or an approved_budget_change
+--   that cannot be normalized to a monetary value.
+-- - Confirm that the mutually exclusive category counts sum to all 674 source rows.
+WITH normalized_budgets AS (
+    SELECT
+        CAST(original_budget_amount AS DECIMAL(18, 2))
+            AS original_budget_amount,
+        TRY_CAST(
+            REPLACE(
+                REPLACE(approved_budget_change, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        ) AS normalized_approved_budget_change,
+        CAST(revised_budget_amount AS DECIMAL(18, 2))
+            AS revised_budget_amount
+    FROM read_csv_auto('data/raw/project_budgets.csv')
+),
+
+validation_counts AS (
+    SELECT
+        COUNT(*) FILTER (
+            WHERE original_budget_amount IS NOT NULL
+              AND normalized_approved_budget_change IS NOT NULL
+              AND revised_budget_amount IS NOT NULL
+              AND original_budget_amount
+                    + normalized_approved_budget_change
+                    = revised_budget_amount
+        ) AS matching_rows,
+
+        COUNT(*) FILTER (
+            WHERE original_budget_amount IS NOT NULL
+              AND normalized_approved_budget_change IS NOT NULL
+              AND revised_budget_amount IS NOT NULL
+              AND original_budget_amount
+                    + normalized_approved_budget_change
+                    <> revised_budget_amount
+        ) AS mismatching_rows,
+
+        COUNT(*) FILTER (
+            WHERE original_budget_amount IS NULL
+               OR normalized_approved_budget_change IS NULL
+               OR revised_budget_amount IS NULL
+        ) AS untestable_rows,
+
+        COUNT(*) AS total_rows
+    FROM normalized_budgets
+)
+
+SELECT
+    matching_rows,
+    mismatching_rows,
+    untestable_rows,
+    total_rows,
+    matching_rows + mismatching_rows + untestable_rows
+        AS classified_rows,
+    total_rows
+        = matching_rows + mismatching_rows + untestable_rows
+        AS counts_reconcile
+FROM validation_counts;
+
+-- Findings:
+-- - 673 rows were classified as matching.
+-- - Zero rows were classified as mismatching.
+-- - One row was classified as untestable.
+-- - All 674 source rows were classified, and the reconciliation check passed.
+-- - This validates the monetary relationship for all testable rows, but it does
+--   not automatically justify filling the missing original_budget_amount in
+--   BUD-P057-04.
+
+
+-- Investigation 15D: Assess the missing original budget amount for BUD-P057-04
+-- Purpose:
+-- - Calculate a candidate original amount using revised_budget_amount
+--   minus normalized approved_budget_change.
+-- - Treat and document the result as an inferred candidate rather than a
+--   confirmed source value.
+-- - Preserve the source NULL instead of silently replacing it.
+WITH normalized_budget AS (
+    SELECT
+        budget_line_id,
+        project_id,
+        cost_category,
+        original_budget_amount,
+        approved_budget_change AS raw_approved_budget_change,
+        TRY_CAST(
+            REPLACE(
+                REPLACE(approved_budget_change, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        ) AS normalized_approved_budget_change,
+        revised_budget_amount AS raw_revised_budget_amount,
+        CAST(revised_budget_amount AS DECIMAL(18, 2))
+            AS normalized_revised_budget_amount
+    FROM read_csv_auto('data/raw/project_budgets.csv')
+    WHERE budget_line_id = 'BUD-P057-04'
+)
+
+SELECT
+    budget_line_id,
+    project_id,
+    cost_category,
+    original_budget_amount,
+    raw_approved_budget_change,
+    normalized_approved_budget_change,
+    raw_revised_budget_amount,
+    normalized_revised_budget_amount,
+    normalized_revised_budget_amount
+        - normalized_approved_budget_change AS candidate_original_amount
+FROM normalized_budget;
+
+-- Findings:
+-- - For BUD-P057-04, the normalized revised_budget_amount of 31,672.00
+--   minus the normalized approved_budget_change of 0.00 produces an inferred
+--   candidate original_budget_amount of 31,672.00.
+-- - Preserve the source original_budget_amount as NULL. The candidate may be
+--   used for analysis with an inference flag, but it is not an observed value.
+
+
+-- Investigation 16: Select the final monetary precision
+-- Purpose:
+-- - Inspect the maximum absolute values of original_budget_amount,
+--   normalized approved_budget_change, revised_budget_amount, and the inferred
+--   candidate original amount.
+-- - Determine the maximum number of digits required before the decimal while
+--   preserving the validated scale of 2.
+-- - Select a final DECIMAL precision that supports all observed values and
+--   provides reasonable headroom for future project budgets.
+WITH normalized_budgets AS (
+    SELECT
+        CAST(original_budget_amount AS DECIMAL(18, 2))
+            AS original_budget_amount,
+        TRY_CAST(
+            REPLACE(
+                REPLACE(approved_budget_change, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 2)
+        ) AS normalized_approved_budget_change,
+        CAST(revised_budget_amount AS DECIMAL(18, 2))
+            AS normalized_revised_budget_amount
+    FROM read_csv_auto('data/raw/project_budgets.csv')
+),
+
+budget_amounts AS (
+    SELECT
+        original_budget_amount,
+        normalized_approved_budget_change,
+        normalized_revised_budget_amount,
+        CASE
+            WHEN original_budget_amount IS NULL
+             AND normalized_approved_budget_change IS NOT NULL
+             AND normalized_revised_budget_amount IS NOT NULL
+            THEN normalized_revised_budget_amount
+                 - normalized_approved_budget_change
+            ELSE NULL
+        END AS candidate_original_amount
+    FROM normalized_budgets
+)
+
+SELECT
+    MAX(ABS(original_budget_amount))
+        AS max_abs_original_budget_amount,
+    MAX(ABS(normalized_approved_budget_change))
+        AS max_abs_approved_budget_change,
+    MAX(ABS(normalized_revised_budget_amount))
+        AS max_abs_revised_budget_amount,
+    MAX(ABS(candidate_original_amount))
+        AS max_abs_candidate_original_amount
+FROM budget_amounts;
+
+-- Findings:
+-- - max_abs_original_budget_amount returned 845,930.00.
+-- - max_abs_approved_budget_change returned 104,800.44.
+-- - max_abs_revised_budget_amount returned 886,036.18.
+-- - max_abs_candidate_original_amount returned 31,672.00.
+-- - The observed values require at most six digits before the decimal and
+--   the validated scale of two, making DECIMAL(8, 2) the minimum compatible type.
+-- - DECIMAL(10, 2) will be used for cleaned project_budgets monetary fields,
+--   providing eight integer digits and reasonable future headroom.
+
+
+-- project_budgets.csv Profiling Conclusion
+--
+-- Dataset Structure:
+-- - The source contains 674 rows and 673 distinct budget_line_id values.
+-- - The intended grain is one budget line per project_id and cost_category.
+-- - The source contains 673 distinct project_id and cost_category combinations
+--   across 97 distinct project_id values.
+--
+-- Data-Quality Issues:
+-- - BUD-P031-01 appears twice as an exact duplicate.
+-- - BUD-P057-04 has the only missing original_budget_amount.
+-- - Four cost_category values require standardization:
+--   "General conditions" to "General Conditions",
+--   "Materials " to "Materials",
+--   "labor" to "Labor", and
+--   "Sub-Contractors" to "Subcontractors".
+-- - One approved_budget_change value, "$3,485.49", cannot be converted
+--   directly to a numeric type because it contains a currency symbol and
+--   thousands separator.
+--
+-- Monetary Validation:
+-- - Removing "$" and "," before applying TRY_CAST successfully converts every
+--   populated approved_budget_change value to a monetary value.
+-- - revised_budget_amount ranges from 6,957.72 to 886,036.18.
+-- - A scale of 2 preserves every observed monetary value without alteration.
+-- - The expected relationship is original_budget_amount plus normalized
+--   approved_budget_change equals revised_budget_amount.
+-- - Of the 674 source rows, 673 are matching, zero are mismatching, and one is
+--   untestable. The category counts reconcile to all 674 rows.
+-- - BUD-P057-04 is untestable because its original_budget_amount is NULL.
+-- - Its inferred candidate original amount is 31,672.00, calculated from a
+--   revised amount of 31,672.00 minus an approved change of 0.00. This candidate
+--   is not source-confirmed.
+--
+-- Cleaning Decisions:
+-- - Preserve the raw project_budgets.csv file unchanged.
+-- - Remove one occurrence of the exact BUD-P031-01 duplicate only in cleaned data.
+-- - Standardize the four inconsistent cost_category values to their canonical forms.
+-- - Normalize approved_budget_change by removing "$" and "," and then applying
+--   TRY_CAST to DECIMAL(10, 2).
+-- - Convert all cleaned monetary fields to DECIMAL(10, 2).
+-- - Preserve the source NULL for BUD-P057-04. If the inferred candidate is used
+--   for analysis, store or expose it separately and flag it as inferred rather
+--   than observed.
