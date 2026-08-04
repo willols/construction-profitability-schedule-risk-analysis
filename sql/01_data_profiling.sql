@@ -1050,3 +1050,197 @@ FROM budget_amounts;
 -- - Preserve the source NULL for BUD-P057-04. If the inferred candidate is used
 --   for analysis, store or expose it separately and flag it as inferred rather
 --   than observed.
+
+
+-- cost_transactions.csv profiling
+-- Profiling scope:
+-- Inspect column names, inferred data types, row counts, grain, key uniqueness,
+-- duplicates, missing values, categorical consistency, date ranges, numeric
+-- anomalies, and relationships between files.
+-- Data-handling rule:
+-- Treat all raw CSV files as immutable source data. Apply any corrections or
+-- standardization only in cleaned outputs.
+
+
+-- Investigation 17: Initial profiling of cost_transactions.csv
+-- Purpose:
+-- Inspect the inferred schema and sample values, count the rows, and form initial
+-- hypotheses about the row-level grain and likely transaction identifier.
+
+-- Inferred schema
+DESCRIBE
+SELECT *
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - Eight columns were detected.
+-- - transaction_date was inferred as DATE.
+-- - The remaining seven columns were inferred as VARCHAR.
+-- - amount requires further investigation because DuckDB inferred it as
+--   VARCHAR rather than a numeric type.
+
+
+-- Sample value
+SELECT *
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+LIMIT 10;
+
+-- Findings:
+-- - transaction_id values are sequential in the sample.
+-- - The sample provides tentative support for one row per transaction.
+-- - No sampled amount values contain currency symbols or otherwise explain why
+--   DuckDB inferred the column as VARCHAR.
+-- - Two payment_status values were observed: paid and approved.
+-- - The first ten rows are not representative enough to establish file-wide
+--   consistency.
+
+
+-- Row count
+SELECT
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - cost_transaction.csv contains 11,204
+
+
+-- Investigation 17 conclusion:
+-- - cost_transactions.csv contains 11,204 rows and eight columns.
+-- - transaction_date was inferred as DATE.
+-- - transaction_id, project_id, cost_category, vendor_name, description,
+--   amount, and payment_status were inferred as VARCHAR.
+-- - amount contains numeric-looking sample values but requires further
+--   investigation because DuckDB inferred it as VARCHAR.
+-- - The expected grain is one row per cost transaction, and transaction_id is
+--   the likely unique identifier; both hypotheses require validation.
+
+
+-- Investigation 18: Validate transaction_id as the unique identifier
+-- Purpose:
+-- Compare the total row count, non-NULL transaction_id count, and distinct
+-- transaction_id count to determine whether every row has a populated,
+-- unique transaction identifier.
+SELECT
+    COUNT(*) AS row_count,
+    COUNT(transaction_id) AS non_null_transaction_id,
+    COUNT(DISTINCT transaction_id) AS distinct_transaction_id
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - The file contains 11,204 rows and 11,204 non-NULL transaction_id values,
+--   indicating that no transaction identifiers are missing.
+-- - There are 11,203 distinct transaction_id values.
+-- - The difference of one confirms one duplicate occurrence that requires
+--   targeted inspection to determine whether the associated rows are identical
+--   or conflicting.
+
+
+-- Investigation 18A: Identify repeated transaction_id values
+-- Purpose:
+-- Identify transaction_id values that occur more than once and inspect their
+-- associated rows to determine whether they are exact duplicates or conflicting
+-- records.
+SELECT
+    transaction_id,
+    COUNT(*) AS occurance_count
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+GROUP BY transaction_id
+HAVING COUNT(*) >1;
+
+-- Findings:
+-- - transaction_id TX000138 occurs twice.
+-- - This explains the one-record difference between 11,204 non-NULL
+--   transaction_id values and 11,203 distinct values.
+-- - Further investigation is required to determine whether the associated rows
+--   are exact duplicates or conflicting transactions.
+
+
+-- Investigation 18B: Inspect records associated with TX000138
+-- Purpose:
+-- Inspect and compare all column values for the two records associated with
+-- transaction_id TX000138 to determine whether they are exact duplicates or
+-- conflicting transactions.
+SELECT *
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE transaction_id = 'TX000138';
+
+-- Findings:
+-- - The two records associated with transaction_id TX000138 are exact
+--   duplicates across all eight columns.
+-- - If both records were included in analysis, project P002's Materials costs
+--   would be overstated by 14,821.14, causing its profitability to be
+--   understated by the same amount.
+-- - The raw file will remain unchanged. In the cleaned output, one occurrence
+--   will be retained and the duplicate occurrence removed.
+
+
+-- Investigation 19: Inspect columns for completeness
+-- Purpose:
+-- Count NULL values in all eight columns and blank or whitespace-only values
+-- in the seven VARCHAR columns to determine whether each field is complete.
+SELECT
+    COUNT(*) AS row_count,
+
+    COUNT(*) FILTER (
+        WHERE transaction_id IS NULL
+    ) AS null_transaction_id_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(transaction_id) = ''
+    ) AS blank_transaction_id_count,
+
+    COUNT(*) FILTER (
+        WHERE project_id IS NULL
+    ) AS null_project_id_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(project_id) = ''
+    ) AS blank_project_id_count,
+
+    COUNT(*) FILTER (
+        WHERE transaction_date IS NULL
+    ) AS null_transaction_date_count,
+
+    COUNT(*) FILTER (
+        WHERE cost_category IS NULL
+    ) AS null_cost_category_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(cost_category) = ''
+    ) AS blank_cost_category_count,
+
+    COUNT(*) FILTER (
+        WHERE vendor_name IS NULL
+    ) AS null_vendor_name_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(vendor_name) = ''
+    ) AS blank_vendor_name_count,
+
+    COUNT(*) FILTER (
+        WHERE description IS NULL
+    ) AS null_description_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(description) = ''
+    ) AS blank_description_count,
+
+    COUNT(*) FILTER (
+        WHERE amount IS NULL
+    ) AS null_amount_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(amount) = ''
+    ) AS blank_amount_count,
+
+    COUNT(*) FILTER (
+        WHERE payment_status IS NULL
+    ) AS null_payment_status_count,
+    COUNT(*) FILTER (
+        WHERE TRIM(payment_status) = ''
+    ) AS blank_payment_status_count
+
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - cost_transactions.csv contains 11,204 rows.
+-- - project_id contains one NULL value and no blank or whitespace-only values.
+-- - The remaining seven columns contain no NULL values.
+-- - All seven VARCHAR columns contain no blank or whitespace-only values.
+-- - The missing project_id requires targeted inspection because the associated
+--   transaction cannot currently be assigned to a project, potentially
+--   distorting project-level costs and profitability.
