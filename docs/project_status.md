@@ -1,21 +1,28 @@
 # Project Status
 
-Last updated: August 3, 2026
+Last updated: August 4, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
-`projects.csv` and `project_budgets.csv` is complete.
+`projects.csv` and `project_budgets.csv` is complete. Profiling of
+`cost_transactions.csv` is in progress through Investigation 19.
 
 For `project_budgets.csv`, schema, grain, candidate-key uniqueness, duplicates,
 missing values, categorical consistency, monetary normalization, precision, and
 the relationship among `original_budget_amount`, normalized
 `approved_budget_change`, and `revised_budget_amount` have been validated.
 
-Of the 674 source rows, 673 satisfy the expected monetary relationship, zero
-are genuine mismatches, and one is untestable because its
+Of the 674 `project_budgets.csv` source rows, 673 satisfy the expected monetary
+relationship, zero are genuine mismatches, and one is untestable because its
+`original_budget_amount` is NULL.
 
-Four additional raw CSV files have not yet been profiled.
+For `cost_transactions.csv`, initial structure, expected grain, identifier
+completeness and uniqueness, exact duplicates, and column completeness have
+been profiled. One exact duplicate and one transaction with a missing
+`project_id` were identified.
+
+Three additional raw CSV files have not yet been profiled.
 
 ## Reporting Cutoff
 
@@ -76,6 +83,24 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Completed Investigation 16 by profiling maximum absolute monetary values.
 - Selected `DECIMAL(10, 2)` for cleaned `project_budgets` monetary fields.
 - Completed the first-pass standalone profiling of `project_budgets.csv`.
+- Began standalone profiling of `cost_transactions.csv`.
+- Completed Investigation 17 by inspecting its inferred schema, sample values,
+  row count, expected grain, and likely transaction identifier.
+- Confirmed that `cost_transactions.csv` contains 11,204 rows and eight
+  columns.
+- Completed Investigation 18 by comparing total, non-NULL, and distinct
+  `transaction_id` counts.
+- Completed Investigation 18A and identified TX000138 as the only repeated
+  `transaction_id`.
+- Completed Investigation 18B and confirmed that the two TX000138 records are
+  exact duplicates across all eight columns.
+- Established a cleaned-output rule to retain one TX000138 record and remove
+  one duplicate occurrence.
+- Completed Investigation 19 by profiling NULL, blank, and whitespace-only
+  values across all columns.
+- Identified one transaction with a missing `project_id`.
+- Executed the complete `sql/01_data_profiling.sql` file successfully with no
+  errors.
 
 ## Key Findings
 
@@ -157,6 +182,26 @@ The reporting cutoff is June 30, 2026, inclusive.
 - `DECIMAL(8, 2)` is the minimum compatible type, but `DECIMAL(10, 2)` was
   selected to provide reasonable future headroom.
 
+### Cost Transactions
+
+- `cost_transactions.csv` contains 11,204 rows and eight columns.
+- One row is expected to represent one cost transaction.
+- `transaction_id` is the intended row-level identifier.
+- `transaction_date` was inferred as `DATE`.
+- `transaction_id`, `project_id`, `cost_category`, `vendor_name`,
+  `description`, `amount`, and `payment_status` were inferred as `VARCHAR`.
+- The first ten sampled `amount` values appeared numeric and contained no
+  visible formatting that explained the `VARCHAR` inference.
+- The file contains 11,204 non-NULL `transaction_id` values and 11,203 distinct
+  `transaction_id` values.
+- TX000138 occurs twice, and the two records match across all eight columns.
+- TX000138 represents a paid Materials cost of 14,821.14 for project P002.
+- Retaining both TX000138 records would overstate P002's Materials costs by
+  14,821.14 and understate its profitability by the same amount.
+- `project_id` contains one NULL value and no blank or whitespace-only values.
+- The remaining seven columns contain no NULL values.
+- All seven `VARCHAR` columns contain no blank or whitespace-only values.
+
 ## Unresolved Items
 
 ### Projects
@@ -179,23 +224,37 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
   distinct project IDs in `projects.csv` during relationship testing.
 
+### Cost Transactions
+
+- Retain only one TX000138 record in cleaned output.
+- Preserve the immutable raw CSV, including both source occurrences.
+- Inspect the transaction with the missing `project_id`.
+- Determine whether its project assignment can be supported by evidence or must
+  remain unresolved.
+- Investigate why `amount` was inferred as `VARCHAR`.
+- Validate `amount` normalization and numeric parseability before selecting its
+  cleaned monetary type.
+- Complete categorical, date-range, numeric-anomaly, and relationship profiling.
+
 ### Remaining Work
 
-- Profile `cost_transactions.csv`.
+- Complete standalone profiling of `cost_transactions.csv`.
 - Profile `labor_entries.csv`.
 - Profile `project_updates.csv`.
 - Profile `change_orders.csv`.
+- Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
+  distinct project IDs in `projects.csv`.
 - Validate key relationships between the supplied files.
 - Create cleaned outputs after raw-data profiling is complete.
 
 ## Exact Next Task
 
-Open `sql/01_data_profiling.sql` and begin Investigation 17 by writing the
-purpose comment for the initial profiling of `cost_transactions.csv`.
+Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
+19A.
 
-The investigation will inspect the inferred schema, sample values, row count,
-expected grain, and likely transaction identifier before deeper profiling
-begins.
+Inspect the complete transaction associated with the missing `project_id` and
+determine whether a project assignment is supported by evidence or must remain
+unresolved.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -204,9 +263,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`4e41cbd3043803186da819b204d99278dcea66a8`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/4e41cbd3043803186da819b204d99278dcea66a8)
-- Message: `Complete project budget monetary profiling`
-- Date: August 3, 2026
+  [`e22c642eda447f949b75db6e4eac40a75c140e06`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e22c642eda447f949b75db6e4eac40a75c140e06)
+- Message: `Profile cost transaction structure and completeness`
+- Date: August 4, 2026
 
 The latest correction commit is:
 

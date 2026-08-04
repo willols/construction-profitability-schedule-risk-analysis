@@ -3,6 +3,76 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 4, 2026
+
+### Work Completed
+
+- Began standalone profiling of `cost_transactions.csv`.
+- Completed Investigation 17 to inspect the inferred schema, sample values, row
+  count, expected grain, and likely transaction identifier.
+- Completed Investigation 18 to validate `transaction_id` as the intended unique
+  identifier.
+- Completed Investigation 18A to identify the repeated `transaction_id`.
+- Completed Investigation 18B to compare the complete records associated with
+  the repeated identifier.
+- Completed Investigation 19 to profile NULL, blank, and whitespace-only values
+  across all columns.
+
+### Decisions and Reasoning
+
+- One row is expected to represent one cost transaction.
+- `transaction_id` is the intended row-level identifier.
+- Total rows, non-NULL identifiers, and distinct identifiers must be compared
+  separately because `COUNT(column)` excludes NULL values and
+  `COUNT(DISTINCT column)` excludes NULL values and repeated values.
+- `WHERE` filters individual rows before aggregation, while `HAVING` filters
+  grouped results after aggregate calculations.
+- The raw CSV will remain immutable.
+- One occurrence of the exact TX000138 duplicate will be retained and the other
+  removed only in cleaned output.
+- Retaining both TX000138 records would double-count the associated cost and
+  distort project-level profitability.
+- The missing `project_id` will remain unresolved until the associated
+  transaction has been inspected and supporting evidence has been evaluated.
+- `amount` requires further investigation before a cleaned numeric type and
+  normalization rule are selected.
+
+### Key Results
+
+- `cost_transactions.csv` contains 11,204 rows and eight columns.
+- `transaction_date` was inferred as `DATE`.
+- `transaction_id`, `project_id`, `cost_category`, `vendor_name`,
+  `description`, `amount`, and `payment_status` were inferred as `VARCHAR`.
+- The first ten sampled `amount` values appeared numeric and contained no
+  visible currency symbols or other formatting that explained the `VARCHAR`
+  inference.
+- The file contains 11,204 non-NULL `transaction_id` values and 11,203 distinct
+  `transaction_id` values.
+- TX000138 occurs twice.
+- Both TX000138 records match across all eight columns, confirming an exact
+  duplicate.
+- TX000138 represents a paid Materials cost of 14,821.14 for project P002.
+- Retaining both records would overstate P002's Materials costs by 14,821.14 and
+  understate its profitability by the same amount.
+- `project_id` contains one NULL value and no blank or whitespace-only values.
+- The remaining seven columns contain no NULL values.
+- All seven `VARCHAR` columns contain no blank or whitespace-only values.
+- After removing one TX000138 occurrence, the expected cleaned row count and
+  distinct `transaction_id` count are both 11,203.
+
+### Verification and Closeout
+
+- The complete `sql/01_data_profiling.sql` file executed successfully with no
+  errors.
+- Git diff review, validation, commit, and push remain pending.
+
+### Next Session
+
+Begin Investigation 19A by writing its purpose comment. Inspect the complete
+transaction associated with the missing `project_id` and determine whether a
+project assignment is supported by evidence or must remain unresolved. Do not
+write the SQL query until the purpose comment has been reviewed.
+
 ## August 3, 2026
 
 ### Work Completed
