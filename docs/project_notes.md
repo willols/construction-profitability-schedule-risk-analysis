@@ -3,6 +3,85 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 5, 2026
+
+### Work Completed
+
+- Completed Investigation 19A by inspecting TX000316, the transaction with the
+  missing `project_id`.
+- Completed Investigation 19B by evaluating P003 as the probable project
+  assignment using transaction-order context.
+- Used `LAG()` to compare each transaction's project with the preceding project
+  and `QUALIFY` to isolate project-block transitions.
+- Completed Investigation 20 to identify why `amount` was inferred as
+  `VARCHAR`.
+- Completed Investigation 20A to validate the proposed amount-normalization
+  rule across the complete file.
+- Completed Investigation 20B to profile normalized amount range, signs, and
+  decimal precision.
+
+### Decisions and Reasoning
+
+- The isolated TX000316 record does not contain a project-specific identifier.
+- Transaction ordering provides useful supporting evidence but should not be
+  treated as conclusive proof without source-system or client confirmation.
+- P003 was accepted as the correct project assignment for TX000316 based on
+  strong internal evidence and simulated client confirmation.
+- The raw CSV will remain immutable.
+- TX000316 will be assigned to P003 only in cleaned output through an explicit,
+  transaction-specific correction.
+- Currency symbols and thousands separators will be removed from `amount`
+  before numeric conversion.
+- `DECIMAL(10, 2)` was selected for the cleaned `amount` field because it
+  preserves the observed precision, provides headroom above the current
+  maximum, and remains consistent with the monetary type selected for
+  `project_budgets.csv`.
+- Negative amounts require record-level inspection before they can be
+  classified as valid credits, reversals, or data anomalies.
+- The unexpected P998 value and repeated project blocks will be revisited
+  during relationship profiling.
+
+### Key Results
+
+- TX000316 has a transaction date of June 1, 2024, a cost category of
+  `Permits & Fees`, a vendor of `Third-Party Inspection Services`, a description
+  of `Permits & Fees site expense`, an amount of 683.86, and a payment status
+  of `paid`.
+- The transaction-order analysis identified 97 distinct non-NULL project IDs
+  and 101 project-block starts.
+- P007, P014, P047, and P082 each appear in more than one transaction block.
+- P998 appears once at TX000729 and splits P007 into two blocks.
+- P003 begins at TX000236, and the P004 block begins at TX000360.
+- TX000316 falls within P003's transaction range and is immediately surrounded
+  by P003 transactions.
+- `$46.90` is the only populated `amount` value that fails direct conversion to
+  `DECIMAL(18, 2)`.
+- After removing `$` and `,`, all 11,204 amount values converted successfully,
+  with zero normalized parse failures.
+- Normalized amounts range from -1,800.00 to 83,246.69.
+- No zero amounts were found.
+- Three negative amounts were found.
+- Zero values changed when rounded to two decimal places, confirming that a
+  scale of two preserves every observed amount.
+
+### Verification and Closeout
+
+- `git diff --check` and `git diff --cached --check` returned no output.
+- The complete `sql/01_data_profiling.sql` file executed successfully with no
+  errors.
+- Only `sql/01_data_profiling.sql` was included in the analysis commit.
+- Analysis commit
+  [`7498e847ef3c50b7ab22af4031690a4e8164dccb`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/7498e847ef3c50b7ab22af4031690a4e8164dccb)
+  was created on `main` with the message
+  `Profile cost transaction project and amount anomalies`.
+
+### Next Session
+
+Begin Investigation 20C by writing its purpose comment. Inspect the complete
+records associated with the three negative amounts and determine whether they
+represent valid credits, reversals, or data anomalies before continuing with
+categorical, date-range, and relationship profiling of `cost_transactions.csv`.
+
 ## August 4, 2026
 
 ### Work Completed
@@ -64,7 +143,11 @@ and lessons. Add each new dated entry directly below this introduction.
 
 - The complete `sql/01_data_profiling.sql` file executed successfully with no
   errors.
-- Git diff review, validation, commit, and push remain pending.
+- Analysis commit `e22c642` was pushed to `main` with the message
+  `Profile cost transaction structure and completeness`.
+- Documentation commit `0cc3e17` was pushed to `main` with the message
+  `Update project documentation for August 4`.
+- `main` was clean and synchronized with `origin/main` after the push.
 
 ### Next Session
 

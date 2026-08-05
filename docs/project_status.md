@@ -1,12 +1,12 @@
 # Project Status
 
-Last updated: August 4, 2026
+Last updated: August 5, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
 `projects.csv` and `project_budgets.csv` is complete. Profiling of
-`cost_transactions.csv` is in progress through Investigation 19.
+`cost_transactions.csv` is in progress through Investigation 20B.
 
 For `project_budgets.csv`, schema, grain, candidate-key uniqueness, duplicates,
 missing values, categorical consistency, monetary normalization, precision, and
@@ -17,10 +17,15 @@ Of the 674 `project_budgets.csv` source rows, 673 satisfy the expected monetary
 relationship, zero are genuine mismatches, and one is untestable because its
 `original_budget_amount` is NULL.
 
-For `cost_transactions.csv`, initial structure, expected grain, identifier
-completeness and uniqueness, exact duplicates, and column completeness have
-been profiled. One exact duplicate and one transaction with a missing
-`project_id` were identified.
+For `cost_transactions.csv`, structure, expected grain, identifier uniqueness,
+exact duplicates, column completeness, the missing project assignment, amount
+normalization, numeric parseability, range, signs, and decimal precision have
+been profiled.
+
+Strong internal evidence and simulated client confirmation support assigning
+P003 to TX000316 in cleaned output. All 11,204 amount values parse successfully
+after normalization, and `DECIMAL(10, 2)` has been selected for the cleaned
+`amount` field. Three negative transactions still require inspection.
 
 Three additional raw CSV files have not yet been profiled.
 
@@ -101,6 +106,22 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Identified one transaction with a missing `project_id`.
 - Executed the complete `sql/01_data_profiling.sql` file successfully with no
   errors.
+  - Completed Investigation 19A by inspecting TX000316, the transaction with the
+  missing `project_id`.
+- Completed Investigation 19B by using transaction-order context to evaluate
+  P003 as the probable project assignment.
+- Used `LAG()` and `QUALIFY` to identify project-block transitions.
+- Identified 97 distinct non-NULL project IDs and 101 project-block starts.
+- Accepted P003 as the cleaned-output assignment for TX000316 based on strong
+  internal evidence and simulated client confirmation.
+- Completed Investigation 20 and identified `$46.90` as the only amount that
+  fails direct conversion to `DECIMAL(18, 2)`.
+- Completed Investigation 20A and confirmed that all 11,204 amount values parse
+  successfully after removing `$` and `,`.
+- Completed Investigation 20B by profiling normalized amount range, zero and
+  negative values, and decimal precision.
+- Confirmed that zero amount values change when rounded to two decimal places.
+- Selected `DECIMAL(10, 2)` for the cleaned `cost_transactions.amount` field.
 
 ## Key Findings
 
@@ -201,6 +222,26 @@ The reporting cutoff is June 30, 2026, inclusive.
 - `project_id` contains one NULL value and no blank or whitespace-only values.
 - The remaining seven columns contain no NULL values.
 - All seven `VARCHAR` columns contain no blank or whitespace-only values.
+- TX000316 is the transaction with the missing `project_id`.
+- P003 begins at TX000236, and the P004 block begins at TX000360.
+- TX000316 falls within P003's transaction range and is immediately surrounded
+  by P003 transactions.
+- P003 will be assigned to TX000316 in cleaned output based on strong internal
+  evidence and simulated client confirmation.
+- The transaction-order analysis identified 97 distinct non-NULL project IDs
+  and 101 project-block starts.
+- P007, P014, P047, and P082 each appear in more than one transaction block.
+- P998 appears once at TX000729 and splits P007 into two blocks.
+- `$46.90` is the only populated `amount` value that fails direct conversion to
+  `DECIMAL(18, 2)`.
+- After removing `$` and `,`, all 11,204 amount values converted successfully,
+  with zero normalized parse failures.
+- Normalized amounts range from -1,800.00 to 83,246.69.
+- No zero amounts were found.
+- Three negative amounts were found and require further inspection.
+- Zero values changed when rounded to two decimal places, confirming that a
+  scale of two preserves every observed amount.
+- `DECIMAL(10, 2)` was selected for the cleaned `amount` field.
 
 ## Unresolved Items
 
@@ -227,13 +268,15 @@ The reporting cutoff is June 30, 2026, inclusive.
 ### Cost Transactions
 
 - Retain only one TX000138 record in cleaned output.
-- Preserve the immutable raw CSV, including both source occurrences.
-- Inspect the transaction with the missing `project_id`.
-- Determine whether its project assignment can be supported by evidence or must
-  remain unresolved.
-- Investigate why `amount` was inferred as `VARCHAR`.
-- Validate `amount` normalization and numeric parseability before selecting its
-  cleaned monetary type.
+- Preserve the immutable raw CSV, including both source occurrences of
+  TX000138 and the original NULL on TX000316.
+- Assign P003 specifically to TX000316 in cleaned output.
+- Normalize `amount` by removing `$` and `,` before conversion to
+  `DECIMAL(10, 2)`.
+- Inspect the three negative transactions and determine whether they represent
+  valid credits, reversals, or data anomalies.
+- Investigate P998 and the repeated P007, P014, P047, and P082 transaction
+  blocks during relationship profiling.
 - Complete categorical, date-range, numeric-anomaly, and relationship profiling.
 
 ### Remaining Work
@@ -250,11 +293,10 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-19A.
+20C.
 
-Inspect the complete transaction associated with the missing `project_id` and
-determine whether a project assignment is supported by evidence or must remain
-unresolved.
+Inspect the complete records associated with the three negative amounts and
+determine whether they represent valid credits, reversals, or data anomalies.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -263,9 +305,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`e22c642eda447f949b75db6e4eac40a75c140e06`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e22c642eda447f949b75db6e4eac40a75c140e06)
-- Message: `Profile cost transaction structure and completeness`
-- Date: August 4, 2026
+  [`7498e847ef3c50b7ab22af4031690a4e8164dccb`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/7498e847ef3c50b7ab22af4031690a4e8164dccb)
+- Message: `Profile cost transaction project and amount anomalies`
+- Date: August 5, 2026
 
 The latest correction commit is:
 
