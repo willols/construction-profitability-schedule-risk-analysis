@@ -1244,3 +1244,165 @@ FROM read_csv_auto('data/raw/cost_transactions.csv');
 -- - The missing project_id requires targeted inspection because the associated
 --   transaction cannot currently be assigned to a project, potentially
 --   distorting project-level costs and profitability.
+
+
+-- Investigation 19A: Inspect the transaction with a missing project_id
+-- Purpose:
+-- - Inspect the affected transaction’s remaining fields for evidence that
+--   supports assigning it to a specific project.
+-- - If the available evidence does not support a reliable assignment,
+--   leave the project_id unresolved rather than inferring a value.
+SELECT *
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE project_id IS NULL;
+
+-- Findings:
+-- - None of the remaining fields provides reliable evidence connecting
+--   transaction TX000316 to a specific project.
+-- - The vendor name and description are generic, while the date, category,
+--   amount, and payment status do not identify a project.
+-- - Preserve project_id as NULL in the cleaned cost_transactions output
+--   because the project assignment remains unresolved.
+
+
+-- Investigation 19B: Evaluate P003 as the probable project assignment
+-- Purpose:
+-- - Check whether project IDs occur in contiguous transaction_id blocks.
+-- - Determine whether TX000316 falls within the block assigned to P003.
+-- - Treat the ordering pattern as supporting internal evidence rather than
+--   conclusive proof of the project assignment.
+SELECT
+    transaction_id,
+    project_id,
+    LAG(project_id) OVER (
+        ORDER BY transaction_id
+    ) AS previous_project_id
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE project_id IS NOT NULL
+QUALIFY project_id IS DISTINCT FROM previous_project_id
+ORDER BY transaction_id;
+
+-- Findings:
+-- - The dataset contains 97 distinct non-NULL project IDs and 101 project
+--   block starts. P007, P014, P047, and P082 appear in multiple blocks.
+-- - P003 begins at TX000236, and the next project block begins with P004
+--   at TX000360. Therefore, TX000316 falls within P003's transaction range.
+-- - The surrounding records also belong to P003, providing strong internal
+--   evidence that the missing project_id should be P003.
+-- - For this simulated client engagement, the client confirmed that
+--   TX000316 belongs to P003.
+-- - Assign P003 to TX000316 in the cleaned cost_transactions output while
+--   preserving the original NULL in the immutable raw CSV.
+
+
+-- Investigation 20: Profile amount formatting and numeric parseability
+-- Purpose:
+-- - Identify the formatting patterns that caused amount to be inferred
+--   as VARCHAR rather than a numeric type.
+-- - Check for currency symbols and thousands separators.
+-- - Validate whether every populated value can be safely normalized and
+--   converted to an appropriate monetary type.
+SELECT *
+    amount,
+    TRY_CAST(amount AS DECIMAL(18, 2)) AS direct_parsed_amount
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE direct_parsed_amount IS NULL;
+
+-- Findings:
+-- - One populated amount associated with project P015 failed direct
+--   conversion to DECIMAL(18, 2).
+-- - The raw value is '$46.90'; the raw amount is not NULL, but TRY_CAST()
+--   returned NULL because of the currency symbol.
+-- - No other amount values failed direct conversion, and no failed values
+--   contained thousands separators.
+-- - The dollar sign likely caused amount to be inferred as VARCHAR.
+-- - The proposed cleaning rule is to remove '$' with REPLACE() before
+--   converting amount to a monetary numeric type.
+-- - Validate the proposed normalization across all rows before finalizing
+--   the cleaning rule and cleaned monetary type.
+
+
+-- Investigation 20A: Validate amount normalization and numeric parseability
+-- Purpose:
+-- - Validate that removing the '$' currency symbol with REPLACE() allows
+--   every populated amount value to parse successfully as DECIMAL(18, 2).
+SELECT
+    COUNT(*) AS row_count,
+    SUM(
+        CASE
+            WHEN TRY_CAST(
+                REPLACE(
+                    REPLACE(amount, '$', ''),
+                    ',',
+                    ''
+                ) AS DECIMAL(18, 2)
+            ) IS NULL
+            THEN 1
+            ELSE 0
+        END
+    ) AS normalized_parse_failure_count
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - All 11,204 amount values were evaluated after normalization.
+-- - The normalized parse failure count was 0, confirming that every value
+--   can be converted successfully to DECIMAL(18, 2).
+-- - The raw value '$46.90' became parseable after removing the currency symbol.
+-- - In the cleaned cost_transactions output, remove '$' and ',' with
+--   REPLACE() before converting amount to a monetary numeric type.
+-- - DECIMAL(18, 2) was used for parseability testing; final type selection
+--   still requires validation of amount range and precision.
+
+
+-- Investigation 20B: Profile amount range, signs, and decimal precision
+-- Purpose:
+-- - Profile the minimum and maximum normalized amounts to determine the
+--   required number of digits before the decimal point.
+-- - Count zero and negative amounts that may represent credits, reversals,
+--   or data anomalies requiring further inspection.
+-- - Determine the decimal precision present in the source and validate
+--   whether a two-decimal monetary type would preserve every value without
+--   rounding.
+WITH normalized AS (
+    SELECT
+        TRY_CAST(
+            REPLACE(
+                REPLACE(amount, '$', ''),
+                ',',
+                ''
+            ) AS DECIMAL(18, 6)
+        ) AS normalized_amount
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+SELECT
+    COUNT(*) AS row_count,
+    MIN(normalized_amount) AS minimum_amount,
+    MAX(normalized_amount) AS maximum_amount,
+    COUNT(*) FILTER (
+        WHERE normalized_amount = 0
+    ) AS zero_amount_count,
+    COUNT(*) FILTER (
+        WHERE normalized_amount < 0
+    ) AS negative_amount_count,
+    COUNT(*) FILTER (
+        WHERE normalized_amount <> ROUND(normalized_amount, 2)
+    ) AS changed_by_two_decimal_rounding_count
+FROM normalized;
+
+-- Findings:
+-- - All 11,204 normalized amount values were profiled.
+-- - The observed range is -1,800.00 to 83,246.69.
+-- - No zero amounts were found.
+-- - Three negative amounts were found and require further investigation
+--   before they can be classified as valid credits, reversals, or anomalies.
+-- - The changed_by_two_decimal_rounding_count was 0, confirming that a
+--   scale of two decimal places preserves every source amount.
+-- - Use DECIMAL(10, 2) for amount in the cleaned cost_transactions output.
+--   This allows eight digits before the decimal, provides headroom above
+--   the current maximum, and is consistent with the proposed monetary
+--   type for project_budgets.
+
+
+-- Next step:
+-- Investigation 20C: Inspect negative amount transactions
+-- Purpose:
