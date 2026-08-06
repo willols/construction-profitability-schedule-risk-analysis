@@ -1403,6 +1403,390 @@ FROM normalized;
 --   type for project_budgets.
 
 
--- Next step:
 -- Investigation 20C: Inspect negative amount transactions
+-- Purpose:
+-- - Inspect the three transactions with negative normalized amounts to determine
+--   whether they represent valid refunds, credits, or corrections, or potential
+--   data-quality issues.
+-- - Use the findings to decide how these transactions should be handled in the
+--   cleaned output and downstream cost analysis.
+WITH normalized_data AS (
+     SELECT
+        transaction_id,
+        project_id,
+        transaction_date,
+        cost_category,
+        vendor_name,
+        description,
+        amount AS raw_amount,
+        TRY_CAST(
+                REPLACE(
+                    REPLACE(amount, '$', ''),
+                    ',',
+                    ''
+                ) AS DECIMAL(10, 2)
+            ) AS normalized_amount,
+        payment_status
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+SELECT
+    transaction_id,
+        project_id,
+        transaction_date,
+        cost_category,
+        vendor_name,
+        description,
+        raw_amount,
+        normalized_amount,
+        payment_status
+FROM normalized_data
+WHERE normalized_amount < 0
+ORDER BY normalized_amount ASC;
+
+-- Findings:
+-- - Three transactions have negative normalized amounts: TX011201,
+--   TX011202, and TX011203.
+-- - Each transaction is a $1,800.00 material credit with the description
+--   "Returned material credit" and a payment status of "applied."
+-- - The consistent business context indicates that these are legitimate
+--   credits rather than data-quality errors.
+-- - Preserve the negative amounts in the cleaned output so the credits
+--   correctly reduce their respective projects' material costs.
+-- - The identical amounts and similar transaction details across three
+--   projects are noteworthy and should be considered during the later
+--   repeated-block investigation.
+
+
+-- Investigation 20D: Relate negative credits to repeated project blocks
+-- Purpose:
+-- - Determine whether the negative credit transactions for P014, P047, and P082
+--   caused those projects to appear in additional transaction blocks.
+-- - Distinguish valid, separately recorded credits from potential project-ID or
+--   transaction-order anomalies.
+WITH transaction_sequence AS (
+    SELECT
+        transaction_id,
+        project_id,
+        LAG(project_id) OVER (
+            ORDER BY transaction_id
+        ) AS previous_project_id,
+        description,
+        amount AS raw_amount,
+        TRY_CAST(
+                REPLACE(
+                    REPLACE(amount, '$', ''),
+                    ',',
+                    ''
+                ) AS DECIMAL(10, 2)
+            ) AS normalized_amount,
+        payment_status
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+
+SELECT
+    transaction_id,
+    project_id,
+    previous_project_id,
+    description,
+    raw_amount,
+    normalized_amount,
+    payment_status
+FROM transaction_sequence
+WHERE project_id IN (
+    'P014', 'P047', 'P082'
+)
+    AND normalized_amount < 0
+ORDER BY transaction_id;
+
+-- Findings:
+-- - The negative credit transactions for P014, P047, and P082 each have a
+--   previous_project_id that differs from their current project_id.
+-- - Therefore, each credit transaction begins an additional transaction block
+--   for its respective project.
+-- - These additional blocks represent legitimate returned-material credits
+--   recorded separately from the projects' original transaction blocks, not
+--   incorrect project assignments.
+-- - The three credit transactions explain the repeated blocks for P014, P047,
+--   and P082.
+-- - P007 remains the only repeated project block requiring further investigation.
+
+
+-- Investigation 20E: Inspect repeated transaction blocks for P007
+-- Purpose:
+-- - Identify the boundaries of each P007 transaction block when transactions
+--   are ordered by transaction_id.
+-- - Inspect the relevant transaction details and neighboring project IDs.
+-- - Determine whether the second block represents a legitimate later transaction
+--   or a potential data-quality issue.
+WITH normalized_data AS (
+    SELECT
+        transaction_id,
+        project_id,
+        LAG(project_id) OVER (
+            ORDER BY transaction_id
+        ) AS previous_project_id,
+        transaction_date,
+        cost_category,
+        vendor_name,
+        description,
+        amount AS raw_amount,
+        TRY_CAST(
+                REPLACE(
+                    REPLACE(amount, '$', ''),
+                    ',',
+                    ''
+                ) AS DECIMAL(10, 2)
+            ) AS normalized_amount,
+        payment_status
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+
+SELECT
+    transaction_id,
+    project_id,
+    previous_project_id,
+    transaction_date,
+    cost_category,
+    vendor_name,
+    description,
+    raw_amount,
+    normalized_amount,
+    payment_status
+FROM normalized_data
+WHERE project_id = 'P007'
+    AND previous_project_id IS DISTINCT FROM project_id
+ORDER BY transaction_id;
+
+-- Findings:
+-- - TX000727 begins P007's original transaction block after P006.
+-- - TX000730 begins a second P007 block because its immediately preceding
+--   transaction belongs to P998.
+-- - Therefore, P998 interrupts the P007 sequence and connects the repeated
+--   P007 block with the unexpected P998 project ID.
+-- - P998 must be inspected before determining whether either project ID
+--   requires correction.
+
+
+-- Investigation 20F: Inspect P998 and its neighboring transactions
+-- Purpose:
+-- - Inspect P998's transaction details and its position within the transaction
+--   sequence to determine why it interrupts the P007 block.
+-- - Determine whether P998 represents a legitimate project or a potentially
+--   misassigned project ID.
+WITH normalized_data AS (
+    SELECT
+        transaction_id,
+        project_id,
+        LAG(project_id) OVER (
+            ORDER BY transaction_id
+        ) AS previous_project_id,
+        LEAD(project_id) OVER (
+            ORDER BY transaction_id
+        ) AS next_project_id,
+        transaction_date,
+        cost_category,
+        vendor_name,
+        description,
+        amount AS raw_amount,
+        TRY_CAST(
+                REPLACE(
+                    REPLACE(amount, '$', ''),
+                    ',',
+                    ''
+                ) AS DECIMAL(10, 2)
+            ) AS normalized_amount,
+        payment_status
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+
+SELECT
+    transaction_id,
+    project_id,
+    previous_project_id,
+    next_project_id,
+    transaction_date,
+    cost_category,
+    vendor_name,
+    description,
+    raw_amount,
+    normalized_amount,
+    payment_status
+FROM normalized_data
+WHERE project_id = 'P998'
+ORDER BY transaction_id;
+
+-- Findings:
+-- - P998 appears once, on transaction TX000729.
+-- - TX000729 is immediately preceded and followed by P007 transactions,
+--   which explains why P007 appears in two separate blocks.
+-- - The transaction is otherwise complete and resembles a normal paid
+--   materials invoice.
+-- - The surrounding sequence suggests that P998 may be a misassigned project
+--   ID and that P007 is the leading correction candidate.
+-- - Additional neighboring-row and cross-table evidence is required before
+--   confirming a cleaned project-ID assignment.
+
+
+-- Investigation 20F-A: Compare TX000729 with surrounding transactions
+-- Purpose:
+-- - Compare TX000729 with TX000727 through TX000731 for similarities in
+--   project ID, transaction date, cost category, vendor, description, amount,
+--   and payment status.
+-- - Determine whether the surrounding transaction context supports or weakens
+--   P007 as the candidate project ID for TX000729.
+SELECT
+    transaction_id,
+    project_id,
+    transaction_date,
+    cost_category,
+    vendor_name,
+    description,
+    amount,
+    payment_status
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE transaction_id BETWEEN 'TX000727' AND 'TX000731'
+ORDER BY transaction_id;
+
+-- Findings:
+-- - TX000729 is surrounded by four transactions assigned to P007.
+-- - All five transactions are Materials costs with a payment status of "paid."
+-- - TX000729's date and amount fall within the range of the surrounding P007
+--   transactions, and its materials-invoice description is consistent with them.
+-- - The surrounding transaction context strongly supports P007 as the candidate
+--   project ID for TX000729.
+-- - Cross-table evidence is still required before confirming the cleaned assignment.
+
+
+-- Investigation 20F-B: Check P998 across projects and budgets
+-- Purpose:
+-- - Determine whether P998 appears in projects.csv or project_budgets.csv.
+-- - Use the result to assess whether P998 is a legitimate project or an invalid
+--   project ID that should be assigned to P007 in the cleaned transactions.
+
+-- Check projects.csv
+SELECT
+    COUNT(*) AS p998_project_row_count
+FROM read_csv_auto('data/raw/projects.csv')
+WHERE project_id = 'P998';
+
+-- Findings:
+-- - The row count is 0.
+
+-- Check project_budgets.csv
+SELECT
+COUNT(*) AS p998_budget_row_count
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE project_id = 'P998';
+
+-- Findings:
+-- - The row count is 0.
+
+-- Investigations 20F through 20F-B conclusion:
+-- - P998 appears only once in cost_transactions.csv and is absent from both
+--   projects.csv and project_budgets.csv.
+-- - TX000729 interrupts an otherwise continuous P007 transaction block.
+-- - Its date, cost category, description, amount, and payment status are
+--   consistent with the surrounding P007 transactions.
+-- - Within the simulated client scenario, assign TX000729 to P007 in the
+--   cleaned cost-transactions output.
+-- - Preserve P998 in the raw CSV and document the correction in the cleaning
+--   rules and data-quality notes.
+
+
+-- Investigation 21: Profile cost transaction categories
+-- Purpose:
+-- - Profile distinct cost_category values and their frequencies to identify
+--   capitalization, spelling, and whitespace inconsistencies.
+-- - Use the findings to define standardized categories that align with
+--   project_budgets.csv.
+SELECT
+    cost_category,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+GROUP BY cost_category
+ORDER BY
+    row_count DESC,
+    cost_category;
+
+-- Findings:
+-- - Eight distinct raw cost-category values were observed.
+-- - Six values are already canonical and account for 11,202 transactions.
+-- - Two one-row variants require standardization.
+-- - Standardize "Sub-Contractor" to "Subcontractors" and "materials " to
+--   "Materials" in the cleaned output.
+-- - Preserve the original category values in the raw CSV.
+
+
+-- Investigation 22: Profile payment status values
+-- Purpose:
+-- - Profile distinct payment_status values and their frequencies to identify
+--   capitalization, spelling, and whitespace inconsistencies.
+-- - Use the findings to define standardized statuses and determine how each
+--   status should be treated in project-cost analysis.
+SELECT
+    payment_status,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+GROUP BY payment_status
+ORDER BY
+    row_count DESC,
+    payment_status;
+
+-- Findings:
+-- - Six distinct raw cost-category values were observed.
+-- - Four values are already canonical and account for 11,202 transactions.
+-- - Two one-row variants require standardization.
+-- - Standardize "PENDING" to "pending" and "Paid " to
+--   "paid" in the cleaned output.
+-- - Preserve the original category values in the raw CSV.
+
+
+-- Investigation 23: Profile transaction date range
+-- Purpose:
+-- - Determine the earliest and latest transaction dates to establish the
+--   dataset's period of coverage.
+-- - Count transactions occurring after the June 30, 2026 reporting cutoff so
+--   they can be excluded or investigated before reporting.
+SELECT
+    MIN(transaction_date) AS minimum_transaction_date,
+    MAX(transaction_date) AS maximum_transaction_date,
+    COUNT(*) FILTER (
+        WHERE transaction_date > DATE '2026-06-30'
+    ) AS transactions_after_cutoff
+FROM read_csv_auto('data/raw/cost_transactions.csv');
+
+-- Findings:
+-- - Transaction dates range from January 28, 2023 through June 30, 2026.
+-- - The latest transaction date falls exactly on the reporting cutoff.
+-- - No transactions occur after the June 30, 2026 cutoff.
+-- - The file-level date range is valid for reporting; project-level date
+--   relationships will be validated separately.
+
+
+-- Investigation 24: Profile vendor-name values
+-- Purpose:
+-- - Profile distinct vendor_name values and their frequencies to identify
+--   capitalization, spelling, and whitespace inconsistencies.
+-- - Define standardized vendor names so transactions from the same vendor are
+--   grouped correctly in vendor-level cost analysis.
+SELECT
+    vendor_name,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+GROUP BY vendor_name
+ORDER BY
+    row_count DESC,
+    vendor_name;
+
+-- Findings:
+-- - Twenty-one distinct raw vendor-name values were observed.
+-- - Their counts account for all 11,204 transactions.
+-- - No apparent capitalization, spelling, or whitespace variants were identified.
+-- - No suspicious one-row vendor values require targeted inspection.
+-- - No vendor-name standardization mappings are currently required.
+-- - Preserve the original vendor names in the raw CSV.
+
+
+-- Exact next step:
+-- Investigation 25: Validate transaction project IDs against projects.csv
 -- Purpose:
