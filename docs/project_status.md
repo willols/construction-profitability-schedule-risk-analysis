@@ -1,12 +1,12 @@
 # Project Status
 
-Last updated: August 5, 2026
+Last updated: August 6, 2026
 
 ## Current Phase
 
 Raw-data profiling is in progress. The first-pass standalone profiling of
 `projects.csv` and `project_budgets.csv` is complete. Profiling of
-`cost_transactions.csv` is in progress through Investigation 20B.
+`cost_transactions.csv` is complete through Investigation 24.
 
 For `project_budgets.csv`, schema, grain, candidate-key uniqueness, duplicates,
 missing values, categorical consistency, monetary normalization, precision, and
@@ -18,16 +18,17 @@ relationship, zero are genuine mismatches, and one is untestable because its
 `original_budget_amount` is NULL.
 
 For `cost_transactions.csv`, structure, expected grain, identifier uniqueness,
-exact duplicates, column completeness, the missing project assignment, amount
-normalization, numeric parseability, range, signs, and decimal precision have
-been profiled.
+duplicates, completeness, project-assignment anomalies, amount normalization,
+numeric ranges, negative values, categorical consistency, transaction dates,
+and vendor names have been profiled.
 
-Strong internal evidence and simulated client confirmation support assigning
-P003 to TX000316 in cleaned output. All 11,204 amount values parse successfully
-after normalization, and `DECIMAL(10, 2)` has been selected for the cleaned
-`amount` field. Three negative transactions still require inspection.
+Cleaned-output assignments have been established for TX000316 and TX000729.
+The three negative transactions were confirmed as legitimate returned-material
+credits. Category and payment-status standardization rules have been documented,
+and no vendor-name mappings are required.
 
-Three additional raw CSV files have not yet been profiled.
+Relationship validation for `cost_transactions.csv` remains in progress. Three
+additional raw CSV files have not yet been profiled.
 
 ## Reporting Cutoff
 
@@ -122,6 +123,27 @@ The reporting cutoff is June 30, 2026, inclusive.
   negative values, and decimal precision.
 - Confirmed that zero amount values change when rounded to two decimal places.
 - Selected `DECIMAL(10, 2)` for the cleaned `cost_transactions.amount` field.
+- Completed Investigation 20C and confirmed that the three negative
+  transactions are legitimate returned-material credits.
+- Completed Investigation 20D and determined that the credits explain the
+  repeated transaction blocks for P014, P047, and P082.
+- Completed Investigation 20E and confirmed that P998 interrupts the P007
+  transaction sequence.
+- Completed Investigations 20F through 20F-B by inspecting TX000729, comparing
+  it with surrounding P007 transactions, and checking P998 across
+  `projects.csv` and `project_budgets.csv`.
+- Established a cleaned-output rule to assign TX000729 to P007 while preserving
+  the raw P998 value.
+- Completed Investigation 21 by profiling `cost_category` values and identifying
+  two one-row variants requiring standardization.
+- Completed Investigation 22 by profiling `payment_status` values and identifying
+  two one-row variants requiring standardization.
+- Confirmed that `applied` is a valid status for the three returned-material
+  credits.
+- Completed Investigation 23 and confirmed that no transaction occurs after the
+  June 30, 2026 reporting cutoff.
+- Completed Investigation 24 and confirmed that the 21 vendor names require no
+  specific standardization mappings.
 
 ## Key Findings
 
@@ -238,10 +260,37 @@ The reporting cutoff is June 30, 2026, inclusive.
   with zero normalized parse failures.
 - Normalized amounts range from -1,800.00 to 83,246.69.
 - No zero amounts were found.
-- Three negative amounts were found and require further inspection.
 - Zero values changed when rounded to two decimal places, confirming that a
   scale of two preserves every observed amount.
 - `DECIMAL(10, 2)` was selected for the cleaned `amount` field.
+- Three negative transactions were identified: TX011201, TX011202, and
+  TX011203.
+- Each negative transaction is a 1,800.00 returned-material credit with a
+  payment status of `applied`.
+- Preserve the negative values so the credits correctly reduce their projects'
+  material costs.
+- The three credits explain the repeated transaction blocks for P014, P047,
+  and P082.
+- TX000729 is the only transaction assigned to P998.
+- TX000729 is immediately preceded and followed by P007 transactions and is
+  consistent with the surrounding P007 records.
+- P998 does not appear in `projects.csv` or `project_budgets.csv`.
+- Within the simulated client scenario, assign TX000729 to P007 only in cleaned
+  output.
+- Eight distinct raw `cost_category` values were observed. Six canonical values
+  account for 11,202 transactions.
+- Two category variants require standardization:
+  - `Sub-Contractor` → `Subcontractors`
+  - `materials ` → `Materials`
+- Six distinct raw `payment_status` values were observed. Four canonical values
+  account for 11,202 transactions.
+- Two payment-status variants require standardization:
+  - `PENDING ` → `pending`
+  - `Paid` → `paid`
+- Transaction dates range from January 28, 2023, through June 30, 2026.
+- No transaction occurs after the reporting cutoff.
+- Twenty-one distinct vendor names account for all 11,204 transactions, with no
+  apparent variants requiring standardization.
 
 ## Unresolved Items
 
@@ -268,16 +317,21 @@ The reporting cutoff is June 30, 2026, inclusive.
 ### Cost Transactions
 
 - Retain only one TX000138 record in cleaned output.
-- Preserve the immutable raw CSV, including both source occurrences of
-  TX000138 and the original NULL on TX000316.
+- Preserve the immutable raw CSV, including both TX000138 occurrences, the NULL
+  on TX000316, and the P998 value on TX000729.
 - Assign P003 specifically to TX000316 in cleaned output.
+- Assign P007 specifically to TX000729 in cleaned output.
 - Normalize `amount` by removing `$` and `,` before conversion to
   `DECIMAL(10, 2)`.
-- Inspect the three negative transactions and determine whether they represent
-  valid credits, reversals, or data anomalies.
-- Investigate P998 and the repeated P007, P014, P047, and P082 transaction
-  blocks during relationship profiling.
-- Complete categorical, date-range, numeric-anomaly, and relationship profiling.
+- Standardize `Sub-Contractor` to `Subcontractors` and `materials ` to
+  `Materials`.
+- Standardize `PENDING ` to `pending` and `Paid` to `paid`.
+- Preserve `applied` as the valid status for returned-material credits.
+- Determine how `approved` and `pending` transactions should be treated in
+  project-cost metrics.
+- Complete project-ID relationship validation against `projects.csv`.
+- Complete the remaining relationship profiling required before
+  `cost_transactions.csv` can be declared complete.
 
 ### Remaining Work
 
@@ -293,10 +347,11 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-20C.
+25.
 
-Inspect the complete records associated with the three negative amounts and
-determine whether they represent valid credits, reversals, or data anomalies.
+Validate every non-NULL `project_id` in `cost_transactions.csv` against
+`projects.csv` and identify unmatched IDs that could cause transaction costs to
+be excluded from project-profitability calculations.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -305,9 +360,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`7498e847ef3c50b7ab22af4031690a4e8164dccb`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/7498e847ef3c50b7ab22af4031690a4e8164dccb)
-- Message: `Profile cost transaction project and amount anomalies`
-- Date: August 5, 2026
+  [`4cff4010ed3feb5c27edeb0e3bae5575b0c31120`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/7498e847ef3c50b7ab22af4031690a4e8164dccb)
+- Message: `Profile cost transaction categories and relationships`
+- Date: August 6, 2026
 
 The latest correction commit is:
 

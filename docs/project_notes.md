@@ -3,6 +3,82 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 6, 2026
+
+### Work Completed
+
+- Completed Investigation 20C by inspecting the three negative transactions.
+- Completed Investigation 20D by determining why P014, P047, and P082 appear
+  in additional transaction blocks.
+- Completed Investigation 20E by locating the two P007 transaction-block starts.
+- Completed Investigations 20F through 20F-B by inspecting P998, comparing
+  TX000729 with surrounding P007 transactions, and checking whether P998 exists
+  in `projects.csv` or `project_budgets.csv`.
+- Completed Investigation 21 by profiling `cost_category` values.
+- Completed Investigation 22 by profiling `payment_status` values.
+- Completed Investigation 23 by validating the transaction-date range against
+  the reporting cutoff.
+- Completed Investigation 24 by profiling `vendor_name` values.
+
+### Decisions and Reasoning
+
+- The three negative transactions represent legitimate returned-material credits
+  rather than data-quality errors.
+- Negative credits will remain negative so they correctly reduce their projects'
+  material costs.
+- The additional blocks for P014, P047, and P082 are valid consequences of
+  separately recorded credit transactions.
+- P998 is not supported as a legitimate project ID by the surrounding
+  transaction context or the other profiled project files.
+- Within the simulated client scenario, TX000729 will be assigned to P007 only
+  in the cleaned cost-transactions output.
+- The raw P998 value and all other raw source values will remain unchanged.
+- Four canonical payment statuses will remain distinct: `paid`, `approved`,
+  `pending`, and `applied`.
+- The three `applied` transactions are valid posted credits and will not be
+  combined with `paid`.
+- The analytical treatment of `approved` and `pending` transactions will be
+  defined when project-cost metrics are developed.
+- No vendor-name standardization mappings are currently required.
+
+### Key Results
+
+- TX011201, TX011202, and TX011203 each contain a negative amount of
+  1,800.00.
+- All three negative transactions are Materials transactions described as
+  `Returned material credit` with a payment status of `applied`.
+- The three credit transactions explain the repeated blocks for P014, P047,
+  and P082.
+- TX000727 begins P007's original block after P006.
+- TX000730 begins a second P007 block because TX000729 is assigned to P998.
+- TX000729 is immediately preceded and followed by P007 transactions.
+- TX000729 is otherwise consistent with its surrounding P007 transactions in
+  date range, cost category, description, amount, and payment status.
+- P998 appears once in `cost_transactions.csv` and does not appear in either
+  `projects.csv` or `project_budgets.csv`.
+- Eight distinct raw `cost_category` values were observed. Six canonical values
+  account for 11,202 transactions.
+- Two one-row category variants require standardization:
+  - `Sub-Contractor` → `Subcontractors`
+  - `materials ` → `Materials`
+- Six distinct raw `payment_status` values were observed. Four canonical values
+  account for 11,202 transactions.
+- Two one-row payment-status variants require standardization:
+  - `PENDING ` → `pending`
+  - `Paid` → `paid`
+- Transaction dates range from January 28, 2023, through June 30, 2026.
+- No transactions occur after the June 30, 2026 reporting cutoff.
+- Twenty-one distinct vendor names account for all 11,204 transactions, with no
+  apparent variants requiring standardization.
+
+### Next Session
+
+Begin Investigation 25 by writing its purpose comment. Validate every non-NULL
+`project_id` in `cost_transactions.csv` against `projects.csv` and identify any
+unmatched IDs that could cause costs to be excluded from project-profitability
+calculations. Do not write the SQL query until the purpose comment has been
+reviewed.
+
 ## August 5, 2026
 
 ### Work Completed
