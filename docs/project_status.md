@@ -1,34 +1,29 @@
 # Project Status
 
-Last updated: August 6, 2026
+Last updated: August 7, 2026
 
 ## Current Phase
 
-Raw-data profiling is in progress. The first-pass standalone profiling of
-`projects.csv` and `project_budgets.csv` is complete. Profiling of
-`cost_transactions.csv` is complete through Investigation 24.
+Raw-data profiling is in progress. First-pass standalone profiling of
+`projects.csv`, `project_budgets.csv`, and `cost_transactions.csv` is complete.
+Required transaction relationships with `projects.csv` and
+`project_budgets.csv` have also been validated.
 
-For `project_budgets.csv`, schema, grain, candidate-key uniqueness, duplicates,
-missing values, categorical consistency, monetary normalization, precision, and
-the relationship among `original_budget_amount`, normalized
-`approved_budget_change`, and `revised_budget_amount` have been validated.
+For `cost_transactions.csv`, the only unmatched non-NULL project ID is P998.
+Six raw transaction-to-budget project/category mismatches were identified and
+explained by documented project-ID or category inconsistencies. After applying
+the proposed corrections within profiling CTEs, zero unmatched transaction
+project/category pairs remained.
 
-Of the 674 `project_budgets.csv` source rows, 673 satisfy the expected monetary
-relationship, zero are genuine mismatches, and one is untestable because its
-`original_budget_amount` is NULL.
+Payment-status treatment has been defined. Paid and approved transactions and
+applied credits will form incurred project cost. Pending transactions will be
+reported separately as pending cost exposure, with no assumed approval
+probability.
 
-For `cost_transactions.csv`, structure, expected grain, identifier uniqueness,
-duplicates, completeness, project-assignment anomalies, amount normalization,
-numeric ranges, negative values, categorical consistency, transaction dates,
-and vendor names have been profiled.
-
-Cleaned-output assignments have been established for TX000316 and TX000729.
-The three negative transactions were confirmed as legitimate returned-material
-credits. Category and payment-status standardization rules have been documented,
-and no vendor-name mappings are required.
-
-Relationship validation for `cost_transactions.csv` remains in progress. Three
-additional raw CSV files have not yet been profiled.
+Profiling of `labor_entries.csv` has begun through Investigation 28. Its schema,
+sample values, apparent grain, candidate identifier, and initial profiling
+priorities have been documented. `project_updates.csv` and `change_orders.csv`
+have not yet been profiled.
 
 ## Reporting Cutoff
 
@@ -144,6 +139,26 @@ The reporting cutoff is June 30, 2026, inclusive.
   June 30, 2026 reporting cutoff.
 - Completed Investigation 24 and confirmed that the 21 vendor names require no
   specific standardization mappings.
+  - Completed Investigation 25 and confirmed that P998 is the only unmatched
+  non-NULL transaction project ID.
+- Completed Investigation 26 by standardizing payment statuses and calculating
+  transaction counts and net amounts by status.
+- Defined incurred cost, pending cost exposure, and maximum cost exposure
+  treatment for the final analysis.
+- Completed Investigation 27 and identified six unmatched raw transaction
+  project/category pairs.
+- Completed Investigation 27A and confirmed that the P019, P044, and P071
+  mismatches result from budget-side category formatting inconsistencies rather
+  than missing budget lines.
+- Completed Investigation 27B by applying documented project-ID and category
+  corrections within profiling CTEs.
+- Confirmed that the standardized transaction-to-budget relationship check
+  returns zero unmatched project/category pairs.
+- Completed Investigation 28 by inspecting the `labor_entries.csv` schema,
+  sample values, apparent row grain, candidate identifier, and initial
+  profiling priorities.
+- Completed standalone and relationship profiling of
+  `cost_transactions.csv`.
 
 ## Key Findings
 
@@ -291,6 +306,46 @@ The reporting cutoff is June 30, 2026, inclusive.
 - No transaction occurs after the reporting cutoff.
 - Twenty-one distinct vendor names account for all 11,204 transactions, with no
   apparent variants requiring standardization.
+- P998 is the only non-NULL transaction project ID without a match in
+  `projects.csv`.
+- Payment-status standardization requires `LOWER(TRIM(payment_status))` because
+  one pending value contains trailing whitespace.
+- After standardization, the 11,204 transactions consolidate into four statuses:
+  - `paid`: 8,586 transactions totaling $67,763,269.51
+  - `approved`: 1,635 transactions totaling $12,725,390.85
+  - `pending`: 980 transactions totaling $7,961,647.60
+  - `applied`: 3 transactions totaling -$5,400.00
+- Paid, approved, and applied transactions have a combined net incurred cost of
+  $80,483,260.36.
+- All statuses have a combined net amount of $88,444,907.96.
+- Pending transactions will be reported separately as $7,961,647.60 of pending
+  cost exposure.
+- Six unmatched raw transaction project/category pairs were identified:
+  - P008 + `materials `
+  - P011 + `Sub-Contractor`
+  - P019 + `Materials`
+  - P044 + `Subcontractors`
+  - P071 + `General Conditions`
+  - P998 + `Materials`
+- P019 uses a `Materials ` budget category with trailing whitespace.
+- P044 uses `Sub-Contractors` instead of `Subcontractors`.
+- P071 uses `General conditions` instead of `General Conditions`.
+- All six raw relationship mismatches are explained by documented project-ID or
+  category inconsistencies rather than genuinely missing budget lines.
+- The standardized transaction-to-budget validation returned zero unmatched
+  project/category pairs.
+
+### Labor Entries
+
+- `labor_entries.csv` contains nine columns.
+- The apparent grain is one recorded labor entry for one employee on one project
+  and work date.
+- `time_entry_id` appears to be the intended row-level identifier, but its
+  uniqueness has not yet been validated.
+- `work_date` was inferred as `VARCHAR` even though sampled values resemble ISO
+  dates.
+- `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost` require
+  range, precision, and calculation-consistency profiling.
 
 ## Unresolved Items
 
@@ -319,39 +374,38 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Retain only one TX000138 record in cleaned output.
 - Preserve the immutable raw CSV, including both TX000138 occurrences, the NULL
   on TX000316, and the P998 value on TX000729.
-- Assign P003 specifically to TX000316 in cleaned output.
-- Assign P007 specifically to TX000729 in cleaned output.
+- Assign P003 specifically to TX000316 in the cleaned analytical layer.
+- Assign P007 specifically to TX000729 in the cleaned analytical layer.
 - Normalize `amount` by removing `$` and `,` before conversion to
   `DECIMAL(10, 2)`.
-- Standardize `Sub-Contractor` to `Subcontractors` and `materials ` to
-  `Materials`.
-- Standardize `PENDING ` to `pending` and `Paid` to `paid`.
-- Preserve `applied` as the valid status for returned-material credits.
-- Determine how `approved` and `pending` transactions should be treated in
-  project-cost metrics.
-- Complete project-ID relationship validation against `projects.csv`.
-- Complete the remaining relationship profiling required before
-  `cost_transactions.csv` can be declared complete.
+- Standardize documented `cost_category` variants to their canonical values.
+- Standardize payment statuses with `LOWER(TRIM(payment_status))`.
+- Preserve negative `applied` credits so they reduce incurred project cost.
+- Include paid, approved, and applied transactions in incurred cost.
+- Report pending transactions separately as pending cost exposure.
+- Report maximum cost exposure as incurred cost plus pending cost exposure.
+- Implement all documented rules only after raw-data profiling is complete.
 
 ### Remaining Work
 
-- Complete standalone profiling of `cost_transactions.csv`.
-- Profile `labor_entries.csv`.
+- Continue standalone profiling of `labor_entries.csv`.
 - Profile `project_updates.csv`.
 - Profile `change_orders.csv`.
 - Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
   distinct project IDs in `projects.csv`.
-- Validate key relationships between the supplied files.
-- Create cleaned outputs after raw-data profiling is complete.
+- Validate the remaining key relationships between supplied files.
+- Create cleaned analytical outputs after raw-data profiling is complete.
+- Build project profitability, budget-variance, and schedule-risk metrics.
 
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-25.
+29.
 
-Validate every non-NULL `project_id` in `cost_transactions.csv` against
-`projects.csv` and identify unmatched IDs that could cause transaction costs to
-be excluded from project-profitability calculations.
+Validate `time_entry_id` as the intended row-level identifier in
+`labor_entries.csv` by comparing total rows, non-NULL identifiers, and distinct
+identifiers. Investigate any missing or repeated identifiers before continuing
+with completeness, date, numeric, and relationship profiling.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -360,9 +414,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`4cff4010ed3feb5c27edeb0e3bae5575b0c31120`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/7498e847ef3c50b7ab22af4031690a4e8164dccb)
-- Message: `Profile cost transaction categories and relationships`
-- Date: August 6, 2026
+  [`e5ca8c54de65caf0f11918adee4e122e9b5fb7cf`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e5ca8c54de65caf0f11918adee4e122e9b5fb7cf)
+- Message: `Complete cost transaction profiling and begin labor profiling`
+- Date: August 7, 2026
 
 The latest correction commit is:
 

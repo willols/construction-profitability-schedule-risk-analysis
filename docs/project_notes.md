@@ -3,6 +3,98 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 7, 2026
+
+### Work Completed
+
+- Completed Investigation 25 by validating every non-NULL transaction
+  `project_id` against `projects.csv`.
+- Completed Investigation 26 by standardizing payment statuses and calculating
+  transaction counts and net amounts by status.
+- Defined the treatment of paid, approved, pending, and applied transactions in
+  project-cost reporting.
+- Completed Investigation 27 by validating raw transaction project/category
+  pairs against `project_budgets.csv`.
+- Completed Investigation 27A by inspecting the budget-side categories associated
+  with three canonical transaction-category mismatches.
+- Completed Investigation 27B by repeating the transaction-to-budget relationship
+  check after applying the documented project-ID and category corrections.
+- Completed the first-pass schema and sample inspection of `labor_entries.csv`
+  through Investigation 28.
+- Finished standalone and relationship profiling of `cost_transactions.csv`.
+
+### Decisions and Reasoning
+
+- P998 remains the only unmatched non-NULL transaction project ID.
+- TX000729 will be reassigned from P998 to P007 only in the cleaned analytical
+  layer; the raw value will remain unchanged.
+- Payment statuses will be standardized with `LOWER(TRIM(payment_status))` to
+  correct both capitalization and surrounding whitespace.
+- Paid and approved transactions will be included in incurred project cost.
+- Applied credits will remain negative and reduce incurred project cost.
+- Pending transactions will be excluded from incurred cost and reported
+  separately as pending cost exposure.
+- Maximum cost exposure will be reported as incurred cost plus pending cost
+  exposure.
+- No approval probability will be assigned to pending transactions because the
+  dataset does not contain transaction-status history.
+- Project-ID and cost-category corrections will be applied only in the cleaned
+  analytical layer.
+- Standardized `project_id` and `cost_category` pairs will be used for
+  transaction-to-budget joins.
+- All raw CSV values will remain unchanged.
+- `work_date` in `labor_entries.csv` requires parseability and formatting
+  investigation before selecting a cleaned date type.
+
+### Key Results
+
+- Investigation 25 returned one unmatched non-NULL transaction project ID:
+  P998.
+- After standardization, all 11,204 transactions consolidate into four payment
+  statuses:
+  - `paid`: 8,586 transactions totaling 67,763,269.51
+  - `approved`: 1,635 transactions totaling 12,725,390.85
+  - `pending`: 980 transactions totaling 7,961,647.60
+  - `applied`: 3 transactions totaling -5,400.00
+- Paid, approved, and applied transactions have a combined net incurred cost of
+  80,483,260.36.
+- All payment statuses have a combined net amount of 88,444,907.96.
+- The raw transaction-to-budget relationship check identified six unmatched
+  project/category pairs:
+  - P008 + `materials `
+  - P011 + `Sub-Contractor`
+  - P019 + `Materials`
+  - P044 + `Subcontractors`
+  - P071 + `General Conditions`
+  - P998 + `Materials`
+- P019 contains a `Materials ` budget category with trailing whitespace.
+- P044 uses `Sub-Contractors` instead of the canonical `Subcontractors`
+  category.
+- P071 uses `General conditions` instead of the canonical
+  `General Conditions` category.
+- All six raw relationship mismatches are explained by documented project-ID
+  or category inconsistencies rather than genuinely missing budget lines.
+- The standardized transaction-to-budget relationship check returned zero
+  unmatched project/category pairs.
+- `labor_entries.csv` contains nine columns.
+- `time_entry_id` appears to be the candidate row identifier, but its uniqueness
+  has not yet been validated.
+- The apparent labor-entry grain is one recorded labor entry for one employee
+  on one project and work date.
+- `work_date` was inferred as `VARCHAR` even though the sampled values resemble
+  ISO dates.
+- `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost` require
+  numeric range, precision, and calculation-consistency profiling.
+
+### Next Session
+
+Begin Investigation 29 by writing its purpose comment. Validate
+`time_entry_id` as the intended row-level identifier by comparing total rows,
+non-NULL identifiers, and distinct identifiers. Investigate any missing or
+repeated identifiers before continuing with completeness, date, numeric, and
+relationship profiling of `labor_entries.csv`. Do not write the SQL query until
+the purpose comment has been reviewed.
+
 ## August 6, 2026
 
 ### Work Completed
