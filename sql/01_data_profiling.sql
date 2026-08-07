@@ -1787,6 +1787,215 @@ ORDER BY
 -- - Preserve the original vendor names in the raw CSV.
 
 
--- Exact next step:
 -- Investigation 25: Validate transaction project IDs against projects.csv
 -- Purpose:
+-- - Validate referential integrity by comparing every non-NULL project_id in
+--   cost_transactions.csv with the master project IDs in projects.csv.
+-- - Identify unmatched transaction project IDs that could prevent costs from
+--   being assigned to valid projects, understating costs and overstating profitability.
+-- - Exclude NULL project IDs because TX000316 was investigated separately and
+--   will be assigned to P003 in the cleaned output. Preserve raw IDs during profiling
+--   so P998 appears as unmatched before TX000729 is reassigned to P007 during cleaning.
+SELECT DISTINCT
+    ct.project_id AS unmatched_project_id
+FROM read_csv_auto('data/raw/cost_transactions.csv') AS ct
+LEFT JOIN read_csv_auto('data/raw/projects.csv') AS p
+    ON ct.project_id = p.project_id
+WHERE ct.project_id IS NOT NULL
+  AND p.project_id IS NULL
+ORDER BY unmatched_project_id;
+
+-- Findings:
+-- - One unmatched non-NULL transaction project_id was identified: P998.
+-- - This confirms that P998 is absent from the project master. Prior investigation
+--   linked P998 to TX000729 and established its reassignment to P007 in cleaned output.
+
+
+-- Investigation 26: Determine how payment statuses should affect cost metrics
+-- Purpose:
+-- - Quantify the financial exposure associated with each standardized payment status
+--   by calculating its transaction count and net transaction amount.
+-- - Evaluate how including or excluding approved and pending transactions would
+--   affect reported project costs and profitability.
+-- - Support a transparent, documented payment-status inclusion rule for the final analysis.
+WITH standardized_data AS (
+    SELECT
+        LOWER(TRIM(payment_status)) AS standardized_payment_status,
+    CAST(
+                    REPLACE(
+                        REPLACE(amount, '$', ''),
+                        ',',
+                        ''
+                    ) AS DECIMAL(10, 2)
+                ) AS normalized_amount
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+)
+SELECT
+    standardized_payment_status,
+    COUNT(*) AS transaction_count,
+    SUM(normalized_amount) AS net_amount
+FROM standardized_data
+GROUP BY standardized_payment_status
+ORDER BY net_amount DESC;
+
+-- Findings:
+-- - All 11,204 transactions consolidate into four standardized payment statuses.
+-- - LOWER(TRIM(payment_status)) is required because one pending value contains
+--   trailing whitespace.
+-- - Paid, approved, and applied transactions have a combined net amount of
+--   $80,483,260.36.
+-- - Pending transactions have a net amount of $7,961,647.60.
+-- - All payment statuses have a combined net amount of $88,444,907.96.
+--
+-- Decision:
+-- - Include paid and approved transactions in incurred project cost.
+-- - Include applied credits as negative incurred costs so they reduce project cost.
+-- - Exclude pending transactions from incurred cost and report them separately as
+--   pending cost exposure.
+-- - Report maximum cost exposure as incurred cost plus pending cost exposure.
+-- - Do not assign an approval probability to pending transactions because the
+--   dataset does not contain transaction-status history.
+
+
+-- Investigation 27: Validate cost transactions against project budgets
+-- Purpose:
+-- - Validate composite referential integrity by comparing each transaction's
+--   project_id and cost_category pair with the corresponding pair in
+--   project_budgets.csv.
+-- - Identify unmatched transaction pairs that could cause actual costs to be
+--   omitted from category-level budget-versus-actual calculations, understating
+--   actual costs and potentially hiding budget overruns.
+SELECT DISTINCT
+    ct.project_id AS unmatched_project_id,
+    ct.cost_category AS unmatched_cost_category
+FROM read_csv_auto('data/raw/cost_transactions.csv') AS ct
+LEFT JOIN read_csv_auto('data/raw/project_budgets.csv') AS pb
+    ON ct.project_id = pb.project_id
+    AND ct.cost_category = pb.cost_category
+WHERE ct.project_id IS NOT NULL
+  AND pb.budget_line_id IS NULL
+ORDER BY
+    unmatched_project_id,
+    unmatched_cost_category;
+
+-- Findings:
+-- - Six unmatched non-NULL transaction project/category pairs were identified.
+-- - P008 + materials and P011 + Sub-Contractor contain known transaction-side
+--   category variants that require standardization.
+-- - P998 + Materials results from the known incorrect project_id on TX000729,
+--   which will be reassigned to P007 in the cleaned output.
+-- - P019 + Materials, P044 + Subcontractors, and P071 + General Conditions use
+--   canonical transaction categories but lack exact raw matches in project_budgets.csv.
+-- - The budget-side category values for these three pairs require further inspection
+--   before their mismatches can be classified as standardization issues.
+
+
+-- Investigation 27A: Inspect budget categories for canonical transaction mismatches
+-- Purpose:
+-- - Inspect the raw cost_category values in project_budgets.csv for P019, P044,
+--   and P071.
+-- - Determine whether their unmatched transaction pairs result from budget-side
+--   formatting inconsistencies or genuinely missing budget lines.
+SELECT
+    project_id,
+    cost_category
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE project_id IN ('P019', 'P044', 'P071')
+ORDER BY
+    project_id,
+    cost_category;
+
+-- Findings:
+-- - P019 contains a Materials budget category with trailing whitespace.
+-- - P044 uses Sub-Contractors instead of the canonical Subcontractors category.
+-- - P071 uses General conditions instead of the canonical General Conditions category.
+-- - All three budget lines exist; their raw transaction pairs failed to match because
+--   of budget-side formatting inconsistencies rather than missing budget lines.
+
+
+-- Investigation 27B: Validate standardized transaction-to-budget relationships
+-- Purpose:
+-- - Apply all documented project_id and category corrections with temporary
+--   CTEs, repeat the compostie relationship check, and verify that no unmatched
+--   pairs remain.
+WITH standardized_cost_transactions AS (
+    SELECT
+        transaction_id,
+        CASE transaction_id
+            WHEN 'TX000316' THEN 'P003'
+            WHEN 'TX000729' THEN 'P007'
+            ELSE project_id
+        END AS standardized_project_id,
+        CASE LOWER(TRIM(cost_category))
+            WHEN 'general conditions' THEN 'General Conditions'
+            WHEN 'labor' THEN 'Labor'
+            WHEN 'materials' THEN 'Materials'
+            WHEN 'sub-contractor' THEN 'Subcontractors'
+            WHEN 'sub-contractors' THEN 'Subcontractors'
+            WHEN 'subcontractors' THEN 'Subcontractors'
+            ELSE TRIM(cost_category)
+        END AS standardized_cost_category
+    FROM read_csv_auto('data/raw/cost_transactions.csv')
+),
+
+standardized_project_budgets AS (
+    SELECT
+        budget_line_id,
+        project_id AS standardized_project_id,
+        CASE LOWER(TRIM(cost_category))
+            WHEN 'general conditions' THEN 'General Conditions'
+            WHEN 'labor' THEN 'Labor'
+            WHEN 'materials' THEN 'Materials'
+            WHEN 'sub-contractor' THEN 'Subcontractors'
+            WHEN 'sub-contractors' THEN 'Subcontractors'
+            WHEN 'subcontractors' THEN 'Subcontractors'
+            ELSE TRIM(cost_category)
+        END AS standardized_cost_category
+    FROM read_csv_auto('data/raw/project_budgets.csv')
+)
+
+SELECT DISTINCT
+    ct.standardized_project_id AS unmatched_project_id,
+    ct.standardized_cost_category AS unmatched_cost_category
+FROM standardized_cost_transactions AS ct
+LEFT JOIN standardized_project_budgets AS pb
+    ON ct.standardized_project_id = pb.standardized_project_id
+   AND ct.standardized_cost_category = pb.standardized_cost_category
+WHERE pb.budget_line_id IS NULL
+ORDER BY
+    unmatched_project_id,
+    unmatched_cost_category;
+
+-- Findings:
+-- - The standardized relationship check returned zero unmatched transaction
+--   project/category pairs.
+-- - All six raw mismatches were resolved by the documented project-ID and
+--   cost-category corrections.
+--
+-- Decision:
+-- - Apply the documented corrections only in the cleaned analytical layer and
+--   preserve all raw CSV values unchanged.
+-- - Use standardized project_id and cost_category pairs when joining transactions
+--   to budget lines for category-level budget-versus-actual analysis.
+
+
+-- Investigation 28: Inspect labor_entries.csv schema and sample rows
+-- Purpose:
+-- - Identify the file's columns, DuckDB-inferred data types, representative values,
+--   and apparent row grain before selecting fields for deeper profiling.
+DESCRIBE
+SELECT *
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - labor_entries.csv contains nine columns covering time-entry identification,
+--   project and employee references, work date, trade, labor hours, hourly rate,
+--   and recorded labor cost.
+-- - time_entry_id appears to be the candidate row identifier, but its uniqueness
+--   has not yet been validated.
+-- - The apparent grain is one recorded labor entry for one employee on one project
+--   and work date.
+-- - work_date is inferred as VARCHAR even though the sampled values resemble ISO
+--   dates, so date parseability and formatting require further investigation.
+-- - regular_hours, overtime_hours, hourly_rate, and labor_cost are the primary
+--   numeric fields requiring range, precision, and calculation-consistency checks.
