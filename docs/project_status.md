@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 7, 2026
+Last updated: August 10, 2026
 
 ## Current Phase
 
@@ -20,10 +20,19 @@ applied credits will form incurred project cost. Pending transactions will be
 reported separately as pending cost exposure, with no assumed approval
 probability.
 
-Profiling of `labor_entries.csv` has begun through Investigation 28. Its schema,
-sample values, apparent grain, candidate identifier, and initial profiling
-priorities have been documented. `project_updates.csv` and `change_orders.csv`
-have not yet been profiled.
+Standalone profiling of `labor_entries.csv` is complete through Investigation
+31C. Row-identifier validation, duplicate inspection, completeness profiling,
+`work_date` parsing, and reporting-cutoff validation are complete. Numeric
+range, precision, calculation-consistency, categorical, and relationship
+profiling remain.
+
+One exact labor-entry duplicate, one missing `hourly_rate`, and one inconsistent
+`work_date` format have been identified. Cleaning rules are documented for the
+duplicate and date variant. The missing-rate decision remains deferred pending
+dataset-wide labor-cost formula validation.
+
+`project_updates.csv` and `change_orders.csv` have not yet been profiled. No
+cleaned analytical outputs have been implemented.
 
 ## Reporting Cutoff
 
@@ -159,6 +168,35 @@ The reporting cutoff is June 30, 2026, inclusive.
   profiling priorities.
 - Completed standalone and relationship profiling of
   `cost_transactions.csv`.
+  - Completed Investigation 29 by comparing total, non-NULL, and distinct
+  `time_entry_id` counts.
+- Completed Investigation 29A and identified TE000222 as the only repeated
+  `time_entry_id`.
+- Completed Investigation 29B and confirmed that the two TE000222 records are
+  exact duplicates across all nine columns.
+- Established a cleaned-output rule to retain one TE000222 row and remove one
+  duplicate occurrence.
+- Completed Investigation 30 by profiling NULL, empty, and whitespace-only
+  values across all nine `labor_entries.csv` columns.
+- Confirmed that all text columns are complete and that `hourly_rate` is the
+  only numeric column containing a NULL value.
+- Completed Investigation 30A by inspecting TE001843, the row with the missing
+  `hourly_rate`.
+- Completed Investigation 30B by calculating an implied rate of 38.96 and
+  evaluating employee E115's recorded rate history.
+- Confirmed that 38.96 reproduces TE001843's recorded `labor_cost`, but deferred
+  the correction because employee history does not corroborate the rate.
+- Completed Investigation 31 by testing all `work_date` values for direct DATE
+  conversion.
+- Completed Investigation 31A and identified TE002542's `5/19/2023` value as
+  the only formatting variant that fails direct conversion.
+- Established a cleaned-output rule to standardize TE002542's `work_date` to
+  the DATE value `2023-05-19`.
+- Completed Investigation 31B and confirmed that the standard-plus-fallback
+  parsing rule converts all 18,004 `work_date` values successfully.
+- Completed Investigation 31C and confirmed that standardized labor dates range
+  from January 28, 2023, through June 30, 2026.
+- Confirmed that zero labor entries occur after the reporting cutoff.
 
 ## Key Findings
 
@@ -337,15 +375,52 @@ The reporting cutoff is June 30, 2026, inclusive.
 
 ### Labor Entries
 
-- `labor_entries.csv` contains nine columns.
+- `labor_entries.csv` contains 18,004 raw rows and nine columns.
 - The apparent grain is one recorded labor entry for one employee on one project
   and work date.
-- `time_entry_id` appears to be the intended row-level identifier, but its
-  uniqueness has not yet been validated.
-- `work_date` was inferred as `VARCHAR` even though sampled values resemble ISO
-  dates.
-- `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost` require
-  range, precision, and calculation-consistency profiling.
+- The file contains 18,004 non-NULL `time_entry_id` values and 18,003 distinct
+  `time_entry_id` values.
+- TE000222 occurs twice, and both records match across all nine columns,
+  confirming an exact duplicate.
+- After removing one TE000222 occurrence, the expected cleaned row count and
+  distinct `time_entry_id` count are both 18,003.
+- `time_entry_id` can serve as the row-level identifier after exact-duplicate
+  removal.
+- All text columns contain values, with no NULL, empty, or whitespace-only
+  strings.
+- All numeric columns are complete except for one NULL `hourly_rate`.
+- TE001843 is the only row with a missing `hourly_rate`.
+- TE001843 belongs to employee E115, project P008, and the Carpenter trade, with
+  a `work_date` of March 22, 2024.
+- The row contains 43.57 regular hours, zero overtime hours, and a `labor_cost`
+  of 1,697.49.
+- Dividing `labor_cost` by `regular_hours` produces an implied `hourly_rate` of
+  38.96.
+- Multiplying 38.96 by 43.57 reproduces the recorded `labor_cost` of 1,697.49
+  after rounding to two decimal places.
+- Employee E115 has many distinct recorded hourly rates and no stable historical
+  rate pattern.
+- The rate 38.96 appears only once elsewhere in E115's history, on February 9,
+  2026, and does not corroborate the missing rate from March 22, 2024.
+- The correction for TE001843 remains unresolved pending dataset-wide
+  labor-cost formula validation.
+- All 18,004 `work_date` values are present.
+- A total of 18,003 values convert directly to `DATE`, while one value initially
+  fails conversion.
+- TE002542 contains the only directly unparseable value, `5/19/2023`, which uses
+  M/D/YYYY formatting.
+- The value unambiguously represents May 19, 2023, and will be standardized to
+  the DATE value `2023-05-19` in the cleaned analytical layer.
+- The standard-plus-fallback parsing rule converts all 18,004 `work_date`
+  values successfully, leaving zero unparseable dates.
+- Standardized `work_date` values range from January 28, 2023, through June 30,
+  2026.
+- The latest labor date is exactly the reporting cutoff.
+- Zero labor entries occur after the June 30, 2026 reporting cutoff.
+- The labor-entry date range matches the previously profiled
+  `cost_transactions.csv` date range.
+- `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost` still
+  require numeric range, precision, and calculation-consistency profiling.
 
 ## Unresolved Items
 
@@ -388,7 +463,27 @@ The reporting cutoff is June 30, 2026, inclusive.
 
 ### Remaining Work
 
-- Continue standalone profiling of `labor_entries.csv`.
+### Labor Entries
+
+- Preserve the immutable raw CSV, including both TE000222 occurrences, the NULL
+  `hourly_rate` on TE001843, and the raw `5/19/2023` value on TE002542.
+- Retain only one TE000222 row in the cleaned analytical layer.
+- Convert cleaned `work_date` values to DATE using the validated
+  standard-plus-fallback parsing rule.
+- Standardize TE002542's `work_date` to `2023-05-19` only in the cleaned
+  analytical layer.
+- Profile numeric ranges, zero values, negative values, and decimal precision
+  for `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost`.
+- Validate the dataset-wide labor-cost calculation relationship.
+- Resolve TE001843's missing `hourly_rate` only if formula validation provides
+  sufficient evidence for reverse calculation.
+- Complete categorical and relationship profiling of `labor_entries.csv`.
+- Implement all documented cleaning rules only after raw-data profiling is
+  complete.
+
+### Remaining Work
+
+- Complete standalone and relationship profiling of `labor_entries.csv`.
 - Profile `project_updates.csv`.
 - Profile `change_orders.csv`.
 - Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
@@ -400,12 +495,12 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-29.
+32.
 
-Validate `time_entry_id` as the intended row-level identifier in
-`labor_entries.csv` by comparing total rows, non-NULL identifiers, and distinct
-identifiers. Investigate any missing or repeated identifiers before continuing
-with completeness, date, numeric, and relationship profiling.
+Profile the numeric ranges and reasonableness of `regular_hours`,
+`overtime_hours`, `hourly_rate`, and `labor_cost`, including counts of zero and
+negative values. Investigate any potentially unreasonable values before
+continuing with precision and labor-cost calculation-consistency profiling.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -414,9 +509,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`e5ca8c54de65caf0f11918adee4e122e9b5fb7cf`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e5ca8c54de65caf0f11918adee4e122e9b5fb7cf)
-- Message: `Complete cost transaction profiling and begin labor profiling`
-- Date: August 7, 2026
+  [`e0b2100d97fb7ce91e8321a94706b7d6882500df`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e5ca8c54de65caf0f11918adee4e122e9b5fb7cf)
+- Message: `Profile labor entry identifiers, completeness, and dates`
+- Date: August 10, 2026
 
 The latest correction commit is:
 

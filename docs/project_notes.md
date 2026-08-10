@@ -3,6 +3,110 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 10, 2026
+
+### Work Completed
+
+- Continued standalone profiling of `labor_entries.csv`.
+- Completed Investigation 29 by validating `time_entry_id` as the intended
+  row-level identifier.
+- Completed Investigations 29A and 29B by identifying the repeated identifier
+  and comparing its complete records.
+- Completed Investigation 30 by profiling NULL, blank, and whitespace-only
+  values across all nine columns.
+- Completed Investigations 30A and 30B by inspecting the row with a missing
+  `hourly_rate`, calculating its implied rate, and evaluating employee-history
+  evidence.
+- Completed Investigation 31 by testing `work_date` DATE parseability.
+- Completed Investigation 31A by inspecting the unparseable date value.
+- Completed Investigation 31B by validating a standard-plus-fallback date
+  parsing rule across the complete file.
+- Completed Investigation 31C by validating the standardized date range and
+  reporting cutoff.
+
+### Decisions and Reasoning
+
+- `time_entry_id` can serve as the row-level identifier after removing one
+  occurrence of the exact TE000222 duplicate.
+- The raw `labor_entries.csv` file will remain unchanged.
+- One TE000222 row will be retained and the other removed only in the cleaned
+  analytical layer.
+- TE001843 will remain in the dataset because its recorded `labor_cost` is
+  present.
+- The implied `hourly_rate` for TE001843 is 38.96, and that value reproduces the
+  recorded `labor_cost` after rounding to two decimal places.
+- Employee E115's history does not provide sufficient corroboration for the
+  implied rate because the employee has many distinct rates and no stable
+  historical rate pattern.
+- TE001843's missing `hourly_rate` will remain unresolved until dataset-wide
+  labor-cost formula validation determines whether reverse calculation is a
+  reliable correction method.
+- Cleaned `work_date` values will be stored as `DATE`.
+- Standard ISO-compatible values will be converted directly, with M/D/YYYY
+  parsing used as a fallback for the one inconsistent value.
+- TE002542's raw `work_date` of `5/19/2023` will be standardized to the DATE
+  value `2023-05-19` only in the cleaned analytical layer.
+- All labor entries fall within the reporting period, so no date-based
+  exclusions are required.
+- No cleaned output was implemented during this session; cleaning decisions
+  remain documented for later implementation.
+
+### Key Results
+
+- `labor_entries.csv` contains 18,004 raw rows.
+- All 18,004 rows contain a non-NULL `time_entry_id`, but only 18,003 identifiers
+  are distinct.
+- TE000222 occurs twice, and both records match across all nine columns,
+  confirming an exact duplicate.
+- After removing one TE000222 occurrence, the expected cleaned row count and
+  distinct `time_entry_id` count are both 18,003.
+- All text columns are complete, with no NULL, empty, or whitespace-only values.
+- All numeric columns are complete except for one NULL `hourly_rate`.
+- TE001843 is the only row with a missing `hourly_rate`.
+- TE001843 belongs to employee E115, project P008, and the Carpenter trade, with
+  a `work_date` of March 22, 2024.
+- The row records 43.57 regular hours, zero overtime hours, and a `labor_cost`
+  of 1,697.49.
+- Dividing `labor_cost` by `regular_hours` produces an implied `hourly_rate` of
+  38.96.
+- Multiplying 38.96 by 43.57 hours reproduces the recorded `labor_cost` of
+  1,697.49 after rounding to two decimal places.
+- The rate 38.96 appears only once elsewhere in E115's recorded history, on
+  February 9, 2026, and therefore does not corroborate the missing rate from
+  March 22, 2024.
+- All 18,004 `work_date` values are present.
+- A total of 18,003 `work_date` values convert directly to `DATE`, while one
+  value initially fails conversion.
+- The unparseable value belongs to TE002542 and is stored as `5/19/2023`.
+- The standard-plus-fallback parsing rule converts all 18,004 values
+  successfully, leaving zero unparseable dates.
+- Standardized `work_date` values range from January 28, 2023, through June 30,
+  2026.
+- The latest labor date is exactly the reporting cutoff.
+- Zero labor entries occur after the June 30, 2026 reporting cutoff.
+- The labor-entry date range matches the previously profiled
+  `cost_transactions.csv` date range.
+
+### Verification and Closeout
+
+- The complete `sql/01_data_profiling.sql` file executed through the DuckDB CLI
+  with exit code 0.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Only `sql/01_data_profiling.sql` was included in the analysis commit.
+- Analysis commit
+  [`e0b2100d97fb7ce91e8321a94706b7d6882500df`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e0b2100d97fb7ce91e8321a94706b7d6882500df)
+  was pushed to `main` with the message
+  `Profile labor entry identifiers, completeness, and dates`.
+
+### Next Session
+
+Begin Investigation 32 by writing its purpose comment. Profile the numeric
+ranges and reasonableness of `regular_hours`, `overtime_hours`, `hourly_rate`,
+and `labor_cost`, including zero and negative values. Continue with precision
+and labor-cost calculation-consistency profiling before resolving TE001843's
+missing `hourly_rate`. Do not write the SQL query until the purpose comment has
+been reviewed.
+
 ## August 7, 2026
 
 ### Work Completed
