@@ -1999,3 +1999,333 @@ FROM read_csv_auto('data/raw/labor_entries.csv');
 --   dates, so date parseability and formatting require further investigation.
 -- - regular_hours, overtime_hours, hourly_rate, and labor_cost are the primary
 --   numeric fields requiring range, precision, and calculation-consistency checks.
+
+
+-- Investigation 29: Validate time_entry_id as the intended row-level identifier
+-- Purpose:
+-- - Compare total rows, non-NULL time_entry_id values, and distinct time_entry_id
+--   values to determine whether every labor entry has a complete and unique identifier.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(time_entry_id) AS non_null_time_entry_ids,
+    COUNT(DISTINCT time_entry_id) AS distinct_time_entry_ids
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - All 18,004 rows contain a non-NULL time_entry_id.
+-- - Only 18,003 time_entry_id values are distinct.
+-- - Therefore, one identifier occurs one additional time and requires investigation
+--   before time_entry_id can be accepted as the row-level identifier.
+
+
+-- Investigation 29A: Identify and inspect the repeated time_entry_id
+-- Purpose:
+-- - Identify the repeated time_entry_id and inspect its associated rows to determine
+--   whether they are exact duplicates or different labor entries sharing the same identifier.
+SELECT
+    time_entry_id,
+    COUNT(*) AS row_count
+FROM read_csv_auto('data/raw/labor_entries.csv')
+GROUP BY time_entry_id
+HAVING COUNT(*) > 1;
+
+-- Findings:
+-- - time_entry_id TE000222 occurs twice.
+-- - The associated rows must be inspected to determine whether they are exact
+--   duplicates or different labor entries sharing the same identifier.
+
+
+-- Investigation 29B: Inspect rows associated with time_entry_id TE000222
+-- Purpose:
+-- - Determine whether the two rows are exact duplicates or different labor
+--   entries that incorrectly share the same identifier.
+SELECT *
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE time_entry_id = 'TE000222';
+
+-- Findings:
+-- - The two rows associated with time_entry_id TE000222 are exact duplicates
+--   across all nine columns.
+-- - After removing one duplicate occurrence, time_entry_id is complete and unique
+--   across the remaining 18,003 labor-entry records.
+--
+-- Cleaning decision:
+-- - Preserve the raw data unchanged.
+-- - Retain one TE000222 row in the cleaned analytical layer and use time_entry_id
+--   as the row-level identifier.
+
+
+-- Investigation 30: Profile completeness across all nine labor_entries.csv columns
+-- Purpose:
+-- - Count missing values across every column, including NULLs and, for text
+--   columns, empty or whitespace-only strings.
+-- - Identify incomplete records that may require investigation before analysis.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(*) FILTER (
+    WHERE time_entry_id IS NULL
+) AS null_time_entry_id_count,
+
+COUNT(*) FILTER (
+    WHERE TRIM(time_entry_id) = ''
+) AS blank_time_entry_id_count,
+
+COUNT(*) FILTER (
+    WHERE project_id IS NULL
+) AS null_project_id_count,
+
+COUNT(*) FILTER (
+    WHERE TRIM(project_id) = ''
+) AS blank_project_id_count,
+
+COUNT(*) FILTER (
+    WHERE work_date IS NULL
+) AS null_work_date_count,
+
+COUNT(*) FILTER (
+    WHERE TRIM(work_date) = ''
+) AS blank_work_date_count,
+
+COUNT(*) FILTER (
+    WHERE employee_id IS NULL
+) AS null_employee_id_count,
+
+COUNT(*) FILTER (
+    WHERE TRIM(employee_id) = ''
+) AS blank_employee_id_count,
+
+COUNT(*) FILTER (
+    WHERE trade IS NULL
+) AS null_trade_count,
+
+COUNT(*) FILTER (
+    WHERE TRIM(trade) = ''
+) AS blank_trade_count,
+
+COUNT(*) FILTER (
+    WHERE regular_hours IS NULL
+) AS null_regular_hours_count,
+
+COUNT(*) FILTER (
+    WHERE overtime_hours IS NULL
+) AS null_overtime_hours_count,
+
+COUNT(*) FILTER (
+    WHERE hourly_rate IS NULL
+) AS null_hourly_rate_count,
+
+COUNT(*) FILTER (
+    WHERE labor_cost IS NULL
+) AS null_labor_cost_count
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - All text fields contain values; there are no NULL, empty,
+--   or whitespace-only strings.
+-- - All numeric fields are complete except for one NULL hourly_rate.
+-- - labor_cost is present for every row, including the row with the missing
+--   hourly_rate.
+
+
+-- Investigation 30A: Inspect the row with a NULL hourly_rate
+-- Purpose:
+-- - Inspect all other values in the affected row to understand its context,
+--   assess the impact on labor_cost validation, and determine whether there is
+--   evidence for a defensible correction.
+SELECT *
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE hourly_rate IS NULL;
+
+-- Findings:
+-- - TE001843 is the only row affected by a NULL hourly_rate.
+-- - The entry belongs to employee E115, project P008, and the Carpenter trade,
+--   with a work_date of 2024-03-22.
+-- - The row records 43.57 regular hours, zero overtime hours, and labor_cost
+--   of 1697.49.
+-- - The recorded hours and labor_cost allow an implied hourly rate to be
+--   calculated, but employee history is needed to corroborate any correction.
+
+
+-- Investigation 30B: Evaluate a correction for the missing hourly_rate
+-- Purpose:
+-- - Calculate the implied hourly_rate from TE001843's regular_hours and
+--   labor_cost, then compare it with E115's other recorded rates—especially
+--   around the same work_date—to determine whether a correction is supported
+--   by consistent evidence.
+WITH columns AS (
+    SELECT
+        time_entry_id,
+        employee_id,
+        work_date,
+        regular_hours,
+        labor_cost,
+        ROUND(labor_cost / regular_hours, 2) AS calculated_hourly_rate
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+    WHERE time_entry_id = 'TE001843'
+)
+SELECT
+    time_entry_id,
+        employee_id,
+        work_date,
+        regular_hours,
+        labor_cost,
+        calculated_hourly_rate,
+        ROUND(calculated_hourly_rate * regular_hours, 2) AS calculated_labor_cost_check
+FROM columns;
+
+-- Calculation findings:
+-- - Dividing labor_cost by regular_hours produces an implied hourly_rate of
+--   38.96 for TE001843.
+-- - Multiplying 38.96 by 43.57 regular hours reproduces the recorded labor_cost
+--   of 1697.49 after rounding to two decimal places.
+-- - This confirms that 38.96 is internally consistent with the row, but it does
+--   not by itself prove the intended rate; E115's history must provide
+--   corroborating evidence.
+
+
+SELECT
+    hourly_rate,
+    MIN(work_date) AS first_work_date,
+    MAX(work_date) AS last_work_date,
+    COUNT(*) AS entry_count
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE employee_id = 'E115'
+GROUP BY hourly_rate
+ORDER BY first_work_date;
+
+-- Findings:
+-- - Employee E115 does not have a stable hourly rate; the employee has many
+--   distinct rates across the recorded history.
+-- - The target rate of 38.96 appears only once in E115's recorded history.
+-- - That occurrence is dated 2026-02-09, whereas the missing rate is from
+--   2024-03-22.
+-- - Several different rates occur around March 22, 2024, so nearby employee
+--   records do not identify one obvious rate.
+-- - Therefore, E115's history does not corroborate 38.96 for TE001843, and the
+--   missing value should not be filled based on employee history.
+-- - Despite the lack of historical corroboration, 38.96 remains internally
+--   consistent because it reproduces the recorded labor_cost from regular_hours.
+--
+-- Decision for 30B:
+-- - Defer the correction until dataset-wide labor_cost formula validation
+--   determines whether reverse calculation provides sufficient evidence.
+
+
+-- Investigation 31: Validate work_date format and DATE parseability
+-- Purpose:
+-- - Test whether every nonmissing work_date can convert to DATE.
+-- - Identify and inspect any values that fail conversion.
+-- - Determine the cleaning rule required before date-range
+--   and reporting-cutoff analysis.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(work_date) AS non_null_work_dates,
+    COUNT(*) FILTER (
+        WHERE TRY_CAST(work_date AS DATE) IS NOT NULL
+    ) AS parseable_work_dates,
+    COUNT(*) FILTER (
+        WHERE work_date IS NOT NULL
+          AND TRY_CAST(work_date AS DATE) IS NULL
+    ) AS unparseable_work_dates
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - All 18,004 rows have a work_date.
+-- - 18,003 values convert successfully to DATE.
+-- - Exactly one nonmissing value fails conversion.
+-- - That single malformed value is likely why DuckDB inferred the entire
+--   column as VARCHAR.
+-- - Further inspection is required before determining the cleaning rule.
+
+
+-- Investigation 31A: Inspect the unparseable work_date
+-- Purpose:
+-- - Inspect the raw work_date and its associated row to identify the formatting
+--   problem and determine whether a defensible correction can be made.
+SELECT *
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE work_date IS NOT NULL
+  AND TRY_CAST(work_date AS DATE) IS NULL;
+
+-- Findings:
+-- - The unparseable work_date belongs to time_entry_id TE002542 and project_id
+--   P013.
+-- - Its raw value is 5/19/2023, which uses M/D/YYYY formatting.
+-- - The value unambiguously represents May 19, 2023 because 19 cannot be a month.
+--
+-- Cleaning decision:
+-- - Preserve the raw CSV unchanged.
+-- - In the cleaned analytical layer, parse the M/D/YYYY variant and store the
+--   work_date as the DATE value 2023-05-19.
+
+
+-- Investigation 31B: Validate the proposed work_date parsing rule across all rows
+-- Purpose:
+-- - Apply the standard DATE conversion first and the M/D/YYYY parser as a
+--   fallback, then confirm that every work_date converts successfully without
+--   creating additional NULL values.
+WITH parsed_dates AS (
+    SELECT
+        work_date,
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_work_date
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+)
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(work_date) AS non_null_work_dates,
+    COUNT(standardized_work_date) AS successfully_parsed_work_dates,
+    COUNT(*) FILTER (
+        WHERE work_date IS NOT NULL
+          AND standardized_work_date IS NULL
+    ) AS unparseable_work_dates
+FROM parsed_dates;
+
+-- Findings:
+-- - All 18,004 work_date values successfully parse as DATE using the proposed
+--   standard-plus-fallback rule.
+-- - Zero work_date values remain unparseable.
+--
+-- Cleaning decision:
+-- - Preserve the raw values unchanged.
+-- - Apply the validated parsing rule in cleaned_labor_entries and store
+--   standardized_work_date as DATE.
+
+
+-- Investigation 31C: Validate the standardized work_date range and reporting cutoff
+-- Purpose:
+-- - Calculate the earliest and latest standardized work_date and count entries
+--   after the June 30, 2026 reporting cutoff to identify any implausible or
+--   out-of-scope labor records.
+WITH parsed_dates AS (
+    SELECT
+        work_date,
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_work_date
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+)
+
+SELECT
+    MIN(standardized_work_date) AS earliest_work_date,
+    MAX(standardized_work_date) AS latest_work_date,
+    COUNT(*) FILTER(
+        WHERE standardized_work_date > DATE '2026-06-30'
+    ) AS entries_after_cutoff
+FROM parsed_dates;
+
+-- Findings:
+-- - The standardized work_date range is 2023-01-28 through 2026-06-30.
+-- - The latest work_date is exactly the reporting cutoff.
+-- - Zero labor entries occur after the June 30, 2026 reporting cutoff.
+--
+-- Decision:
+-- - Retain all labor entries in the reporting period; no date-based exclusions
+--   are required.
+
+
+-- Investigation 32: Profile numeric ranges for labor hours,
+-- hourly rates, and labor costs
