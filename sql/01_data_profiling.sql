@@ -2327,5 +2327,395 @@ FROM parsed_dates;
 --   are required.
 
 
--- Investigation 32: Profile numeric ranges for labor hours,
--- hourly rates, and labor costs
+-- Investigation 32: Profile numeric ranges for all four labor fields
+-- Purpose:
+-- - Measure the minimum and maximum values and count zero and negative values
+--   for regular_hours, overtime_hours, hourly_rate, and labor_cost.
+-- - Identify potentially unreasonable values requiring further investigation
+--   before evaluating numeric precision and labor-cost calculation consistency.
+SELECT
+    MIN(regular_hours) AS minimum_regular_hours,
+    MAX(regular_hours) AS maximum_regular_hours,
+    COUNT(*) FILTER (WHERE regular_hours = 0) AS regular_hour_zero_count,
+    COUNT(*) FILTER (WHERE regular_hours < 0) AS regular_hour_negative_count,
+    MIN(overtime_hours) AS minimum_overtime_hours,
+    MAX(overtime_hours) AS maximum_overtime_hours,
+    COUNT(*) FILTER (WHERE overtime_hours = 0) AS overtime_hours_zero_count,
+    COUNT(*) FILTER (WHERE overtime_hours < 0) AS overtime_hours_negative_count,
+    MIN(hourly_rate) AS minimum_hourly_rate,
+    MAX(hourly_rate) AS maximum_hourly_rate,
+    COUNT(*) FILTER (WHERE hourly_rate = 0) AS hourly_rate_zero_count,
+    COUNT(*) FILTER (WHERE hourly_rate < 0) AS hourly_rate_negative_count,
+    MIN(labor_cost) AS minimum_labor_cost,
+    MAX(labor_cost) AS maximum_labor_cost,
+    COUNT(*) FILTER (WHERE labor_cost = 0) AS labor_cost_zero_count,
+    COUNT(*) FILTER (WHERE labor_cost < 0) AS labor_cost_negative_count
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - regular_hours ranged from 0.0973 to 46, with no zero or negative values.
+-- - overtime_hours ranged from 0 to 9; 14,033 entries recorded zero overtime,
+--   and no negative values were present.
+-- - Among non-NULL values, hourly_rate ranged from 27 to 68, with no zero or
+--   negative values.
+-- - labor_cost ranged from 5.80 to 3,822.02, with no zero or negative values.
+-- - The minimum and maximum regular_hours and labor_cost values require
+--   row-level inspection before their reasonableness can be determined.
+--
+-- Decision:
+-- - Inspect the complete records associated with these numeric extremes in
+--   Investigation 32A before evaluating precision and labor-cost consistency.
+
+
+-- Investigation 32A: Inspect records associated with numeric extremes
+-- Purpose:
+-- - Retrieve complete records matching the observed minimum and maximum
+--   regular_hours values (0.0973 and 46) and labor_cost values (5.80 and 3,822.02).
+-- - Compare their identifiers, dates, hours, rates, and costs to determine whether
+--   the flagged extremes are internally consistent or require further investigation.
+WITH labor_data AS (
+    SELECT *
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+
+extremes AS (
+    SELECT
+        MIN(regular_hours) AS minimum_regular_hours,
+        MAX(regular_hours) AS maximum_regular_hours,
+        MIN(labor_cost) AS minimum_labor_cost,
+        MAX(labor_cost) AS maximum_labor_cost
+    FROM labor_data
+)
+
+SELECT labor_data.*
+FROM labor_data
+CROSS JOIN extremes
+WHERE labor_data.regular_hours = extremes.minimum_regular_hours
+    OR labor_data.regular_hours = extremes.maximum_regular_hours
+    OR labor_data.labor_cost = extremes.minimum_labor_cost
+    OR labor_data.labor_cost = extremes.maximum_labor_cost;
+
+-- Findings:
+-- - Six rows were returned because four entries tied at the maximum of
+--   46 regular hours.
+-- - TE014656 contained both minimum values. Multiplying 0.0973 hours by
+--   its 59.64 hourly rate produces 5.802972, which rounds to 5.80.
+-- - TE011416's regular and overtime pay calculation produces 3,822.0216,
+--   which rounds to its recorded labor cost of 3,822.02.
+-- - All four 46-hour entries recorded zero overtime. Their treatment remains
+--   unresolved because E312 also has an entry with recorded overtime.
+--
+-- Decision:
+-- - Retain the flagged values unchanged pending further investigation.
+-- - In Investigation 32B, quantify entries above 40 regular hours and compare
+--   the occurrence of zero and positive overtime.
+
+
+-- Investigation 32B: Quantify entries above 40 regular hours and compare
+-- zero and positive overtime
+-- Purpose:
+-- - Count entries with more than 40 regular hours and categorize them by
+--   whether overtime_hours is zero or positive.
+-- - Determine whether the zero-overtime pattern among high-hour entries is
+--   isolated or widespread before evaluating its validity.
+SELECT
+    COUNT(*) FILTER (
+        WHERE regular_hours > 40
+    ) AS regular_hours_over_40_count,
+    COUNT(*) FILTER (
+        WHERE regular_hours > 40
+          AND overtime_hours = 0
+    ) AS over_40_zero_overtime_count,
+    COUNT(*) FILTER (
+        WHERE regular_hours > 40
+          AND overtime_hours > 0
+    ) AS over_40_positive_overtime_count
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - 6,727 entries recorded more than 40 regular hours.
+-- - Of those entries, 5,178 (76.97%) recorded zero overtime and
+--   1,549 (23.03%) recorded positive overtime.
+-- - The two overtime categories reconcile to the complete population of
+--   entries above 40 regular hours.
+-- - High regular hours combined with zero overtime are widespread and are
+--   not isolated to the four entries at the 46-hour maximum.
+-- - The available fields do not explain the time period represented by each
+--   entry or the business rules governing regular and overtime classification.
+--
+-- Decision:
+-- - Do not reclassify hours or alter labor costs without an authoritative
+--   business rule from the data owner.
+-- - Retain the recorded values unchanged and document the classification
+--   ambiguity as a data limitation requiring stakeholder clarification.
+-- - Continue with numeric-precision and labor-cost calculation-consistency
+--   profiling.
+
+
+-- Investigation 33: Assess numeric precision across labor fields
+-- Purpose:
+-- - Determine whether regular_hours, overtime_hours, hourly_rate, and labor_cost
+--   contain meaningful precision beyond two decimal places.
+-- - Count non-NULL values that differ from their two-decimal rounded equivalents.
+-- - Use the results to select cleaned numeric types without introducing
+--   unintended rounding or loss of source precision.
+SELECT
+    COUNT(*) FILTER (
+    WHERE regular_hours IS NOT NULL
+      AND regular_hours <> ROUND(regular_hours, 2)
+) AS regular_hours_changed_at_2dp_count,
+        COUNT(*) FILTER (
+        WHERE overtime_hours IS NOT NULL
+        AND overtime_hours <> ROUND(overtime_hours, 2)
+    ) AS overtime_hours_changed_at_2dp_count,
+        COUNT(*) FILTER (
+        WHERE hourly_rate IS NOT NULL
+        AND hourly_rate <> ROUND(hourly_rate, 2)
+    ) AS hourly_rate_changed_at_2dp_count,
+        COUNT(*) FILTER (
+        WHERE labor_cost IS NOT NULL
+        AND labor_cost <> ROUND(labor_cost, 2)
+    ) AS labor_cost_changed_at_2dp_count
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - Rounding regular_hours to two decimal places would alter 94 values.
+-- - Rounding overtime_hours, hourly_rate, and labor_cost to two decimal
+--   places would alter zero non-NULL values.
+-- - Two-decimal scale preserves the observed source precision of
+--   overtime_hours, hourly_rate, and labor_cost.
+-- - Two-decimal scale is insufficient to preserve all regular_hours values.
+--
+-- Decision:
+-- - Use two decimal places as the required scale for overtime_hours,
+--   hourly_rate, and labor_cost; determine total DECIMAL precision separately
+--   when cleaned numeric types are finalized.
+-- - Do not round regular_hours to two decimal places.
+-- - Continue with Investigation 33A to determine the minimum scale that
+--   preserves every regular_hours value.
+
+
+-- Investigation 33A: Determine the minimum scale required for regular_hours
+-- Purpose:
+-- - Identify the smallest number of decimal places that preserves every
+--   non-NULL regular_hours value without rounding or loss of source precision.
+-- - Compare values at three- and four-decimal scales and test additional
+--   scales only if four decimal places remain insufficient.
+SELECT
+    COUNT(*) FILTER (
+    WHERE regular_hours IS NOT NULL
+      AND regular_hours <> ROUND(regular_hours, 3)
+) AS regular_hours_changed_at_3dp_count,
+    COUNT(*) FILTER (
+    WHERE regular_hours IS NOT NULL
+      AND regular_hours <> ROUND(regular_hours, 4)
+) AS regular_hours_changed_at_4dp_count
+FROM read_csv_auto('data/raw/labor_entries.csv');
+
+-- Findings:
+-- - Rounding regular_hours to three decimal places would alter 82 non-NULL
+--   values.
+-- - Rounding regular_hours to four decimal places would alter zero values.
+-- - Four decimal places are therefore the minimum scale required to preserve
+--   every observed regular_hours value.
+--
+-- Decision:
+-- - Preserve regular_hours at four-decimal scale in the cleaned analytical
+--   layer.
+-- - Do not round regular_hours to two or three decimal places.
+-- - Select a cleaned DECIMAL type with a scale of four; determine its total
+--   precision when the cleaned schema is implemented.
+
+
+-- Investigation 34: Validate the dataset-wide labor_cost calculation relationship
+-- Purpose:
+-- - Calculate expected labor_cost as regular pay plus overtime pay at 1.5 times
+--   the hourly rate, rounded to two decimal places.
+-- - Compare calculated labor costs with recorded labor_cost values across all
+--   rows containing a non-NULL hourly_rate.
+-- - Count testable, untestable, matching, and mismatching rows.
+-- - Determine whether the relationship is consistent enough to support
+--   reverse-calculating TE001843's missing hourly_rate.
+WITH labor_cost_check AS (
+    SELECT
+        *,
+        ROUND(
+            (regular_hours * hourly_rate)
+            + (overtime_hours * hourly_rate * 1.5),
+            2
+        ) AS expected_labor_cost
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+)
+
+SELECT
+    COUNT(*) AS total_row_count,
+    COUNT(*) FILTER (
+        WHERE hourly_rate IS NOT NULL
+    ) AS testable_row_count,
+    COUNT(*) FILTER (
+        WHERE hourly_rate IS NULL
+    ) AS untestable_row_count,
+    COUNT(*) FILTER (
+        WHERE expected_labor_cost = labor_cost
+    ) AS matching_rows,
+    COUNT(*) FILTER (
+        WHERE expected_labor_cost <> labor_cost
+    ) AS mismatch_rows
+FROM labor_cost_check;
+
+-- Findings:
+-- - Of 18,004 labor rows, 18,003 were testable and one was untestable because
+--   hourly_rate was NULL.
+-- - The candidate labor-cost formula matched 17,850 testable rows (99.15%)
+--   and mismatched 153 rows (0.85%).
+-- - The formula is highly consistent but not universal across the dataset.
+-- - The mismatches must be characterized before determining whether the
+--   formula reliably supports reverse-calculating TE001843's missing rate.
+--
+-- Decision:
+-- - Do not resolve TE001843's missing hourly_rate yet.
+-- - Continue with Investigation 34A to measure the size and direction of the
+--   153 cost differences and determine whether they follow a rounding pattern.
+
+
+-- Investigation 34A: Characterize labor_cost formula mismatches
+-- Purpose:
+-- - Isolate testable rows where expected labor_cost differs from recorded
+--   labor_cost.
+-- - Calculate each difference as recorded labor_cost minus expected labor_cost.
+-- - Summarize the minimum, maximum, direction, and frequency of the differences.
+-- - Determine whether the mismatches reflect a consistent rounding pattern or
+--   potentially substantive calculation differences.
+WITH labor_cost_check AS (
+    SELECT
+        *,
+        ROUND(
+            (regular_hours * hourly_rate)
+            + (overtime_hours * hourly_rate * 1.5),
+            2
+        ) AS expected_labor_cost
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+
+mismatch_labor_cost AS (
+    SELECT *
+    FROM labor_cost_check
+    WHERE expected_labor_cost <> labor_cost
+)
+
+SELECT
+    ROUND(labor_cost - expected_labor_cost, 2) AS cost_difference,
+    COUNT(*) AS mismatch_count
+FROM mismatch_labor_cost
+GROUP BY cost_difference
+ORDER BY cost_difference;
+
+-- Findings:
+-- - The 153 formula mismatches ranged from -0.01 to 125.00.
+-- - For 152 rows, recorded labor_cost was 0.01 lower than expected labor_cost.
+-- - One row recorded labor_cost 125.00 higher than expected labor_cost.
+-- - The one-cent differences may reflect an alternative rounding sequence,
+--   but this has not yet been confirmed.
+--
+-- Decision:
+-- - Do not alter any recorded labor_cost values during standardization.
+-- - Inspect the 125.00 outlier in Investigation 34B.
+-- - Test an alternative component-rounding formula for the 152 one-cent
+--   differences in a subsequent follow-up.
+
+
+-- Investigation 34B: Inspect the $125 labor-cost mismatch
+-- Purpose:
+-- - Retrieve the complete labor entry whose recorded labor_cost exceeds the
+--   expected labor_cost by 125.00.
+-- - Compare its regular hours, overtime hours, hourly rate, calculated pay
+--   components, and recorded labor cost.
+-- - Determine whether the difference is explainable, represents a data-quality
+--   issue, or requires stakeholder clarification before any correction.
+WITH labor_cost_check AS (
+    SELECT
+        *,
+        ROUND(
+            (regular_hours * hourly_rate)
+            + (overtime_hours * hourly_rate * 1.5),
+            2
+        ) AS expected_labor_cost
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+)
+SELECT
+    *
+FROM labor_cost_check
+WHERE ROUND(labor_cost - expected_labor_cost, 2) = 125;
+
+-- Findings:
+-- - TE003191 is the only row whose recorded labor_cost exceeds expected
+--   labor_cost by 125.00.
+-- - Its 30.26 regular hours multiplied by its 46.46 hourly rate produces
+--   1,405.8796, which rounds to the expected cost of 1,405.88.
+-- - The recorded labor_cost is 1,530.88, exactly 125.00 higher.
+-- - The row records zero overtime, and its hours and hourly rate fall within
+--   the observed dataset ranges.
+-- - No available field explains the additional 125.00.
+--
+-- Decision:
+-- - Retain TE003191 unchanged and flag the 125.00 difference for stakeholder
+--   clarification rather than assuming an adjustment or correcting the row.
+-- - Treat TE003191 as an unresolved exception to the labor-cost formula.
+-- - Continue by testing whether alternative component rounding explains the
+--   remaining 152 one-cent mismatches.
+
+
+-- Investigation 34C: Test component-level rounding for one-cent mismatches
+-- Purpose:
+-- - Calculate expected labor_cost by rounding regular pay and overtime pay
+--   separately to two decimal places before adding them.
+-- - Compare the component-rounded result with recorded labor_cost across all
+--   testable rows, including the 152 one-cent mismatches.
+-- - Determine whether component-level rounding resolves those differences
+--   without creating new mismatches and provides a more reliable dataset-wide
+--   calculation rule.
+WITH component_rounding_check AS (
+    SELECT
+        hourly_rate,
+        labor_cost,
+        ROUND(
+            ROUND(regular_hours * hourly_rate, 2)
+            + ROUND(overtime_hours * hourly_rate * 1.5, 2),
+            2
+        ) AS expected_component_labor_cost
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+)
+
+SELECT
+    COUNT(*) AS testable_row_count,
+    COUNT(*) FILTER (
+        WHERE labor_cost = expected_component_labor_cost
+    ) AS matching_row_count,
+    COUNT(*) FILTER (
+        WHERE labor_cost <> expected_component_labor_cost
+    ) AS mismatching_row_count
+FROM component_rounding_check
+WHERE hourly_rate IS NOT NULL;
+
+-- Findings:
+-- - The component-level rounding formula was testable for 18,003 rows.
+-- - It matched 16,957 rows (94.19%) and mismatched 1,046 rows (5.81%).
+-- - The combined-total formula performed better, matching 17,850 rows (99.15%)
+--   and mismatching only 153 rows (0.85%).
+-- - Component-level rounding increased the mismatch count by 893 rows and
+--   therefore does not provide a more reliable dataset-wide calculation rule.
+-- - These aggregate counts do not reveal whether component rounding resolved
+--   any of the original 152 one-cent differences while creating mismatches
+--   elsewhere.
+--
+-- Decision:
+-- - Reject component-level rounding as the primary dataset-wide labor-cost
+--   calculation rule.
+-- - Retain combined-total rounding as the better-supported candidate formula.
+-- - Do not yet conclude that component rounding explains the 152 one-cent
+--   differences.
+-- - Compare both formula outcomes at the row level in Investigation 34D before
+--   resolving the remaining calculation pattern or TE001843's missing rate.
+
+
+-- Investigation 34D: Compare formula match outcomes by row
