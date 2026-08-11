@@ -3,6 +3,137 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 11, 2026
+
+### Work Completed
+
+- Continued standalone profiling of `labor_entries.csv`.
+- Completed Investigation 32 by profiling numeric ranges and counts of zero and
+  negative values for `regular_hours`, `overtime_hours`, `hourly_rate`, and
+  `labor_cost`.
+- Completed Investigation 32A by retrieving the complete records associated
+  with the minimum and maximum `regular_hours` and `labor_cost` values.
+- Completed Investigation 32B by quantifying entries above 40 regular hours and
+  comparing zero and positive overtime.
+- Completed Investigation 33 by testing whether two-decimal rounding would
+  alter values in each numeric labor field.
+- Completed Investigation 33A by determining the minimum decimal scale required
+  to preserve every `regular_hours` value.
+- Completed Investigation 34 by testing a candidate dataset-wide labor-cost
+  formula using combined-total rounding.
+- Completed Investigation 34A by characterizing the size, direction, and
+  frequency of the formula mismatches.
+- Completed Investigation 34B by inspecting the single material labor-cost
+  mismatch of 125.00.
+- Completed Investigation 34C by testing component-level rounding as an
+  alternative labor-cost calculation method.
+
+### Decisions and Reasoning
+
+- All profiled numeric values will remain unchanged because no negative values
+  were found and the observed zero values were limited to `overtime_hours`.
+- The minimum and maximum labor-cost records are mathematically consistent with
+  their recorded hours and rates.
+- Entries above 40 regular hours frequently record zero overtime, so the four
+  46-hour entries are part of a broader dataset pattern rather than isolated
+  anomalies.
+- The available fields do not establish the time period represented by each
+  labor entry or the business rules governing regular and overtime
+  classification.
+- Regular and overtime hours will not be reclassified without an authoritative
+  business rule from the data owner.
+- The definitions of `regular_hours`, `overtime_hours`, and the time-entry
+  period remain stakeholder-clarification items.
+- A two-decimal scale preserves every observed non-NULL `overtime_hours`,
+  `hourly_rate`, and `labor_cost` value.
+- A four-decimal scale is required to preserve every observed `regular_hours`
+  value.
+- The cleaned analytical layer will preserve `regular_hours` at four-decimal
+  scale and the other three numeric fields at two-decimal scale.
+- Total `DECIMAL` precision will be selected when the cleaned schema is
+  implemented.
+- Combined-total rounding is the better-supported labor-cost calculation method
+  because it produces substantially fewer mismatches than component-level
+  rounding.
+- Component-level rounding was rejected as the primary dataset-wide formula
+  because it increased rather than reduced the overall mismatch count.
+- TE003191 will remain unchanged because the available fields do not explain
+  its additional 125.00 of recorded labor cost.
+- TE003191 will be flagged for stakeholder clarification rather than corrected
+  through an unsupported assumption.
+- TE001843's missing `hourly_rate` remains unresolved until the overlap between
+  the two tested formula outcomes is understood.
+- No raw values were modified, and no cleaned analytical output was implemented
+  during this session.
+
+### Key Results
+
+- `regular_hours` ranged from 0.0973 to 46, with zero zero-value records and zero
+  negative-value records.
+- `overtime_hours` ranged from 0 to 9, with 14,033 zero-value records and zero
+  negative-value records.
+- Among non-NULL values, `hourly_rate` ranged from 27 to 68, with zero zero-value
+  or negative-value records.
+- `labor_cost` ranged from 5.80 to 3,822.02, with zero zero-value or
+  negative-value records.
+- Investigation 32A returned six records because four entries tied at the
+  maximum of 46 regular hours.
+- The four 46-hour entries were TE000859, TE004254, TE007194, and TE015023, and
+  all four recorded zero overtime.
+- TE014656 contained both the minimum `regular_hours` value of 0.0973 and the
+  minimum `labor_cost` of 5.80.
+- Multiplying TE014656's 0.0973 regular hours by its 59.64 hourly rate produces
+  5.802972, which rounds to its recorded labor cost of 5.80.
+- TE011416 contained the maximum `labor_cost` of 3,822.02.
+- TE011416 records 45.45 regular hours, 8.12 overtime hours, and an hourly rate
+  of 66.32.
+- Regular pay plus overtime pay at 1.5 times the hourly rate produces
+  3,822.0216 for TE011416, which rounds to the recorded labor cost of 3,822.02.
+- Employee E312 appears in both overtime patterns: TE011416 records 45.45
+  regular hours plus 8.12 overtime hours, while TE015023 records 46 regular
+  hours and zero overtime.
+- A total of 6,727 entries recorded more than 40 regular hours.
+- Of those entries, 5,178, or 76.97%, recorded zero overtime, while 1,549, or
+  23.03%, recorded positive overtime.
+- Rounding `regular_hours` to two decimal places would alter 94 values.
+- Rounding `overtime_hours`, `hourly_rate`, or `labor_cost` to two decimal
+  places would alter zero non-NULL values.
+- Rounding `regular_hours` to three decimal places would alter 82 values.
+- Rounding `regular_hours` to four decimal places would alter zero values,
+  establishing four as the minimum required scale.
+- The combined-total labor-cost formula was testable for 18,003 of the 18,004
+  raw labor rows.
+- One row was untestable because TE001843 has a NULL `hourly_rate`.
+- Combined-total rounding matched 17,850 testable rows, or 99.15%, and
+  mismatched 153 rows, or 0.85%.
+- Of the 153 mismatches, 152 recorded labor costs were 0.01 below the calculated
+  value.
+- One mismatch recorded labor cost 125.00 above the calculated value.
+- The 125.00 mismatch belongs to TE003191 for employee E417, project P016, and
+  the Finisher trade on September 30, 2024.
+- TE003191 records 30.26 regular hours, zero overtime, an hourly rate of 46.46,
+  and a recorded labor cost of 1,530.88.
+- Multiplying TE003191's regular hours by its hourly rate produces 1,405.8796,
+  which rounds to an expected labor cost of 1,405.88.
+- No available field explains TE003191's additional 125.00.
+- Component-level rounding matched 16,957 of the 18,003 testable rows, or
+  94.19%, and mismatched 1,046 rows, or 5.81%.
+- Component-level rounding produced 893 more net mismatches than combined-total
+  rounding.
+- The aggregate formula results do not reveal whether component-level rounding
+  resolves any of the original 152 one-cent mismatches while creating
+  mismatches elsewhere.
+
+### Next Session
+
+Begin Investigation 34D by writing its purpose comment. Calculate both the
+combined-total and component-level expected labor costs for every testable row,
+then classify each row as matching both formulas, matching combined-total only,
+matching component-level only, or matching neither formula. Use the category
+counts to determine whether component-level rounding explains the original 152
+one-cent differences. Do not write the SQL query until the purpose comment has
+been reviewed.
+
 ## August 10, 2026
 
 ### Work Completed
@@ -90,13 +221,13 @@ and lessons. Add each new dated entry directly below this introduction.
 ### Verification and Closeout
 
 - The complete `sql/01_data_profiling.sql` file executed through the DuckDB CLI
-  with exit code 0.
+  with no SQL errors.
 - `git diff --check` and `git diff --cached --check` returned no output.
 - Only `sql/01_data_profiling.sql` was included in the analysis commit.
 - Analysis commit
-  [`e0b2100d97fb7ce91e8321a94706b7d6882500df`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e0b2100d97fb7ce91e8321a94706b7d6882500df)
+  [`44aaa82bf75b0b4bca413e4c1f678aae25536b5d`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/44aaa82bf75b0b4bca413e4c1f678aae25536b5d)
   was pushed to `main` with the message
-  `Profile labor entry identifiers, completeness, and dates`.
+  `Profile labor numeric precision and cost formulas`.
 
 ### Next Session
 

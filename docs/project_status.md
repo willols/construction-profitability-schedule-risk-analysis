@@ -1,6 +1,8 @@
 # Project Status
 
-Last updated: August 10, 2026
+Last updated: August 11, 2026
+
+Last updated: August 11, 2026
 
 ## Current Phase
 
@@ -21,15 +23,22 @@ reported separately as pending cost exposure, with no assumed approval
 probability.
 
 Standalone profiling of `labor_entries.csv` is complete through Investigation
-31C. Row-identifier validation, duplicate inspection, completeness profiling,
-`work_date` parsing, and reporting-cutoff validation are complete. Numeric
-range, precision, calculation-consistency, categorical, and relationship
-profiling remain.
+34C. Row-identifier validation, duplicate inspection, completeness profiling,
+date validation, numeric-range profiling, precision testing, and preliminary
+labor-cost formula validation are complete. Formula-overlap analysis,
+categorical profiling, and relationship validation remain.
 
-One exact labor-entry duplicate, one missing `hourly_rate`, and one inconsistent
-`work_date` format have been identified. Cleaning rules are documented for the
-duplicate and date variant. The missing-rate decision remains deferred pending
-dataset-wide labor-cost formula validation.
+One exact labor-entry duplicate, one missing `hourly_rate`, one inconsistent
+`work_date` format, and one unexplained 125.00 labor-cost formula exception have
+been identified. Cleaning rules are documented for the duplicate and date
+variant, and required decimal scales have been established for all four numeric
+labor fields.
+
+Combined-total rounding is the better-supported labor-cost formula, matching
+99.15% of testable rows. Component-level rounding performs worse overall.
+TE001843's missing-rate decision remains deferred until Investigation 34D
+determines how the two formula outcomes overlap. TE003191's unexplained 125.00
+difference will remain unchanged and be flagged for stakeholder clarification.
 
 `project_updates.csv` and `change_orders.csv` have not yet been profiled. No
 cleaned analytical outputs have been implemented.
@@ -197,6 +206,38 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Completed Investigation 31C and confirmed that standardized labor dates range
   from January 28, 2023, through June 30, 2026.
 - Confirmed that zero labor entries occur after the reporting cutoff.
+- Completed Investigation 32 by profiling numeric ranges and counts of zero and
+  negative values across all four numeric labor fields.
+- Confirmed that no negative values occur in `regular_hours`,
+  `overtime_hours`, `hourly_rate`, or `labor_cost`.
+- Completed Investigation 32A by inspecting the complete records associated
+  with the minimum and maximum `regular_hours` and `labor_cost` values.
+- Confirmed that the minimum and maximum labor-cost records are mathematically
+  consistent with their recorded hours and rates.
+- Completed Investigation 32B by quantifying entries above 40 regular hours and
+  comparing zero and positive overtime.
+- Determined that high regular hours combined with zero overtime are widespread,
+  but the available fields do not explain the governing business rule.
+- Decided not to reclassify regular or overtime hours without authoritative
+  stakeholder guidance.
+- Completed Investigation 33 by counting values that would change under
+  two-decimal rounding.
+- Confirmed that two-decimal scale preserves all non-NULL `overtime_hours`,
+  `hourly_rate`, and `labor_cost` values.
+- Completed Investigation 33A and established four decimal places as the
+  minimum scale required to preserve all `regular_hours` values.
+- Completed Investigation 34 by testing the combined-total labor-cost formula
+  across all testable labor rows.
+- Completed Investigation 34A by characterizing the size, direction, and
+  frequency of the formula mismatches.
+- Completed Investigation 34B by inspecting TE003191, the single 125.00
+  labor-cost formula exception.
+- Decided to retain TE003191 unchanged and flag its unexplained difference for
+  stakeholder clarification.
+- Completed Investigation 34C by testing component-level rounding as an
+  alternative labor-cost calculation method.
+- Rejected component-level rounding as the primary dataset-wide formula because
+  it produced substantially more mismatches than combined-total rounding.
 
 ## Key Findings
 
@@ -419,8 +460,52 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Zero labor entries occur after the June 30, 2026 reporting cutoff.
 - The labor-entry date range matches the previously profiled
   `cost_transactions.csv` date range.
-- `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost` still
-  require numeric range, precision, and calculation-consistency profiling.
+- `regular_hours` ranges from 0.0973 to 46, with no zero or negative values.
+- `overtime_hours` ranges from 0 to 9, with 14,033 zero values and no negative
+  values.
+- Among non-NULL values, `hourly_rate` ranges from 27 to 68, with no zero or
+  negative values.
+- `labor_cost` ranges from 5.80 to 3,822.02, with no zero or negative values.
+- Four entries tie at the maximum of 46 regular hours, and all four record zero
+  overtime.
+- TE014656 contains both the minimum `regular_hours` value of 0.0973 and the
+  minimum `labor_cost` of 5.80.
+- Multiplying TE014656's 0.0973 regular hours by its 59.64 hourly rate produces
+  5.802972, which rounds to the recorded labor cost of 5.80.
+- TE011416 contains the maximum `labor_cost` of 3,822.02.
+- Regular pay plus overtime pay at 1.5 times the hourly rate produces
+  3,822.0216 for TE011416, which rounds to its recorded labor cost.
+- A total of 6,727 entries record more than 40 regular hours.
+- Of those entries, 5,178, or 76.97%, record zero overtime, while 1,549, or
+  23.03%, record positive overtime.
+- The dataset does not establish the time period represented by each entry or
+  the business rules governing regular and overtime classification.
+- Rounding `regular_hours` to two decimal places would alter 94 values.
+- Rounding `regular_hours` to three decimal places would alter 82 values.
+- Rounding `regular_hours` to four decimal places would alter zero values.
+- Four decimal places are therefore required to preserve every observed
+  `regular_hours` value.
+- Two decimal places preserve every observed non-NULL `overtime_hours`,
+  `hourly_rate`, and `labor_cost` value.
+- The combined-total labor-cost formula was testable for 18,003 rows and
+  untestable for one row because TE001843 has a NULL `hourly_rate`.
+- Combined-total rounding matched 17,850 testable rows, or 99.15%, and
+  mismatched 153 rows, or 0.85%.
+- Of the 153 mismatches, 152 recorded labor costs were 0.01 below the calculated
+  value.
+- TE003191 was the only material exception, with recorded labor cost 125.00
+  above the calculated value.
+- TE003191 records 30.26 regular hours, zero overtime, an hourly rate of 46.46,
+  and a recorded labor cost of 1,530.88.
+- Its expected labor cost is 1,405.88, and no available field explains the
+  additional 125.00.
+- Component-level rounding matched 16,957 testable rows, or 94.19%, and
+  mismatched 1,046 rows, or 5.81%.
+- Component-level rounding produced 893 more net mismatches than combined-total
+  rounding and is not the better-supported dataset-wide formula.
+- The aggregate results do not reveal whether component-level rounding resolves
+  any of the original 152 one-cent mismatches while creating mismatches
+  elsewhere.
 
 ## Unresolved Items
 
@@ -466,22 +551,33 @@ The reporting cutoff is June 30, 2026, inclusive.
 ### Labor Entries
 
 - Preserve the immutable raw CSV, including both TE000222 occurrences, the NULL
-  `hourly_rate` on TE001843, and the raw `5/19/2023` value on TE002542.
+  `hourly_rate` on TE001843, the raw `5/19/2023` value on TE002542, and the
+  unexplained TE003191 labor-cost difference.
 - Retain only one TE000222 row in the cleaned analytical layer.
-- Convert cleaned `work_date` values to DATE using the validated
+- Convert cleaned `work_date` values to `DATE` using the validated
   standard-plus-fallback parsing rule.
 - Standardize TE002542's `work_date` to `2023-05-19` only in the cleaned
   analytical layer.
-- Profile numeric ranges, zero values, negative values, and decimal precision
-  for `regular_hours`, `overtime_hours`, `hourly_rate`, and `labor_cost`.
-- Validate the dataset-wide labor-cost calculation relationship.
-- Resolve TE001843's missing `hourly_rate` only if formula validation provides
-  sufficient evidence for reverse calculation.
+- Preserve `regular_hours` at four-decimal scale.
+- Preserve `overtime_hours`, `hourly_rate`, and `labor_cost` at two-decimal
+  scale.
+- Determine total `DECIMAL` precision when the cleaned labor schema is
+  implemented.
+- Complete Investigation 34D by comparing combined-total and component-level
+  formula outcomes at the row level.
+- Determine whether component-level rounding explains the original 152
+  one-cent differences while creating mismatches elsewhere.
+- Retain TE003191 unchanged and obtain stakeholder clarification for its
+  unexplained 125.00 labor-cost difference.
+- Obtain stakeholder clarification regarding the time period represented by a
+  labor entry and the business rules governing regular and overtime
+  classification.
+- Resolve TE001843's missing `hourly_rate` only if completed formula validation
+  provides sufficient evidence for reverse calculation.
 - Complete categorical and relationship profiling of `labor_entries.csv`.
 - Implement all documented cleaning rules only after raw-data profiling is
   complete.
 
-### Remaining Work
 
 - Complete standalone and relationship profiling of `labor_entries.csv`.
 - Profile `project_updates.csv`.
@@ -495,12 +591,16 @@ The reporting cutoff is June 30, 2026, inclusive.
 ## Exact Next Task
 
 Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-32.
+34D.
 
-Profile the numeric ranges and reasonableness of `regular_hours`,
-`overtime_hours`, `hourly_rate`, and `labor_cost`, including counts of zero and
-negative values. Investigate any potentially unreasonable values before
-continuing with precision and labor-cost calculation-consistency profiling.
+Calculate both the combined-total and component-level expected labor costs for
+every testable row. Classify each row as matching both formulas, matching
+combined-total only, matching component-level only, or matching neither
+formula.
+
+Use the category counts to determine whether component-level rounding explains
+the original 152 one-cent differences and how many previously matching rows it
+causes to mismatch.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
@@ -509,9 +609,9 @@ Do not write the SQL query until the purpose comment has been reviewed.
 The latest analysis commit is:
 
 - Commit:
-  [`e0b2100d97fb7ce91e8321a94706b7d6882500df`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e5ca8c54de65caf0f11918adee4e122e9b5fb7cf)
-- Message: `Profile labor entry identifiers, completeness, and dates`
-- Date: August 10, 2026
+  [`44aaa82bf75b0b4bca413e4c1f678aae25536b5d`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/44aaa82bf75b0b4bca413e4c1f678aae25536b5d)
+- Message: `Profile labor numeric precision and cost formulas`
+- Date: August 11, 2026
 
 The latest correction commit is:
 
