@@ -3,6 +3,128 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 12, 2026
+
+### Work Completed
+
+- Reorganized the combined profiling SQL into separate files for each dataset
+  profiled so far.
+- Created `sql/01_projects_profiling.sql`,
+  `sql/02_project_budgets_profiling.sql`,
+  `sql/03_cost_transactions_profiling.sql`, and
+  `sql/04_labor_entries_profiling.sql`.
+- Successfully executed all four dataset-specific profiling files and confirmed
+  that the existing investigations remained intact.
+- Removed the superseded combined `sql/01_data_profiling.sql` file.
+- Completed Investigation 34D by comparing the combined-total and
+  component-level labor-cost formula outcomes row by row.
+- Completed Investigation 34E by inspecting the component-level-only and
+  neither-match formula exceptions.
+- Completed Investigation 35 by evaluating a formula-based imputation for
+  TE001843's missing `hourly_rate`.
+- Revalidated the previously established `work_date` parsing rule and confirmed
+  that the existing date findings and cleaning decision remain valid.
+- Removed the redundant date-investigation blocks because the same analysis was
+  already completed and documented in Investigations 31–31C.
+- Completed Investigation 36 by profiling raw `trade` values and frequencies.
+- Completed Investigation 36A by inspecting the complete labor entries
+  associated with the unusual `carpenter ` and `General Labor` values.
+
+### Decisions and Reasoning
+
+- Dataset-specific profiling files will replace the original combined profiling
+  script because the combined file had grown to 2,731 lines and 107,341 bytes
+  and was causing noticeable editor lag.
+- Existing investigation numbers and documentation references were preserved
+  while the completed SQL was reorganized.
+- Each profiling file must remain independently executable.
+- Combined-total rounding remains the primary labor-cost validation formula.
+- Component-level rounding was rejected as the primary formula because it fixes
+  only 9 combined-total mismatches while causing 902 previously matching rows
+  to become mismatches.
+- The 152 one-cent combined-total differences will remain unchanged and be
+  documented as minor formula exceptions rather than automatically corrected.
+- TE003191 will remain unchanged and continue to be flagged for stakeholder
+  clarification because neither tested formula explains its additional 125.00
+  of recorded labor cost.
+- TE001843's missing `hourly_rate` will be imputed as 38.96 in the cleaned
+  analytical output.
+- The imputed rate will be flagged as formula-derived because it is supported by
+  the recorded hours and labor cost but is not independently confirmed by an
+  original payroll source.
+- The raw NULL `hourly_rate` for TE001843 will remain unchanged.
+- The previously established `work_date` cleaning rule remains unchanged:
+  standard DATE parsing will be attempted first, with `M/D/YYYY` parsing used
+  as a fallback.
+- TE000917's `trade` value of `carpenter ` will be standardized to
+  `Carpenter` because it is a confirmed capitalization and trailing-whitespace
+  variant.
+- No cleaning decision was established for TE001216's `General Labor` value
+  because the isolated row does not prove that it is equivalent to `Laborer`.
+- Employee E401's trade history must be inspected before deciding whether
+  `General Labor` should be standardized.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- Investigation 34D classified all 18,003 testable labor entries into four
+  mutually exclusive formula-outcome categories.
+- A total of 16,948 rows matched both the combined-total and component-level
+  formulas.
+- A total of 902 rows matched only the combined-total formula.
+- A total of 9 rows matched only the component-level formula.
+- A total of 144 rows matched neither formula.
+- The four categories reconcile to all 18,003 testable rows.
+- The overlap counts reproduce the earlier aggregate results: combined-total
+  rounding matches 17,850 rows, while component-level rounding matches 16,957
+  rows.
+- Component-level rounding produces 893 fewer matches overall.
+- All 9 component-level-only rows contain positive overtime hours.
+- For those 9 rows, the combined-total result is 0.01 above the recorded labor
+  cost, while component-level rounding reproduces the recorded value exactly.
+- Of the 144 neither-match rows, 143 have both formulas producing the same
+  result, 0.01 above the recorded labor cost.
+- TE003191 is the remaining neither-match row; both formulas produce 1,405.88,
+  which is 125.00 below its recorded labor cost of 1,530.88.
+- Component-level rounding explains only 9 of the 152 one-cent combined-total
+  differences, or 5.92%.
+- The remaining 143 one-cent differences, or 94.08%, are not explained by
+  either tested rounding method.
+- Investigation 35 tested all 4,101 possible two-decimal hourly rates from
+  27.00 through 68.00 for TE001843.
+- An hourly rate of 38.96 was the only candidate that reproduced TE001843's
+  recorded labor cost of 1,697.49 under the combined-total formula.
+- TE001843 records 43.57 regular hours and zero overtime hours, and 43.57
+  multiplied by 38.96 rounds to 1,697.49.
+- Revalidation of the existing `work_date` rule reproduced the previously
+  documented results: 18,003 values parse through standard DATE conversion,
+  one value requires the `M/D/YYYY` fallback, and zero values remain
+  unparseable.
+- Investigation 36 returned six distinct raw `trade` values:
+  `Carpenter`, `Laborer`, `Finisher`, `Superintendent`, `carpenter `, and
+  `General Labor`.
+- `Carpenter` occurred 7,160 times, `Laborer` 4,571 times, `Finisher` 3,703
+  times, and `Superintendent` 2,568 times.
+- The four established trade categories accounted for 18,002 of the 18,004
+  rows.
+- The formatting variant `carpenter ` and the unusual value `General Labor`
+  occurred once each.
+- TE000917, for employee E134 and project P005 on 2025-02-15, contains the
+  one-row `carpenter ` formatting variant.
+- TE001216, for employee E401 and project P006 on 2024-03-17, contains the
+  dataset's only `General Labor` value.
+
+### Next Session
+
+Begin Investigation 36B by writing its purpose comment. Inspect employee E401's
+trade history to determine whether the one-row `General Labor` value is
+consistent with that employee's other recorded trade values. Use the evidence
+to decide whether `General Labor` should be standardized to `Laborer` or remain
+an unresolved category.
+
+Do not write the SQL query until the purpose comment has been reviewed.
+
 ## August 11, 2026
 
 ### Work Completed
@@ -123,6 +245,16 @@ and lessons. Add each new dated entry directly below this introduction.
 - The aggregate formula results do not reveal whether component-level rounding
   resolves any of the original 152 one-cent mismatches while creating
   mismatches elsewhere.
+
+### Verification and Closeout
+
+- All four dataset-specific profiling files executed successfully.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- The SQL reorganization and new labor investigations were included in analysis
+  commit
+  [`e248c2e2472814ee07363e41204c5ec27c8473c1`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e248c2e2472814ee07363e41204c5ec27c8473c1).
+- The analysis commit was pushed to `main` with the message
+  `Split profiling SQL and extend labor analysis`.
 
 ### Next Session
 

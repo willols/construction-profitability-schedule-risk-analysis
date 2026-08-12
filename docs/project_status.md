@@ -1,47 +1,44 @@
 # Project Status
 
-Last updated: August 11, 2026
-
-Last updated: August 11, 2026
+Last updated: August 12, 2026
 
 ## Current Phase
 
-Raw-data profiling is in progress. First-pass standalone profiling of
-`projects.csv`, `project_budgets.csv`, and `cost_transactions.csv` is complete.
-Required transaction relationships with `projects.csv` and
-`project_budgets.csv` have also been validated.
+Raw-data profiling is in progress.
 
-For `cost_transactions.csv`, the only unmatched non-NULL project ID is P998.
-Six raw transaction-to-budget project/category mismatches were identified and
-explained by documented project-ID or category inconsistencies. After applying
-the proposed corrections within profiling CTEs, zero unmatched transaction
-project/category pairs remained.
+First-pass standalone profiling is complete for:
 
-Payment-status treatment has been defined. Paid and approved transactions and
-applied credits will form incurred project cost. Pending transactions will be
-reported separately as pending cost exposure, with no assumed approval
-probability.
+- `projects.csv`
+- `project_budgets.csv`
+- `cost_transactions.csv`
 
-Standalone profiling of `labor_entries.csv` is complete through Investigation
-34C. Row-identifier validation, duplicate inspection, completeness profiling,
-date validation, numeric-range profiling, precision testing, and preliminary
-labor-cost formula validation are complete. Formula-overlap analysis,
-categorical profiling, and relationship validation remain.
+Profiling of `labor_entries.csv` is complete through Investigation 36A.
+Identifier validation, duplicate inspection, completeness profiling, date
+validation, numeric and precision testing, labor-cost formula validation,
+missing-rate evaluation, and initial trade profiling are complete.
 
-One exact labor-entry duplicate, one missing `hourly_rate`, one inconsistent
-`work_date` format, and one unexplained 125.00 labor-cost formula exception have
-been identified. Cleaning rules are documented for the duplicate and date
-variant, and required decimal scales have been established for all four numeric
-labor fields.
+Additional labor categorical profiling and project-relationship validation
+remain. `project_updates.csv` and `change_orders.csv` have not yet been
+profiled.
 
-Combined-total rounding is the better-supported labor-cost formula, matching
-99.15% of testable rows. Component-level rounding performs worse overall.
-TE001843's missing-rate decision remains deferred until Investigation 34D
-determines how the two formula outcomes overlap. TE003191's unexplained 125.00
-difference will remain unchanged and be flagged for stakeholder clarification.
+No cleaned analytical outputs have been implemented.
 
-`project_updates.csv` and `change_orders.csv` have not yet been profiled. No
-cleaned analytical outputs have been implemented.
+## Profiling File Structure
+
+Profiling SQL is organized into separate dataset-specific files:
+
+| Dataset | SQL file | Status |
+|---|---|---|
+| `projects.csv` | `sql/01_projects_profiling.sql` | Standalone profiling complete |
+| `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Standalone profiling complete |
+| `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql` | Standalone and required relationship profiling complete |
+| `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Profiling complete through Investigation 36A |
+| `project_updates.csv` | Planned: `sql/05_project_updates_profiling.sql` | Not started |
+| `change_orders.csv` | Planned: `sql/06_change_orders_profiling.sql` | Not started |
+
+The superseded combined `sql/01_data_profiling.sql` file has been removed.
+Existing investigation numbers and documentation references were preserved
+during the reorganization.
 
 ## Reporting Cutoff
 
@@ -54,564 +51,352 @@ The reporting cutoff is June 30, 2026, inclusive.
 - Future planned and forecast dates remain because they support schedule-risk
   analysis.
 
-## Completed
-
-- Profiled the inferred schema and sample values in `projects.csv`.
-- Confirmed 97 raw project rows and 96 distinct project IDs.
-- Confirmed that P042 is an exact duplicate in the immutable raw data.
-- Profiled project-level missing values and investigated P052's missing
-  `project_type`.
-- Profiled and interpreted raw `project_status` variations.
-- Diagnosed P013's ambiguous `baseline_completion_date`.
-- Diagnosed and safely normalized P066's formatted contract value in profiling
-  calculations.
-- Tested baseline and actual date ordering.
-- Profiled actual and baseline date ranges.
-- Profiled contract-value and budget ranges.
-- Tested whether any original budget exceeds its normalized original contract
-  value.
-- Documented the reporting-cutoff policy.
-- Began profiling `project_budgets.csv`.
-- Completed its schema inspection.
-- Assessed its row count, expected grain, and candidate-key uniqueness.
-- Identified and inspected its duplicated `budget_line_id`.
-- Profiled NULL, blank, and whitespace-only values.
-- Identified and inspected the row with a missing `original_budget_amount`.
-- Profiled `cost_category` values for formatting and consistency.
-- Identified the formatted value responsible for `approved_budget_change` being
-  inferred as `VARCHAR`.
-- Validated the candidate normalization rule across all populated
-  `approved_budget_change` values.
-- Completed Investigation 14 by profiling the range, NULL count, and
-  fractional values in `revised_budget_amount`.
-- Completed Investigation 14B by testing whether any
-  `revised_budget_amount` values contain meaningful precision beyond two
-  decimal places.
-- Began Investigation 15 to validate the relationship among the three monetary
-  fields.
-- Completed Investigation 15A by inspecting BUD-P031-01 and BUD-P057-04.
-- Completed Investigation 15B and confirmed that zero testable rows have
-  monetary calculation mismatches.
-- Completed Investigation 15C and classified 673 rows as matching, zero as
-  mismatching, and one as untestable.
-- Confirmed that the classification counts reconcile to all 674 source rows.
-- Completed Investigation 15D and calculated an inferred candidate
-  `original_budget_amount` of 31,672.00 for BUD-P057-04.
-- Decided to preserve BUD-P057-04's source NULL and treat the candidate as
-  inferred rather than observed.
-- Completed Investigation 16 by profiling maximum absolute monetary values.
-- Selected `DECIMAL(10, 2)` for cleaned `project_budgets` monetary fields.
-- Completed the first-pass standalone profiling of `project_budgets.csv`.
-- Began standalone profiling of `cost_transactions.csv`.
-- Completed Investigation 17 by inspecting its inferred schema, sample values,
-  row count, expected grain, and likely transaction identifier.
-- Confirmed that `cost_transactions.csv` contains 11,204 rows and eight
-  columns.
-- Completed Investigation 18 by comparing total, non-NULL, and distinct
-  `transaction_id` counts.
-- Completed Investigation 18A and identified TX000138 as the only repeated
-  `transaction_id`.
-- Completed Investigation 18B and confirmed that the two TX000138 records are
-  exact duplicates across all eight columns.
-- Established a cleaned-output rule to retain one TX000138 record and remove
-  one duplicate occurrence.
-- Completed Investigation 19 by profiling NULL, blank, and whitespace-only
-  values across all columns.
-- Identified one transaction with a missing `project_id`.
-- Executed the complete `sql/01_data_profiling.sql` file successfully with no
-  errors.
-  - Completed Investigation 19A by inspecting TX000316, the transaction with the
-  missing `project_id`.
-- Completed Investigation 19B by using transaction-order context to evaluate
-  P003 as the probable project assignment.
-- Used `LAG()` and `QUALIFY` to identify project-block transitions.
-- Identified 97 distinct non-NULL project IDs and 101 project-block starts.
-- Accepted P003 as the cleaned-output assignment for TX000316 based on strong
-  internal evidence and simulated client confirmation.
-- Completed Investigation 20 and identified `$46.90` as the only amount that
-  fails direct conversion to `DECIMAL(18, 2)`.
-- Completed Investigation 20A and confirmed that all 11,204 amount values parse
-  successfully after removing `$` and `,`.
-- Completed Investigation 20B by profiling normalized amount range, zero and
-  negative values, and decimal precision.
-- Confirmed that zero amount values change when rounded to two decimal places.
-- Selected `DECIMAL(10, 2)` for the cleaned `cost_transactions.amount` field.
-- Completed Investigation 20C and confirmed that the three negative
-  transactions are legitimate returned-material credits.
-- Completed Investigation 20D and determined that the credits explain the
-  repeated transaction blocks for P014, P047, and P082.
-- Completed Investigation 20E and confirmed that P998 interrupts the P007
-  transaction sequence.
-- Completed Investigations 20F through 20F-B by inspecting TX000729, comparing
-  it with surrounding P007 transactions, and checking P998 across
-  `projects.csv` and `project_budgets.csv`.
-- Established a cleaned-output rule to assign TX000729 to P007 while preserving
-  the raw P998 value.
-- Completed Investigation 21 by profiling `cost_category` values and identifying
-  two one-row variants requiring standardization.
-- Completed Investigation 22 by profiling `payment_status` values and identifying
-  two one-row variants requiring standardization.
-- Confirmed that `applied` is a valid status for the three returned-material
-  credits.
-- Completed Investigation 23 and confirmed that no transaction occurs after the
-  June 30, 2026 reporting cutoff.
-- Completed Investigation 24 and confirmed that the 21 vendor names require no
-  specific standardization mappings.
-  - Completed Investigation 25 and confirmed that P998 is the only unmatched
-  non-NULL transaction project ID.
-- Completed Investigation 26 by standardizing payment statuses and calculating
-  transaction counts and net amounts by status.
-- Defined incurred cost, pending cost exposure, and maximum cost exposure
-  treatment for the final analysis.
-- Completed Investigation 27 and identified six unmatched raw transaction
-  project/category pairs.
-- Completed Investigation 27A and confirmed that the P019, P044, and P071
-  mismatches result from budget-side category formatting inconsistencies rather
-  than missing budget lines.
-- Completed Investigation 27B by applying documented project-ID and category
-  corrections within profiling CTEs.
-- Confirmed that the standardized transaction-to-budget relationship check
-  returns zero unmatched project/category pairs.
-- Completed Investigation 28 by inspecting the `labor_entries.csv` schema,
-  sample values, apparent row grain, candidate identifier, and initial
-  profiling priorities.
-- Completed standalone and relationship profiling of
-  `cost_transactions.csv`.
-  - Completed Investigation 29 by comparing total, non-NULL, and distinct
-  `time_entry_id` counts.
-- Completed Investigation 29A and identified TE000222 as the only repeated
-  `time_entry_id`.
-- Completed Investigation 29B and confirmed that the two TE000222 records are
-  exact duplicates across all nine columns.
-- Established a cleaned-output rule to retain one TE000222 row and remove one
-  duplicate occurrence.
-- Completed Investigation 30 by profiling NULL, empty, and whitespace-only
-  values across all nine `labor_entries.csv` columns.
-- Confirmed that all text columns are complete and that `hourly_rate` is the
-  only numeric column containing a NULL value.
-- Completed Investigation 30A by inspecting TE001843, the row with the missing
-  `hourly_rate`.
-- Completed Investigation 30B by calculating an implied rate of 38.96 and
-  evaluating employee E115's recorded rate history.
-- Confirmed that 38.96 reproduces TE001843's recorded `labor_cost`, but deferred
-  the correction because employee history does not corroborate the rate.
-- Completed Investigation 31 by testing all `work_date` values for direct DATE
-  conversion.
-- Completed Investigation 31A and identified TE002542's `5/19/2023` value as
-  the only formatting variant that fails direct conversion.
-- Established a cleaned-output rule to standardize TE002542's `work_date` to
-  the DATE value `2023-05-19`.
-- Completed Investigation 31B and confirmed that the standard-plus-fallback
-  parsing rule converts all 18,004 `work_date` values successfully.
-- Completed Investigation 31C and confirmed that standardized labor dates range
-  from January 28, 2023, through June 30, 2026.
-- Confirmed that zero labor entries occur after the reporting cutoff.
-- Completed Investigation 32 by profiling numeric ranges and counts of zero and
-  negative values across all four numeric labor fields.
-- Confirmed that no negative values occur in `regular_hours`,
-  `overtime_hours`, `hourly_rate`, or `labor_cost`.
-- Completed Investigation 32A by inspecting the complete records associated
-  with the minimum and maximum `regular_hours` and `labor_cost` values.
-- Confirmed that the minimum and maximum labor-cost records are mathematically
-  consistent with their recorded hours and rates.
-- Completed Investigation 32B by quantifying entries above 40 regular hours and
-  comparing zero and positive overtime.
-- Determined that high regular hours combined with zero overtime are widespread,
-  but the available fields do not explain the governing business rule.
-- Decided not to reclassify regular or overtime hours without authoritative
-  stakeholder guidance.
-- Completed Investigation 33 by counting values that would change under
-  two-decimal rounding.
-- Confirmed that two-decimal scale preserves all non-NULL `overtime_hours`,
-  `hourly_rate`, and `labor_cost` values.
-- Completed Investigation 33A and established four decimal places as the
-  minimum scale required to preserve all `regular_hours` values.
-- Completed Investigation 34 by testing the combined-total labor-cost formula
-  across all testable labor rows.
-- Completed Investigation 34A by characterizing the size, direction, and
-  frequency of the formula mismatches.
-- Completed Investigation 34B by inspecting TE003191, the single 125.00
-  labor-cost formula exception.
-- Decided to retain TE003191 unchanged and flag its unexplained difference for
-  stakeholder clarification.
-- Completed Investigation 34C by testing component-level rounding as an
-  alternative labor-cost calculation method.
-- Rejected component-level rounding as the primary dataset-wide formula because
-  it produced substantially more mismatches than combined-total rounding.
-
-## Key Findings
+## Dataset Status
 
 ### Projects
 
-- P052's missing `project_type` cannot be reliably inferred from its other
-  attributes.
-- All 21 missing `actual_completion_date` values belong to active or on-hold
-  status variants.
+Standalone profiling is complete.
+
+Key results:
+
+- `projects.csv` contains 97 raw rows and 96 distinct project IDs.
+- P042 is an exact duplicate.
+- P052 is the only project with a missing `project_type`.
 - Six raw project-status labels represent three logical categories: active,
   completed, and on hold.
-- P013's raw `baseline_completion_date` value, `8/10/2023`, is ambiguous
-  between August 10 and October 8, 2023.
-- P066's raw `original_contract_value`, `$672,000`, has a clear normalized
-  value of `672000.00`.
-- No safely tested baseline or actual date-ordering violation was identified.
-- No actual-date boundary extends beyond the June 30, 2026, reporting cutoff.
-- The maximum safely parsed baseline completion date is December 18, 2026.
-  This is not a cutoff violation because it is a planned date.
+- P013 contains the ambiguous baseline completion date `8/10/2023`.
+- P066 contains the formatted original contract value `$672,000`.
+- No actual completion date occurs before its corresponding actual start date.
+- No actual activity occurs after the reporting cutoff.
+- Safely parsed baseline completion dates extend through December 18, 2026.
+  Future baseline dates remain valid for schedule-risk analysis.
 - Normalized original contract values range from $276,000 to $3,773,000.
 - Original budgets range from $223,600 to $2,917,000.
-- No zero or negative processed contract value or budget was identified.
 - No original budget exceeds its normalized original contract value.
+
+Confirmed cleaning rules:
+
+- Retain one P042 row in cleaned output.
+- Normalize project statuses through explicit documented mappings.
+- Normalize P066's original contract value to `672000.00`.
+- Preserve P013's raw date and exclude it from calculations requiring a
+  confirmed baseline completion date.
+- Treat P052's `project_type` as unknown unless authoritative evidence becomes
+  available.
 
 ### Project Budgets
 
+Standalone profiling is complete.
+
+Key results:
+
 - `project_budgets.csv` contains 674 rows, 673 distinct `budget_line_id`
-  values, 97 distinct `project_id` values, and 673 distinct `project_id` and
-  `cost_category` combinations.
-- One row is expected to represent one budget line for one project and one cost
-  category.
-- BUD-P031-01 appears twice. The two rows match across all six columns,
-  confirming an exact duplicate.
-- The BUD-P031-01 duplicate explains both one-row candidate-key discrepancies.
-- No NULL, blank, or whitespace-only values were identified in
-  `budget_line_id`, `project_id`, `cost_category`, or
-  `approved_budget_change`.
-- No missing `revised_budget_amount` values were identified.
+  values, 97 distinct project IDs, and 673 distinct project/category pairs.
+- BUD-P031-01 appears twice, and the two records are exact duplicates.
 - BUD-P057-04 is the only row with a missing `original_budget_amount`.
-- BUD-P057-04 has an `approved_budget_change` of 0 and a
-  `revised_budget_amount` of 31672.
-- Eleven distinct raw `cost_category` labels were identified. Seven appear to
-  be canonical categories.
-- Four inconsistent category variants were identified:
+- BUD-P057-04 has an approved change of 0 and a revised budget of 31,672.00.
+- The formula-derived candidate original budget for BUD-P057-04 is 31,672.00,
+  but the value is not source-confirmed.
+- Eleven raw `cost_category` values represent seven canonical categories.
+- `$3,485.49` is the only approved-budget-change value that fails direct
+  numeric conversion.
+- Removing `$` and `,` allows every populated approved change to parse.
+- Revised budgets range from 6,957.72 to 886,036.18.
+- Two-decimal scale preserves every observed revised budget.
+- Of 674 rows, 673 satisfy the expected monetary relationship and one is
+  untestable because of the missing original budget.
+- `DECIMAL(10, 2)` was selected for cleaned monetary fields.
+
+Confirmed cleaning rules:
+
+- Retain one BUD-P031-01 row in cleaned output.
+- Apply the following category mappings:
   - `General conditions` → `General Conditions`
   - `Materials ` → `Materials`
   - `labor` → `Labor`
   - `Sub-Contractors` → `Subcontractors`
-- `$3,485.49` is the only populated `approved_budget_change` value that fails
-  direct conversion to `DECIMAL(18, 2)`, and it appears once.
-- Removing the currency symbol and thousands separator produced zero remaining
-  conversion failures across all populated values.
-- `revised_budget_amount` ranges from 6,957.72 to 886,036.18.
-- A total of 406 `revised_budget_amount` values contain a fractional component,
-  confirming that the column should not be stored as an integer.
-- Zero `revised_budget_amount` values changed when rounded to two decimal
-  places.
-- A scale of 2 can therefore preserve all observed
-  `revised_budget_amount` values without rounding.
-- Investigation 15B returned zero genuine mismatch rows among testable records.
-- Of the 674 source rows, 673 are matching, zero are mismatching, and one is
-  untestable.
-- The matching, mismatching, and untestable counts reconcile to all 674 source
-  rows.
-- BUD-P057-04 is the only untestable row because its
-  `original_budget_amount` is NULL.
-- BUD-P057-04 has a normalized `approved_budget_change` of 0.00 and a
-  normalized `revised_budget_amount` of 31,672.00.
-- Subtracting the approved change from the revised amount produces an inferred
-  candidate `original_budget_amount` of 31,672.00.
-- The candidate is not source-confirmed. The source NULL will be preserved, and
-  the candidate will be flagged as inferred if used for analysis.
-- The maximum absolute observed monetary values are 845,930.00 for
-  `original_budget_amount`, 104,800.44 for normalized
-  `approved_budget_change`, and 886,036.18 for `revised_budget_amount`.
-- The inferred candidate maximum is 31,672.00.
-- Observed values require at most six digits before the decimal and a scale of
-  two.
-- `DECIMAL(8, 2)` is the minimum compatible type, but `DECIMAL(10, 2)` was
-  selected to provide reasonable future headroom.
+- Remove `$` and `,` from `approved_budget_change` before numeric conversion.
+- Convert cleaned monetary fields to `DECIMAL(10, 2)`.
+- Preserve BUD-P057-04's source NULL.
+- If the formula-derived 31,672.00 candidate is used, expose it separately and
+  flag it as inferred.
 
 ### Cost Transactions
 
-- `cost_transactions.csv` contains 11,204 rows and eight columns.
-- One row is expected to represent one cost transaction.
-- `transaction_id` is the intended row-level identifier.
-- `transaction_date` was inferred as `DATE`.
-- `transaction_id`, `project_id`, `cost_category`, `vendor_name`,
-  `description`, `amount`, and `payment_status` were inferred as `VARCHAR`.
-- The first ten sampled `amount` values appeared numeric and contained no
-  visible formatting that explained the `VARCHAR` inference.
-- The file contains 11,204 non-NULL `transaction_id` values and 11,203 distinct
+Standalone and required transaction-relationship profiling is complete.
+
+Key results:
+
+- `cost_transactions.csv` contains 11,204 rows and 11,203 distinct
   `transaction_id` values.
-- TX000138 occurs twice, and the two records match across all eight columns.
-- TX000138 represents a paid Materials cost of 14,821.14 for project P002.
-- Retaining both TX000138 records would overstate P002's Materials costs by
-  14,821.14 and understate its profitability by the same amount.
-- `project_id` contains one NULL value and no blank or whitespace-only values.
-- The remaining seven columns contain no NULL values.
-- All seven `VARCHAR` columns contain no blank or whitespace-only values.
-- TX000316 is the transaction with the missing `project_id`.
-- P003 begins at TX000236, and the P004 block begins at TX000360.
-- TX000316 falls within P003's transaction range and is immediately surrounded
-  by P003 transactions.
-- P003 will be assigned to TX000316 in cleaned output based on strong internal
-  evidence and simulated client confirmation.
-- The transaction-order analysis identified 97 distinct non-NULL project IDs
-  and 101 project-block starts.
-- P007, P014, P047, and P082 each appear in more than one transaction block.
-- P998 appears once at TX000729 and splits P007 into two blocks.
-- `$46.90` is the only populated `amount` value that fails direct conversion to
-  `DECIMAL(18, 2)`.
-- After removing `$` and `,`, all 11,204 amount values converted successfully,
-  with zero normalized parse failures.
-- Normalized amounts range from -1,800.00 to 83,246.69.
-- No zero amounts were found.
-- Zero values changed when rounded to two decimal places, confirming that a
-  scale of two preserves every observed amount.
-- `DECIMAL(10, 2)` was selected for the cleaned `amount` field.
-- Three negative transactions were identified: TX011201, TX011202, and
-  TX011203.
-- Each negative transaction is a 1,800.00 returned-material credit with a
-  payment status of `applied`.
-- Preserve the negative values so the credits correctly reduce their projects'
-  material costs.
-- The three credits explain the repeated transaction blocks for P014, P047,
-  and P082.
+- TX000138 occurs twice, and the two records are exact duplicates.
+- Retaining both TX000138 records would overstate P002's Materials cost by
+  14,821.14.
+- TX000316 is the only transaction with a missing `project_id`.
+- Transaction-order evidence supports assigning TX000316 to P003.
 - TX000729 is the only transaction assigned to P998.
-- TX000729 is immediately preceded and followed by P007 transactions and is
-  consistent with the surrounding P007 records.
-- P998 does not appear in `projects.csv` or `project_budgets.csv`.
-- Within the simulated client scenario, assign TX000729 to P007 only in cleaned
-  output.
-- Eight distinct raw `cost_category` values were observed. Six canonical values
-  account for 11,202 transactions.
-- Two category variants require standardization:
-  - `Sub-Contractor` → `Subcontractors`
-  - `materials ` → `Materials`
-- Six distinct raw `payment_status` values were observed. Four canonical values
-  account for 11,202 transactions.
-- Two payment-status variants require standardization:
-  - `PENDING ` → `pending`
-  - `Paid` → `paid`
+- P998 does not exist in `projects.csv` or `project_budgets.csv`.
+- Transaction context supports assigning TX000729 to P007.
+- `$46.90` is the only amount that fails direct numeric conversion.
+- Removing `$` and `,` allows all 11,204 amount values to parse.
+- Normalized amounts range from -1,800.00 to 83,246.69.
+- Two-decimal scale preserves every observed amount.
+- `DECIMAL(10, 2)` was selected for the cleaned amount field.
+- Three negative transactions are valid returned-material credits of
+  -1,800.00 each.
 - Transaction dates range from January 28, 2023, through June 30, 2026.
 - No transaction occurs after the reporting cutoff.
-- Twenty-one distinct vendor names account for all 11,204 transactions, with no
-  apparent variants requiring standardization.
-- P998 is the only non-NULL transaction project ID without a match in
-  `projects.csv`.
-- Payment-status standardization requires `LOWER(TRIM(payment_status))` because
-  one pending value contains trailing whitespace.
-- After standardization, the 11,204 transactions consolidate into four statuses:
-  - `paid`: 8,586 transactions totaling $67,763,269.51
-  - `approved`: 1,635 transactions totaling $12,725,390.85
-  - `pending`: 980 transactions totaling $7,961,647.60
-  - `applied`: 3 transactions totaling -$5,400.00
-- Paid, approved, and applied transactions have a combined net incurred cost of
-  $80,483,260.36.
-- All statuses have a combined net amount of $88,444,907.96.
-- Pending transactions will be reported separately as $7,961,647.60 of pending
+- P998 is the only unmatched non-NULL transaction project ID.
+- Six raw transaction project/category pairs initially failed budget matching.
+- All six mismatches are explained by documented project-ID or category
+  inconsistencies.
+- After applying documented corrections, zero transaction project/category
+  pairs remain unmatched.
+
+Payment-status results after standardization:
+
+- `paid`: 8,586 transactions totaling $67,763,269.51
+- `approved`: 1,635 transactions totaling $12,725,390.85
+- `pending`: 980 transactions totaling $7,961,647.60
+- `applied`: 3 transactions totaling -$5,400.00
+
+Reporting treatment:
+
+- Paid and approved transactions form incurred cost.
+- Applied credits remain negative and reduce incurred cost.
+- Net incurred cost is $80,483,260.36.
+- Pending transactions are reported separately as $7,961,647.60 of pending
   cost exposure.
-- Six unmatched raw transaction project/category pairs were identified:
-  - P008 + `materials `
-  - P011 + `Sub-Contractor`
-  - P019 + `Materials`
-  - P044 + `Subcontractors`
-  - P071 + `General Conditions`
-  - P998 + `Materials`
-- P019 uses a `Materials ` budget category with trailing whitespace.
-- P044 uses `Sub-Contractors` instead of `Subcontractors`.
-- P071 uses `General conditions` instead of `General Conditions`.
-- All six raw relationship mismatches are explained by documented project-ID or
-  category inconsistencies rather than genuinely missing budget lines.
-- The standardized transaction-to-budget validation returned zero unmatched
-  project/category pairs.
+- Maximum cost exposure is incurred cost plus pending cost exposure:
+  $88,444,907.96.
+- No approval probability will be assigned to pending transactions.
+
+Confirmed cleaning rules:
+
+- Retain one TX000138 record.
+- Assign P003 specifically to TX000316.
+- Assign P007 specifically to TX000729.
+- Remove `$` and `,` from amount values before conversion to
+  `DECIMAL(10, 2)`.
+- Apply the following category mappings:
+  - `Sub-Contractor` → `Subcontractors`
+  - `materials ` → `Materials`
+- Standardize payment statuses with `LOWER(TRIM(payment_status))`.
+- Preserve negative applied credits.
 
 ### Labor Entries
 
+Profiling is complete through Investigation 36A.
+
+#### Structure and Completeness
+
 - `labor_entries.csv` contains 18,004 raw rows and nine columns.
-- The apparent grain is one recorded labor entry for one employee on one project
-  and work date.
+- The apparent grain is one labor entry for one employee on one project and work
+  date.
 - The file contains 18,004 non-NULL `time_entry_id` values and 18,003 distinct
-  `time_entry_id` values.
-- TE000222 occurs twice, and both records match across all nine columns,
-  confirming an exact duplicate.
-- After removing one TE000222 occurrence, the expected cleaned row count and
-  distinct `time_entry_id` count are both 18,003.
-- `time_entry_id` can serve as the row-level identifier after exact-duplicate
-  removal.
-- All text columns contain values, with no NULL, empty, or whitespace-only
-  strings.
-- All numeric columns are complete except for one NULL `hourly_rate`.
-- TE001843 is the only row with a missing `hourly_rate`.
-- TE001843 belongs to employee E115, project P008, and the Carpenter trade, with
-  a `work_date` of March 22, 2024.
-- The row contains 43.57 regular hours, zero overtime hours, and a `labor_cost`
-  of 1,697.49.
-- Dividing `labor_cost` by `regular_hours` produces an implied `hourly_rate` of
-  38.96.
-- Multiplying 38.96 by 43.57 reproduces the recorded `labor_cost` of 1,697.49
-  after rounding to two decimal places.
-- Employee E115 has many distinct recorded hourly rates and no stable historical
-  rate pattern.
-- The rate 38.96 appears only once elsewhere in E115's history, on February 9,
-  2026, and does not corroborate the missing rate from March 22, 2024.
-- The correction for TE001843 remains unresolved pending dataset-wide
-  labor-cost formula validation.
-- All 18,004 `work_date` values are present.
-- A total of 18,003 values convert directly to `DATE`, while one value initially
-  fails conversion.
-- TE002542 contains the only directly unparseable value, `5/19/2023`, which uses
-  M/D/YYYY formatting.
-- The value unambiguously represents May 19, 2023, and will be standardized to
-  the DATE value `2023-05-19` in the cleaned analytical layer.
-- The standard-plus-fallback parsing rule converts all 18,004 `work_date`
-  values successfully, leaving zero unparseable dates.
-- Standardized `work_date` values range from January 28, 2023, through June 30,
-  2026.
-- The latest labor date is exactly the reporting cutoff.
-- Zero labor entries occur after the June 30, 2026 reporting cutoff.
-- The labor-entry date range matches the previously profiled
-  `cost_transactions.csv` date range.
+  identifiers.
+- TE000222 occurs twice, and the two records are exact duplicates.
+- After duplicate removal, the expected cleaned row count and distinct
+  identifier count are both 18,003.
+- All text columns are complete.
+- `hourly_rate` is the only column containing a NULL value.
+
+#### Work Dates
+
+- All 18,004 `work_date` values are populated.
+- A total of 18,003 values parse directly as DATE.
+- TE002542 contains the only direct parsing failure: `5/19/2023`.
+- The value unambiguously represents May 19, 2023.
+- Standard parsing followed by an `M/D/YYYY` fallback converts all 18,004
+  values successfully.
+- Standardized dates range from January 28, 2023, through June 30, 2026.
+- No labor entry occurs after the reporting cutoff.
+
+#### Numeric Fields
+
 - `regular_hours` ranges from 0.0973 to 46, with no zero or negative values.
 - `overtime_hours` ranges from 0 to 9, with 14,033 zero values and no negative
   values.
-- Among non-NULL values, `hourly_rate` ranges from 27 to 68, with no zero or
-  negative values.
+- Non-NULL `hourly_rate` values range from 27 to 68, with no zero or negative
+  values.
 - `labor_cost` ranges from 5.80 to 3,822.02, with no zero or negative values.
-- Four entries tie at the maximum of 46 regular hours, and all four record zero
+- Four entries contain the maximum of 46 regular hours, and all four record zero
   overtime.
-- TE014656 contains both the minimum `regular_hours` value of 0.0973 and the
-  minimum `labor_cost` of 5.80.
-- Multiplying TE014656's 0.0973 regular hours by its 59.64 hourly rate produces
-  5.802972, which rounds to the recorded labor cost of 5.80.
-- TE011416 contains the maximum `labor_cost` of 3,822.02.
-- Regular pay plus overtime pay at 1.5 times the hourly rate produces
-  3,822.0216 for TE011416, which rounds to its recorded labor cost.
 - A total of 6,727 entries record more than 40 regular hours.
-- Of those entries, 5,178, or 76.97%, record zero overtime, while 1,549, or
-  23.03%, record positive overtime.
-- The dataset does not establish the time period represented by each entry or
-  the business rules governing regular and overtime classification.
-- Rounding `regular_hours` to two decimal places would alter 94 values.
-- Rounding `regular_hours` to three decimal places would alter 82 values.
-- Rounding `regular_hours` to four decimal places would alter zero values.
-- Four decimal places are therefore required to preserve every observed
-  `regular_hours` value.
-- Two decimal places preserve every observed non-NULL `overtime_hours`,
-  `hourly_rate`, and `labor_cost` value.
-- The combined-total labor-cost formula was testable for 18,003 rows and
-  untestable for one row because TE001843 has a NULL `hourly_rate`.
-- Combined-total rounding matched 17,850 testable rows, or 99.15%, and
-  mismatched 153 rows, or 0.85%.
-- Of the 153 mismatches, 152 recorded labor costs were 0.01 below the calculated
+- Of those entries, 5,178, or 76.97%, record zero overtime.
+- The dataset does not establish the time period represented by a labor entry
+  or the business rules governing regular and overtime classification.
+- Four decimal places are required to preserve every `regular_hours` value.
+- Two decimal places preserve every non-NULL `overtime_hours`, `hourly_rate`,
+  and `labor_cost` value.
+
+#### Labor-Cost Formula Validation
+
+The supported combined-total formula is:
+
+```text
+ROUND(
+    (regular_hours × hourly_rate)
+    + (overtime_hours × hourly_rate × 1.5),
+    2
+)
+```
+
+Aggregate results:
+
+- The formula is testable for 18,003 rows.
+- It matches 17,850 rows, or 99.15%.
+- It mismatches 153 rows, or 0.85%.
+- Of the 153 mismatches, 152 recorded labor costs are 0.01 below the calculated
   value.
-- TE003191 was the only material exception, with recorded labor cost 125.00
-  above the calculated value.
-- TE003191 records 30.26 regular hours, zero overtime, an hourly rate of 46.46,
-  and a recorded labor cost of 1,530.88.
-- Its expected labor cost is 1,405.88, and no available field explains the
-  additional 125.00.
-- Component-level rounding matched 16,957 testable rows, or 94.19%, and
-  mismatched 1,046 rows, or 5.81%.
-- Component-level rounding produced 893 more net mismatches than combined-total
-  rounding and is not the better-supported dataset-wide formula.
-- The aggregate results do not reveal whether component-level rounding resolves
-  any of the original 152 one-cent mismatches while creating mismatches
-  elsewhere.
+- TE003191 is the only material exception.
+- TE003191 records labor cost of 1,530.88 compared with an expected 1,405.88,
+  producing an unexplained difference of 125.00.
+
+Formula-overlap results:
+
+- 16,948 rows match both formulas.
+- 902 rows match combined-total only.
+- 9 rows match component-level only.
+- 144 rows match neither formula.
+- Component-level rounding matches 16,957 rows overall, compared with 17,850
+  combined-total matches.
+- Component-level rounding fixes only 9 combined-total mismatches while causing
+  902 previously matching rows to mismatch.
+- Component-level rounding therefore produces 893 fewer matches overall.
+- All 9 component-level-only rows contain positive overtime.
+- For those 9 rows, combined-total is 0.01 above recorded labor cost while
+  component-level rounding matches exactly.
+- Of the 144 neither-match rows, 143 have both formulas producing the same
+  result, 0.01 above recorded labor cost.
+- TE003191 is the remaining neither-match row.
+
+Decision:
+
+- Combined-total rounding remains the primary labor-cost validation formula.
+- Component-level rounding is rejected as the primary formula.
+- The 152 one-cent exceptions will be preserved and documented rather than
+  automatically corrected.
+- TE003191 will remain unchanged and be flagged for stakeholder clarification.
+
+#### Missing Hourly Rate
+
+- TE001843 is the only row with a missing `hourly_rate`.
+- It records 43.57 regular hours, zero overtime, and labor cost of 1,697.49.
+- The implied hourly rate is 38.96.
+- Investigation 35 tested all 4,101 possible two-decimal rates from 27.00
+  through 68.00.
+- A rate of 38.96 was the only candidate that reproduced the recorded labor
+  cost under the combined-total formula.
+
+Decision:
+
+- Impute 38.96 in the cleaned analytical output.
+- Preserve the raw NULL.
+- Flag the cleaned value as formula-derived rather than source-confirmed.
+
+#### Trade Values
+
+Six distinct raw trade values were identified:
+
+- `Carpenter`: 7,160 rows
+- `Laborer`: 4,571 rows
+- `Finisher`: 3,703 rows
+- `Superintendent`: 2,568 rows
+- `carpenter `: 1 row
+- `General Labor`: 1 row
+
+The four established categories account for 18,002 of the 18,004 rows.
+
+- TE000917 contains the `carpenter ` formatting variant.
+- The value differs from `Carpenter` by capitalization and trailing whitespace.
+- TE001216 contains the dataset's only `General Labor` value.
+- TE001216 belongs to employee E401.
+- The isolated row does not provide enough evidence to determine whether
+  `General Labor` is equivalent to `Laborer`.
+
+Confirmed cleaning rules:
+
+- Retain one TE000222 row.
+- Convert `work_date` to DATE using standard parsing followed by the validated
+  `M/D/YYYY` fallback.
+- Standardize TE002542's date to `2023-05-19`.
+- Preserve `regular_hours` at four-decimal scale.
+- Preserve `overtime_hours`, `hourly_rate`, and `labor_cost` at two-decimal
+  scale.
+- Impute TE001843's hourly rate as 38.96 and flag it as formula-derived.
+- Standardize `carpenter ` to `Carpenter`.
+- Preserve raw values unchanged.
 
 ## Unresolved Items
 
 ### Projects
 
-- Keep P013's ambiguous baseline completion date unresolved until its intended
-  format is confirmed.
-- Remove the exact P042 duplicate only in cleaned data.
-- Treat P052 as unknown if a non-NULL project type is required in cleaned data.
-- Implement explicit cleaned-output mappings for project statuses.
-- Normalize P066's contract value in cleaned data.
+- Confirm P013's intended baseline date format.
+- Preserve P052's missing `project_type` as unknown unless authoritative
+  evidence becomes available.
 
 ### Project Budgets
 
-- Retain only one BUD-P031-01 row in cleaned data.
-- Standardize the four inconsistent `cost_category` variants in cleaned data.
-- Normalize `approved_budget_change` by removing `$` and `,` before conversion.
-- Convert cleaned monetary fields to `DECIMAL(10, 2)`.
-- Preserve BUD-P057-04's source NULL. If its inferred candidate is used for
-  analysis, expose it separately and flag it as inferred.
-- Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
-  distinct project IDs in `projects.csv` during relationship testing.
-
-### Cost Transactions
-
-- Retain only one TX000138 record in cleaned output.
-- Preserve the immutable raw CSV, including both TX000138 occurrences, the NULL
-  on TX000316, and the P998 value on TX000729.
-- Assign P003 specifically to TX000316 in the cleaned analytical layer.
-- Assign P007 specifically to TX000729 in the cleaned analytical layer.
-- Normalize `amount` by removing `$` and `,` before conversion to
-  `DECIMAL(10, 2)`.
-- Standardize documented `cost_category` variants to their canonical values.
-- Standardize payment statuses with `LOWER(TRIM(payment_status))`.
-- Preserve negative `applied` credits so they reduce incurred project cost.
-- Include paid, approved, and applied transactions in incurred cost.
-- Report pending transactions separately as pending cost exposure.
-- Report maximum cost exposure as incurred cost plus pending cost exposure.
-- Implement all documented rules only after raw-data profiling is complete.
-
-### Remaining Work
+- Compare the 97 distinct budget project IDs with the 96 distinct project IDs
+  in `projects.csv`.
+- Preserve BUD-P057-04's original-budget NULL unless a stakeholder confirms the
+  formula-derived candidate.
 
 ### Labor Entries
 
-- Preserve the immutable raw CSV, including both TE000222 occurrences, the NULL
-  `hourly_rate` on TE001843, the raw `5/19/2023` value on TE002542, and the
-  unexplained TE003191 labor-cost difference.
-- Retain only one TE000222 row in the cleaned analytical layer.
-- Convert cleaned `work_date` values to `DATE` using the validated
-  standard-plus-fallback parsing rule.
-- Standardize TE002542's `work_date` to `2023-05-19` only in the cleaned
-  analytical layer.
-- Preserve `regular_hours` at four-decimal scale.
-- Preserve `overtime_hours`, `hourly_rate`, and `labor_cost` at two-decimal
-  scale.
-- Determine total `DECIMAL` precision when the cleaned labor schema is
+- Inspect employee E401's trade history before establishing a cleaning rule for
+  `General Labor`.
+- Complete remaining categorical profiling.
+- Validate all labor `project_id` values against `projects.csv`.
+- Determine total DECIMAL precision when the cleaned labor schema is
   implemented.
-- Complete Investigation 34D by comparing combined-total and component-level
-  formula outcomes at the row level.
-- Determine whether component-level rounding explains the original 152
-  one-cent differences while creating mismatches elsewhere.
-- Retain TE003191 unchanged and obtain stakeholder clarification for its
-  unexplained 125.00 labor-cost difference.
+- Obtain stakeholder clarification for TE003191's unexplained 125.00
+  labor-cost difference.
 - Obtain stakeholder clarification regarding the time period represented by a
-  labor entry and the business rules governing regular and overtime
-  classification.
-- Resolve TE001843's missing `hourly_rate` only if completed formula validation
-  provides sufficient evidence for reverse calculation.
-- Complete categorical and relationship profiling of `labor_entries.csv`.
-- Implement all documented cleaning rules only after raw-data profiling is
-  complete.
+  labor entry and the rules governing regular and overtime classification.
 
+### Remaining Datasets and Relationships
 
-- Complete standalone and relationship profiling of `labor_entries.csv`.
 - Profile `project_updates.csv`.
 - Profile `change_orders.csv`.
-- Compare the 97 distinct project IDs in `project_budgets.csv` with the 96
-  distinct project IDs in `projects.csv`.
-- Validate the remaining key relationships between supplied files.
-- Create cleaned analytical outputs after raw-data profiling is complete.
-- Build project profitability, budget-variance, and schedule-risk metrics.
+- Validate the remaining required relationships between supplied files.
+
+## Remaining Project Work
+
+1. Complete standalone and relationship profiling of `labor_entries.csv`.
+2. Profile `project_updates.csv`.
+3. Profile `change_orders.csv`.
+4. Compare project IDs in `project_budgets.csv` with `projects.csv`.
+5. Validate remaining cross-file relationships.
+6. Implement documented cleaning rules in cleaned analytical outputs.
+7. Build project profitability and budget-variance metrics.
+8. Build schedule-risk metrics.
+9. Create final analytical tables and stakeholder-facing outputs.
+10. Validate and document the completed analysis.
 
 ## Exact Next Task
 
-Open `sql/01_data_profiling.sql` and write the purpose comment for Investigation
-34D.
+Open `sql/04_labor_entries_profiling.sql` and write the purpose comment for
+Investigation 36B: Inspect employee E401's trade history.
 
-Calculate both the combined-total and component-level expected labor costs for
-every testable row. Classify each row as matching both formulas, matching
-combined-total only, matching component-level only, or matching neither
-formula.
+Profile the raw trade values recorded across E401's labor entries and determine
+whether the one-row `General Labor` value is consistent with an otherwise
+established `Laborer` history.
 
-Use the category counts to determine whether component-level rounding explains
-the original 152 one-cent differences and how many previously matching rows it
-causes to mismatch.
+Use the evidence to decide whether `General Labor` should be standardized to
+`Laborer` or remain unresolved.
 
 Do not write the SQL query until the purpose comment has been reviewed.
 
 ## Latest Analysis Commit
 
-The latest analysis commit is:
+The latest committed analysis is:
 
 - Commit:
-  [`44aaa82bf75b0b4bca413e4c1f678aae25536b5d`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/44aaa82bf75b0b4bca413e4c1f678aae25536b5d)
-- Message: `Profile labor numeric precision and cost formulas`
-- Date: August 11, 2026
+  [`e248c2e2472814ee07363e41204c5ec27c8473c1`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e248c2e2472814ee07363e41204c5ec27c8473c1)
+- Message: `Split profiling SQL and extend labor analysis`
+- Date: August 12, 2026
 
 The latest correction commit is:
 
@@ -624,9 +409,10 @@ The latest correction commit is:
 
 At the end of each work session:
 
-1. Update the current phase.
-2. Add newly completed work and findings.
-3. Remove resolved items and add new unresolved items.
-4. Replace the exact next task.
-5. Record the latest analysis commit.
-6. Add a dated entry to `docs/project_notes.md`.
+1. Update the current phase and dataset-status sections.
+2. Add newly confirmed findings and cleaning rules.
+3. Remove resolved items and add newly identified unresolved items.
+4. Update the remaining-work list if project scope or sequencing changes.
+5. Replace the exact next task.
+6. Record the latest analysis commit.
+7. Add a dated entry to `docs/project_notes.md`.
