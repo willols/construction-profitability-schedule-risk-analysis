@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 12, 2026
+Last updated: August 13, 2026
 
 ## Current Phase
 
@@ -12,14 +12,19 @@ First-pass standalone profiling is complete for:
 - `project_budgets.csv`
 - `cost_transactions.csv`
 
-Profiling of `labor_entries.csv` is complete through Investigation 36A.
-Identifier validation, duplicate inspection, completeness profiling, date
-validation, numeric and precision testing, labor-cost formula validation,
-missing-rate evaluation, and initial trade profiling are complete.
+Profiling of `labor_entries.csv` is complete through Investigation 38B.
+Trade-history analysis, employee-ID profiling, and labor-to-project relationship
+validation are complete.
 
-Additional labor categorical profiling and project-relationship validation
-remain. `project_updates.csv` and `change_orders.csv` have not yet been
-profiled.
+Investigations 39 and 39A produced initial labor-timeline results, but those
+results require revalidation because their `labor_dates` CTE omitted the
+previously established `M/D/YYYY` fallback for TE002542.
+
+Investigation 40 has begun but has not been executed. It will determine the
+labor-entry grain and whether regular and overtime classification can be
+evaluated from the available fields.
+
+`project_updates.csv` and `change_orders.csv` have not yet been profiled.
 
 No cleaned analytical outputs have been implemented.
 
@@ -32,7 +37,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `projects.csv` | `sql/01_projects_profiling.sql` | Standalone profiling complete |
 | `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Standalone profiling complete |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql` | Standalone and required relationship profiling complete |
-| `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Profiling complete through Investigation 36A |
+| `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Complete through Investigation 38B; timeline results require revalidation |
 | `project_updates.csv` | Planned: `sql/05_project_updates_profiling.sql` | Not started |
 | `change_orders.csv` | Planned: `sql/06_change_orders_profiling.sql` | Not started |
 
@@ -186,7 +191,8 @@ Confirmed cleaning rules:
 
 ### Labor Entries
 
-Profiling is complete through Investigation 36A.
+Profiling is complete through Investigation 38B. Investigations 39 and 39A
+require date-parsing revalidation, and Investigation 40 is in progress.
 
 #### Structure and Completeness
 
@@ -315,6 +321,101 @@ The four established categories account for 18,002 of the 18,004 rows.
 - The isolated row does not provide enough evidence to determine whether
   `General Labor` is equivalent to `Laborer`.
 
+#### Employee Trade History
+
+- E401 has 949 labor entries.
+- Of those entries, 948 are recorded as `Finisher` and one is recorded as
+  `General Labor`.
+- E401 has no entries recorded as `Laborer`.
+- The employee's history therefore does not support standardizing
+  `General Labor` to `Laborer`.
+- The available evidence cannot determine whether TE001216 represents a
+  legitimate temporary assignment or a source-data error.
+
+Decision:
+
+- Preserve TE001216's raw `General Labor` value.
+- Flag the entry as unresolved pending stakeholder clarification.
+- Do not map the value to either `Laborer` or `Finisher` without authoritative
+  evidence.
+
+#### Employee IDs
+
+- The dataset contains 19 distinct employee IDs.
+- Every employee ID matches the expected format of an uppercase `E` followed by
+  exactly three digits.
+- Entry counts range from 633 for E301 to 1,216 for E115.
+- No isolated low-frequency employee ID suggests a typo or stray value.
+
+Decision:
+
+- No `employee_id` cleaning or correction rule is required.
+
+#### Labor-to-Project Relationship
+
+- P996 is the only labor `project_id` that does not exist in `projects.csv`.
+- P996 affects one labor entry: TE000408.
+- TE000408 records internally consistent hours, rate, and labor cost, but its
+  row-level fields do not independently identify the intended project.
+- The five neighboring time entries before TE000408 and the five after it all
+  reference P003.
+- P996 therefore interrupts an otherwise continuous P003 project block.
+
+Decision:
+
+- Correct TE000408's project ID from P996 to P003 only in cleaned output.
+- Preserve the raw P996 value and flag the record as a source-data correction.
+
+#### Labor and Project Timelines
+
+The initial timeline query returned:
+
+- 18,003 deduplicated labor entries
+- 52 entries before baseline start
+- 0 entries before actual start
+- 2,818 entries after baseline completion
+- 0 entries after an available actual completion date
+- 0 entries after the reporting cutoff
+
+The initial project summary distributed the 2,818 post-baseline entries across
+78 projects.
+
+- P026 had the most post-baseline entries at 126.
+- The ten highest-count projects accounted for 973 entries.
+- P090 had the longest observed extension at 209 days beyond baseline
+  completion.
+- The initial results indicate that post-baseline labor is broadly distributed
+  rather than caused by a few isolated projects.
+- Labor after baseline completion represents schedule-variance evidence and
+  should not be treated automatically as a data-quality error.
+
+Revalidation requirement:
+
+- The timeline CTE used only `TRY_CAST(work_date AS DATE)` and therefore did not
+  parse TE002542's `5/19/2023` value.
+- TE002542 was included in the total row count but excluded from date
+  comparisons.
+- Investigations 39 and 39A must be rerun with the previously validated
+  standard-plus-`M/D/YYYY` fallback before these counts are considered final.
+
+#### Labor-Entry Grain and Overtime Interpretation
+
+Investigation 40 is in progress.
+
+The investigation will:
+
+- Determine whether employees have multiple labor entries on the same
+  `work_date`.
+- Determine whether same-date entries span multiple projects.
+- Aggregate regular and overtime hours across employee-date groups.
+- Inspect whether work dates follow a consistent weekday pattern.
+- Assess whether each row represents a daily entry, weekly entry, or project
+  allocation within a larger time record.
+- Determine whether the available evidence is sufficient to validate regular
+  and overtime classification.
+
+No overtime reclassification decision has been made.
+
 Confirmed cleaning rules:
 
 - Retain one TE000222 row.
@@ -326,6 +427,11 @@ Confirmed cleaning rules:
   scale.
 - Impute TE001843's hourly rate as 38.96 and flag it as formula-derived.
 - Standardize `carpenter ` to `Carpenter`.
+- Preserve TE001216's `General Labor` value and flag it as unresolved.
+- Assign P003 specifically to TE000408 in cleaned output.
+- Preserve TE000408's raw P996 value and flag the correction.
+- Do not reclassify regular or overtime hours without a confirmed time-entry
+  grain and authoritative overtime rule.
 - Preserve raw values unchanged.
 
 ## Unresolved Items
@@ -345,12 +451,14 @@ Confirmed cleaning rules:
 
 ### Labor Entries
 
-- Inspect employee E401's trade history before establishing a cleaning rule for
-  `General Labor`.
-- Complete remaining categorical profiling.
-- Validate all labor `project_id` values against `projects.csv`.
+- Revalidate Investigations 39 and 39A using the established
+  standard-plus-`M/D/YYYY` work-date parsing rule.
+- Complete Investigation 40 to determine the labor-entry grain and whether
+  overtime classification can be evaluated.
 - Determine total DECIMAL precision when the cleaned labor schema is
   implemented.
+- Obtain stakeholder clarification for TE001216's unresolved `General Labor`
+  value.
 - Obtain stakeholder clarification for TE003191's unexplained 125.00
   labor-cost difference.
 - Obtain stakeholder clarification regarding the time period represented by a
@@ -364,39 +472,48 @@ Confirmed cleaning rules:
 
 ## Remaining Project Work
 
-1. Complete standalone and relationship profiling of `labor_entries.csv`.
-2. Profile `project_updates.csv`.
-3. Profile `change_orders.csv`.
-4. Compare project IDs in `project_budgets.csv` with `projects.csv`.
-5. Validate remaining cross-file relationships.
-6. Implement documented cleaning rules in cleaned analytical outputs.
-7. Build project profitability and budget-variance metrics.
-8. Build schedule-risk metrics.
-9. Create final analytical tables and stakeholder-facing outputs.
-10. Validate and document the completed analysis.
+1. Revalidate labor timeline profiling and complete Investigation 40.
+2. Complete the final labor-entry cleaning and exception summary.
+3. Profile `project_updates.csv`.
+4. Profile `change_orders.csv`.
+5. Compare project IDs in `project_budgets.csv` with `projects.csv`.
+6. Validate remaining cross-file relationships.
+7. Implement documented cleaning rules in cleaned analytical outputs.
+8. Build project profitability and budget-variance metrics.
+9. Build schedule-risk metrics.
+10. Create final analytical tables and stakeholder-facing outputs.
+11. Validate and document the completed analysis.
 
 ## Exact Next Task
 
-Open `sql/04_labor_entries_profiling.sql` and write the purpose comment for
-Investigation 36B: Inspect employee E401's trade history.
+Open `sql/04_labor_entries_profiling.sql`.
 
-Profile the raw trade values recorded across E401's labor entries and determine
-whether the one-row `General Labor` value is consistent with an otherwise
-established `Laborer` history.
+First, update the `labor_dates` CTE in Investigations 39 and 39A to reuse the
+exact standard-plus-`M/D/YYYY` parsing rule validated in Investigation 31B.
+Rerun both investigations and update their findings if TE002542 changes any
+timeline count or project summary.
 
-Use the evidence to decide whether `General Labor` should be standardized to
-`Laborer` or remain unresolved.
-
-Do not write the SQL query until the purpose comment has been reviewed.
+After revalidating the timeline results, execute Investigation 40's prepared
+employee-date grouping query. Determine whether employees have multiple entries
+on the same date, whether those entries span multiple projects, and whether the
+evidence supports a daily, weekly, or project-allocation interpretation of each
+labor row.
 
 ## Latest Analysis Commit
 
 The latest committed analysis is:
 
 - Commit:
-  [`e248c2e2472814ee07363e41204c5ec27c8473c1`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e248c2e2472814ee07363e41204c5ec27c8473c1)
-- Message: `Split profiling SQL and extend labor analysis`
-- Date: August 12, 2026
+  [`6f919a9114e436cc1bc422d7377eec7c5fd1cb6e`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/6f919a9114e436cc1bc422d7377eec7c5fd1cb6e)
+- Message: `Extend labor relationship and timeline profiling`
+- Date: August 13, 2026
+
+The latest correction commit is:
+
+- Commit:
+  [`52a08ac4164bd7279d95e0ea6c91229d229c44ef`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/52a08ac4164bd7279d95e0ea6c91229d229c44ef)
+- Message: `Fix budget normalization query`
+- Date: July 31, 2026
 
 The latest correction commit is:
 

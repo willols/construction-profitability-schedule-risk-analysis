@@ -3,6 +3,116 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 13, 2026
+
+### Work Completed
+
+- Completed Investigation 36B by profiling employee E401's complete trade
+  history.
+- Completed Investigation 37 by profiling `employee_id` format, frequency, and
+  distinct values.
+- Completed Investigation 38 by validating labor-entry project IDs against the
+  distinct valid project list from `projects.csv`.
+- Completed Investigations 38A and 38B by inspecting the unmatched P996 labor
+  entry and its neighboring time-entry sequence.
+- Performed the initial Investigation 39 comparison of cleaned labor dates with
+  project baseline dates, actual dates, and the June 30, 2026 reporting cutoff.
+- Performed the initial Investigation 39A summary of post-baseline labor by
+  project.
+- Began Investigation 40 by documenting its purpose and preparing a query to
+  examine employee-date groups, project allocations, and combined hours.
+- Identified during closeout that Investigations 39 and 39A did not apply the
+  previously established `M/D/YYYY` fallback for TE002542. Their timeline
+  results require revalidation before being treated as final.
+
+### Decisions and Reasoning
+
+- TE001216's `General Labor` value will not be standardized to `Laborer`
+  because E401 has no entries recorded as `Laborer`.
+- TE001216 will retain its raw `General Labor` value and remain flagged as
+  unresolved because the available evidence cannot distinguish a legitimate
+  temporary assignment from a source-data error.
+- No `employee_id` cleaning rule is required because all observed IDs follow
+  the expected format and none appear at an anomalously low frequency.
+- TE000408's unmatched P996 value will be corrected to P003 only in the cleaned
+  analytical output.
+- The raw P996 value will be preserved, and the cleaned record will be flagged
+  as a source-data correction.
+- Labor timeline profiling will use deduplicated labor records, one project row
+  per `project_id`, and the documented P996-to-P003 correction.
+- Labor after baseline completion will be retained as schedule-variance
+  evidence rather than classified as a data-quality error.
+- The established labor-date parsing rule must be applied consistently:
+  standard DATE conversion first, followed by `M/D/YYYY` parsing as a fallback.
+- Regular and overtime hours will not be reclassified until the labor-entry
+  grain and applicable overtime rules can be supported by evidence.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- E401 has 949 labor entries: 948 recorded as `Finisher` and one recorded as
+  `General Labor`.
+- E401 has zero entries recorded as `Laborer`, so the employee's trade history
+  does not support mapping `General Labor` to `Laborer`.
+- `labor_entries.csv` contains 19 distinct employee IDs.
+- Every employee ID matches the expected format of an uppercase `E` followed by
+  exactly three digits.
+- Employee entry counts range from 633 for E301 to 1,216 for E115, with no
+  isolated low-frequency value suggesting a typo or stray ID.
+- One labor entry references an unmatched project ID: TE000408 references P996.
+- TE000408 records 44.56 regular hours, zero overtime hours, an hourly rate of
+  45.78, and labor cost of 2,039.96. The labor cost is internally consistent
+  with the recorded hours and rate.
+- The five time entries immediately before TE000408 and the five immediately
+  after it all reference P003.
+- The continuous neighboring sequence provides strong evidence that P996
+  interrupts a P003 project block and should be corrected to P003 in cleaned
+  output.
+- The initial Investigation 39 query evaluated 18,003 deduplicated labor
+  entries and returned:
+  - 52 entries before baseline start
+  - 0 entries before actual start
+  - 2,818 entries after baseline completion
+  - 0 entries after an available actual completion date
+  - 0 entries after the reporting cutoff
+- The initial Investigation 39A query distributed the 2,818 post-baseline
+  entries across 78 projects.
+- P026 initially had the most post-baseline entries at 126, approximately 4.5%
+  of the total.
+- The ten highest-count projects initially accounted for 973 post-baseline
+  entries, approximately 34.5% of the total.
+- P090 had the longest observed labor extension at 209 days beyond baseline
+  completion.
+- These timeline results remain provisional because TE002542's nonstandard
+  `5/19/2023` value was not parsed by the Investigation 39 CTE.
+
+### Verification and Closeout
+
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Only `sql/04_labor_entries_profiling.sql` was included in the analysis
+  commit.
+- Analysis commit
+  [`6f919a9114e436cc1bc422d7377eec7c5fd1cb6e`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/6f919a9114e436cc1bc422d7377eec7c5fd1cb6e)
+  was created on `main` with the message
+  `Extend labor relationship and timeline profiling`.
+- The complete profiling file was not re-executed during closeout because
+  Investigations 39 and 39A require the documented date-parsing correction and
+  Investigation 40 remains unexecuted.
+
+### Next Session
+
+First, correct the `labor_dates` CTE in Investigations 39 and 39A so
+`parsed_work_date` applies the previously validated standard-plus-fallback
+parsing rule. Rerun both investigations and update their findings if TE002542
+changes any timeline count or project summary.
+
+After the timeline results are revalidated, continue Investigation 40 by
+executing the prepared employee-date grouping query. Determine whether
+employees have multiple entries on the same date, whether those entries span
+multiple projects, and whether the available evidence supports a daily,
+weekly, or project-allocation interpretation of each labor row.
+
 ## August 12, 2026
 
 ### Work Completed
