@@ -1042,3 +1042,381 @@ WHERE trade = 'General Labor'
 --   cleaning decision is established for 'General Labor'.
 
 -- Investigation 36B: Inspect E401's trade history
+-- Purpose:
+-- - Review all raw trade values recorded for employee E401.
+-- - Determine whether the one-row General Labor value is inconsistent
+--   with an otherwise established Laborer history.
+-- - Use the employee-level evidence to decide whether General Labor
+--   should be standardized to Laborer or remain unresolved.
+WITH e401_entries AS (
+    SELECT *
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+    WHERE employee_id = 'E401'
+)
+SELECT
+    trade,
+    COUNT(*) AS row_count
+FROM e401_entries
+GROUP BY trade
+ORDER BY row_count DESC;
+
+-- Findings:
+-- - E401 has 948 entries recorded as Finisher and one entry recorded
+--   as General Labor.
+-- - E401 has no entries recorded as Laborer, so the employee's trade
+--   history does not support standardizing General Labor to Laborer.
+-- - The one General Labor entry may represent a legitimate temporary
+--   assignment or a data-quality error; the available evidence cannot
+--   distinguish between these explanations.
+-- - Preserve TE001216's raw General Labor value and flag the entry as
+--   unresolved pending stakeholder clarification.
+
+
+-- Investigation 37: Profile employee_id values
+-- Purpose:
+-- - Count the number of distinct employees represented in the dataset.
+-- - Determine whether every employee_id follows the expected format
+--   of E followed by three digits.
+-- - Identify employee IDs with unusually few entries, which could
+--   indicate a typo or stray value.
+SELECT
+    employee_id,
+    regexp_full_match(employee_id, '^E[0-9]{3}$')
+        AS matches_expected_format,
+    COUNT(*) AS entry_count
+FROM read_csv_auto('data/raw/labor_entries.csv')
+GROUP BY employee_id
+ORDER BY entry_count ASC;
+
+-- Findings:
+-- - 19 distinct employees.
+-- - Every ID matches E followed by exactly three digits.
+-- - Entry counts range from 633 to 1,216.
+-- - There are no isolated low-frequency values suggesting a typo
+--   or stray ID.
+-- - No employee_id cleaning or correction rule is required.
+
+
+-- Investigation 38: Validate labor project IDs
+-- Purpose:
+-- - Compare the project_id values in labor_entries.csv with the valid
+--   project IDs recorded in projects.csv.
+-- - Identify labor entries whose project_id does not match an existing
+--   project.
+-- - Determine whether any labor costs would be excluded from or incorrectly
+--   assigned in project-level profitability analysis.
+WITH valid_projects AS (
+    SELECT DISTINCT project_id
+    FROM read_csv_auto('data/raw/projects.csv')
+)
+SELECT
+    l.project_id,
+    COUNT(*) AS labor_entry_count
+FROM read_csv_auto('data/raw/labor_entries.csv') AS l
+LEFT JOIN valid_projects AS p
+    ON l.project_id = p.project_id
+WHERE p.project_id IS NULL
+GROUP BY l.project_id
+ORDER BY labor_entry_count DESC;
+
+-- Findings:
+-- - One labor entry references project_id P996, which does not exist
+--   in the valid project list from projects.csv.
+-- - This labor entry cannot yet be assigned reliably in project-level
+--   profitability analysis.
+-- - Further investigation is required to determine whether P996 can
+--   be corrected to an existing project or must remain unresolved.
+
+
+-- Investigation 38A: Inspect unmatched labor project_id P996
+-- Purpose:
+-- - Inspect all raw fields for the labor entry referencing P996.
+-- - Look for contextual evidence that may identify the intended project_id.
+-- - Determine whether P996 can be corrected using available evidence
+--   or must remain unresolved.
+SELECT *
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE project_id = 'P996';
+
+-- Findings:
+-- - TE000408 is the only labor entry referencing P996.
+-- - Its employee, trade, hours, hourly rate, and labor cost appear internally
+--   plausible, and its recorded labor cost matches the expected formula.
+-- - The row itself provides no evidence identifying the intended project_id.
+-- - Inspecting neighboring time entries is required before deciding whether
+--   P996 can be corrected or must remain unresolved.
+
+
+-- Investigation 38B: Inspect time entries neighboring TE000408
+-- Purpose:
+-- - Inspect the project_id pattern in time entries surrounding TE000408.
+-- - Determine whether P996 interrupts an otherwise consistent sequence
+--   of entries assigned to a single valid project.
+-- - Assess whether the neighboring records provide sufficient evidence
+--   to correct P996 or whether it must remain unresolved.
+SELECT
+    time_entry_id,
+    project_id,
+    work_date,
+    employee_id,
+    trade
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE time_entry_id BETWEEN 'TE000403' AND 'TE000413'
+ORDER BY time_entry_id;
+
+-- Findings:
+-- - TE000408's P996 value interrupts a continuous block of P003 entries:
+--   the five neighboring entries before it and the five after it all
+--   reference P003.
+-- - This pattern provides strong evidence that P996 is an erroneous
+--   project_id and that TE000408 was intended to reference P003.
+-- - Preserve P996 in the raw data, correct the project_id to P003 in the
+--   cleaned output, and flag the record as a source-data correction.
+
+
+-- Investigation 39: Validate labor dates against project timelines
+-- Purpose:
+-- - Compare each parsed labor work_date with the associated project's
+--   baseline and actual start and completion dates.
+-- - Count entries recorded before the baseline or actual start, after the
+--   baseline or actual completion, or beyond the reporting cutoff.
+-- - Distinguish schedule variance from potential date inconsistencies that
+--   require further investigation.
+WITH ranked_labor AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY time_entry_id
+            ORDER BY time_entry_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+labor_dates AS (
+    SELECT
+        time_entry_id,
+        project_id AS raw_project_id,
+        CASE
+            WHEN project_id = 'P996' THEN 'P003'
+            ELSE project_id
+        END AS corrected_project_id,
+        TRY_CAST(work_date AS DATE) AS parsed_work_date
+    FROM ranked_labor
+    WHERE duplicate_rank = 1
+),
+ranked_projects AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY project_id
+            ORDER BY project_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/projects.csv')
+),
+project_dates AS (
+    SELECT
+        project_id,
+        TRY_CAST(baseline_start_date AS DATE)
+            AS parsed_baseline_start_date,
+        TRY_CAST(baseline_completion_date AS DATE)
+            AS parsed_baseline_completion_date,
+        TRY_CAST(actual_start_date AS DATE)
+            AS parsed_actual_start_date,
+        TRY_CAST(actual_completion_date AS DATE)
+            AS parsed_actual_completion_date
+    FROM ranked_projects
+    WHERE duplicate_rank = 1
+),
+labor_project_timeline AS (
+    SELECT
+        ld.time_entry_id,
+        ld.raw_project_id,
+        ld.corrected_project_id,
+        ld.parsed_work_date,
+        pd.parsed_baseline_start_date,
+        pd.parsed_baseline_completion_date,
+        pd.parsed_actual_start_date,
+        pd.parsed_actual_completion_date
+    FROM labor_dates AS ld
+    LEFT JOIN project_dates AS pd
+        ON ld.corrected_project_id = pd.project_id
+)
+SELECT
+    COUNT(*) AS total_labor_entries,
+
+    COUNT(*) FILTER (
+        WHERE parsed_work_date < parsed_baseline_start_date
+    ) AS work_before_baseline_start,
+
+    COUNT(*) FILTER (
+        WHERE parsed_work_date < parsed_actual_start_date
+    ) AS work_before_actual_start,
+
+    COUNT(*) FILTER (
+        WHERE parsed_work_date > parsed_baseline_completion_date
+    ) AS work_after_baseline_completion,
+
+    COUNT(*) FILTER (
+        WHERE parsed_work_date > parsed_actual_completion_date
+    ) AS work_after_actual_completion,
+
+    COUNT(*) FILTER (
+        WHERE parsed_work_date > DATE '2026-06-30'
+    ) AS work_after_cutoff
+
+FROM labor_project_timeline;
+
+-- Findings:
+-- - 18,003 cleaned labor entries were evaluated, confirming that the
+--   duplicate time entry was removed.
+-- - 52 entries occurred before baseline start, but none occurred before
+--   actual start. This suggests legitimate early project starts rather
+--   than impossible labor dates.
+-- - 2,818 entries occurred after baseline completion, indicating that labor
+--   continued beyond planned completion and providing evidence of schedule
+--   overruns.
+-- - No labor entries occurred after an available actual completion date.
+--   Projects with NULL actual completion dates were not testable for this rule.
+-- - No labor entries occurred after the June 30, 2026 reporting cutoff.
+
+
+-- Investigation 39A: Summarize post-baseline labor by project
+-- Purpose:
+-- - Determine whether the 2,818 labor entries recorded after baseline
+--   completion are concentrated in a few projects or distributed broadly.
+-- - Measure how far labor activity continued beyond each project's
+--   baseline completion date.
+WITH ranked_labor AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY time_entry_id
+            ORDER BY time_entry_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+labor_dates AS (
+    SELECT
+        time_entry_id,
+        project_id AS raw_project_id,
+        CASE
+            WHEN project_id = 'P996' THEN 'P003'
+            ELSE project_id
+        END AS corrected_project_id,
+        TRY_CAST(work_date AS DATE) AS parsed_work_date
+    FROM ranked_labor
+    WHERE duplicate_rank = 1
+),
+ranked_projects AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY project_id
+            ORDER BY project_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/projects.csv')
+),
+project_dates AS (
+    SELECT
+        project_id,
+        TRY_CAST(baseline_start_date AS DATE)
+            AS parsed_baseline_start_date,
+        TRY_CAST(baseline_completion_date AS DATE)
+            AS parsed_baseline_completion_date,
+        TRY_CAST(actual_start_date AS DATE)
+            AS parsed_actual_start_date,
+        TRY_CAST(actual_completion_date AS DATE)
+            AS parsed_actual_completion_date
+    FROM ranked_projects
+    WHERE duplicate_rank = 1
+),
+labor_project_timeline AS (
+    SELECT
+        ld.time_entry_id,
+        ld.raw_project_id,
+        ld.corrected_project_id,
+        ld.parsed_work_date,
+        pd.parsed_baseline_start_date,
+        pd.parsed_baseline_completion_date,
+        pd.parsed_actual_start_date,
+        pd.parsed_actual_completion_date
+    FROM labor_dates AS ld
+    LEFT JOIN project_dates AS pd
+        ON ld.corrected_project_id = pd.project_id
+)
+SELECT
+    corrected_project_id AS project_id,
+    parsed_baseline_completion_date,
+    COUNT(*) AS post_baseline_labor_entries,
+    MIN(parsed_work_date) AS first_post_baseline_work_date,
+    MAX(parsed_work_date) AS latest_post_baseline_work_date,
+    DATE_DIFF(
+        'day',
+        parsed_baseline_completion_date,
+        MAX(parsed_work_date)
+    ) AS days_labor_extended_beyond_baseline
+FROM labor_project_timeline
+WHERE parsed_work_date > parsed_baseline_completion_date
+GROUP BY
+    corrected_project_id,
+    parsed_baseline_completion_date
+ORDER BY post_baseline_labor_entries DESC;
+
+-- Findings:
+-- - 2,818 post-baseline labor entries are distributed across 78 projects.
+-- - P026 has the most post-baseline entries at 126, representing approximately
+--   4.5% of the total.
+-- - The ten highest-count projects account for 973 entries, or approximately
+--   34.5% of the total.
+-- - P090 has the longest observed extension, with labor continuing 209 days
+--   beyond its baseline completion date.
+-- - The post-baseline labor is broadly distributed rather than driven by a
+--   small number of anomalous projects.
+-- - Preserve these records as valid schedule-variance evidence for later
+--   project-level schedule-risk analysis.
+
+
+-- Investigation 40: Determine labor-entry grain and overtime interpretability
+-- Purpose:
+-- - Determine whether employees can have multiple labor entries on the same
+--   work_date and whether those entries span multiple projects.
+-- - Inspect whether work_date follows a consistent weekday pattern that could
+--   indicate a weekly time-entry or pay-period convention.
+-- - Assess whether the available fields provide enough evidence to validate
+--   the classification of regular and overtime hours.
+-- - Avoid treating regular_hours above 40 as erroneous without a documented
+--   workweek definition or confirmed row grain.
+WITH ranked_labor AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY time_entry_id
+            ORDER BY time_entry_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+cleaned_labor AS (
+    SELECT
+        employee_id,
+        TRY_CAST(work_date AS DATE) AS parsed_work_date,
+        project_id,
+        regular_hours,
+        overtime_hours
+    FROM ranked_labor
+    WHERE duplicate_rank = 1
+)
+SELECT
+    employee_id,
+    parsed_work_date,
+    COUNT(*) AS labor_entry_count,
+    COUNT(DISTINCT project_id) AS distinct_project_count,
+    SUM(regular_hours) AS total_regular_hours,
+    SUM(overtime_hours) AS total_overtime_hours
+FROM cleaned_labor
+GROUP BY
+    employee_id,
+    parsed_work_date
+HAVING COUNT(*) > 1
+ORDER BY
+    labor_entry_count DESC,
+    employee_id,
+    parsed_work_date;
