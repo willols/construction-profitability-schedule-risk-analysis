@@ -3,6 +3,137 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 14, 2026
+
+### Work Completed
+
+- Corrected the `work_date` parsing logic in Investigations 39 and 39A by
+  applying the validated standard DATE conversion with an `M/D/YYYY` fallback.
+- Reran Investigations 39 and 39A and confirmed that the corrected parsing of
+  TE002542 did not change any timeline count or project-level post-baseline
+  result.
+- Inspected TE002542 within its joined project timeline to explain why the
+  corrected date did not affect the results.
+- Completed Investigation 40 by evaluating repeated employee-date labor groups,
+  cross-project allocations, and aggregated regular and overtime hours.
+- Completed Investigation 40A by profiling unique employee-date combinations
+  across weekdays.
+- Added an end-of-file conclusion to
+  `sql/04_labor_entries_profiling.sql` documenting confirmed cleaning actions,
+  preserved exceptions, numeric precision requirements, and analytical
+  limitations.
+- Completed the standalone profiling of `labor_entries.csv`.
+- Created `sql/05_project_updates_profiling.sql`.
+- Completed Investigation 41 by inspecting the inferred
+  `project_updates.csv` schema and identifying fields requiring targeted
+  profiling.
+- Completed Investigation 41A by inspecting ten sample project-update records
+  and refining the candidate grain.
+- Completed Investigation 42 by testing `update_id` completeness and
+  uniqueness.
+
+### Decisions and Reasoning
+
+- The Investigation 39 and 39A timeline results are final because the complete
+  date-parsing rule successfully includes TE002542 without changing any
+  aggregate result.
+- TE002542 does not affect the post-baseline summary because P013 has a NULL
+  baseline completion date.
+- The combination of `employee_id` and `work_date` is not a unique labor-entry
+  key because employees can have multiple entries on the same recorded date.
+- Same-date entries can span several projects, suggesting that labor rows may
+  represent project allocations or another reporting convention rather than
+  one daily employee total.
+- The `work_date` reporting cadence remains unknown because unique
+  employee-date combinations are distributed nearly evenly across all seven
+  weekdays.
+- Recorded `regular_hours` and `overtime_hours` will remain unchanged because
+  the available fields do not establish the reporting period or authoritative
+  overtime rule.
+- TE001843's cleaned `hourly_rate` will be derived as 38.96, while the raw NULL
+  will be preserved and the derived value flagged as reverse-calculated from
+  `labor_cost`.
+- TE001216's `General Labor` value and TE003191's unexplained 125.00 labor-cost
+  difference will remain preserved and flagged.
+- Post-baseline labor will remain available as schedule-variance evidence.
+- In `project_updates.csv`, `update_id` remains the candidate row-level key,
+  but it cannot be confirmed until its duplicate occurrence is inspected.
+- The likely project-update grain is one recorded update for one project and
+  reporting date, but the candidate `project_id` and `report_date` combination
+  still requires dataset-wide validation.
+- `report_date`, `actual_pct_complete`,
+  `estimated_cost_to_complete`, and `forecast_completion_date` require
+  targeted type, formatting, range, and precision investigations.
+- The nullable and key metadata returned by `DESCRIBE` does not establish
+  actual completeness or uniqueness for a CSV-derived result.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- TE002542 belongs to P013 and parses to May 19, 2023.
+- TE002542 occurs after P013's baseline start of March 21, 2023, after its
+  actual start of March 18, 2023, and before its actual completion of
+  August 26, 2023.
+- P013 has no usable baseline completion date, so TE002542 cannot be classified
+  by the post-baseline rule.
+- Revalidated Investigation 39 results remained:
+  - 18,003 deduplicated labor entries
+  - 52 entries before baseline start
+  - 0 entries before actual start
+  - 2,818 entries after baseline completion
+  - 0 entries after an available actual completion date
+  - 0 entries after the reporting cutoff
+- Revalidated Investigation 39A results remained 2,818 post-baseline labor
+  entries across 78 projects.
+- Investigation 40 returned 4,316 employee-date combinations containing more
+  than one deduplicated labor entry.
+- The largest observed employee-date group was E101 on February 26, 2024, with
+  eight entries across six corrected projects.
+- That group contained 298.68 regular hours and 3.88 overtime hours, confirming
+  that it cannot represent one employee's daily labor total.
+- Investigation 40A returned 11,995 unique employee-date combinations.
+- Tuesday had the highest weekday count at 1,748, or 14.57%, while Friday had
+  the lowest at 1,672, or 13.94%.
+- The highest-to-lowest weekday difference was only 76 combinations, or
+  0.63 percentage points, providing no evidence of a recurring weekly
+  reporting boundary.
+- `project_updates.csv` contains nine columns.
+- `report_date` was inferred as `VARCHAR`, `actual_pct_complete` was inferred
+  as `VARCHAR`, and `forecast_completion_date` was inferred as `TIMESTAMP`.
+- The ten-row sample showed multiple periodic updates for P001, percentage
+  values on an apparent 0-to-100 scale, declining estimated cost to complete,
+  and forecast timestamps recorded at midnight.
+- `project_updates.csv` contains 726 rows and 726 non-NULL, nonblank
+  `update_id` values.
+- The file contains 725 distinct `update_id` values, leaving one duplicate
+  occurrence that requires inspection.
+
+### Verification and Closeout
+
+- `sql/04_labor_entries_profiling.sql` and
+  `sql/05_project_updates_profiling.sql` executed successfully through the
+  DuckDB CLI with no SQL errors.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- The completed labor profiling and initial project-updates profiling were
+  included in analysis commit
+  [`2ec87e988f0abe7669cff898e85cd62d7289e415`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/2ec87e988f0abe7669cff898e85cd62d7289e415).
+- The analysis commit was pushed to `main` with the message
+  `Complete labor profiling and begin project updates`.
+- After the analysis push, `main` was synchronized with `origin/main`, with
+  only the two documentation files remaining modified for closeout.
+
+### Next Session
+
+Begin Investigation 42A by identifying the `update_id` that occurs more than
+once. Retrieve and compare the complete associated records to determine whether
+they are exact duplicates or distinct project updates that incorrectly share
+the same identifier.
+
+Use the result to decide whether one occurrence should be removed in cleaned
+output or whether the identifier requires another correction before confirming
+the project-update row-level key.
+
 ## August 13, 2026
 
 ### Work Completed
