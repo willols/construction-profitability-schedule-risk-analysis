@@ -916,6 +916,14 @@ ORDER BY
 --   primary labor-cost validation formula.
 
 
+-- Final decision for TE001843:
+-- - Populate the cleaned hourly_rate as 38.96 because the reverse-calculated
+--   rate reproduces the recorded labor_cost under the validated primary
+--   formula.
+-- - Preserve the raw NULL hourly_rate and flag 38.96 as a derived imputation,
+--   not a source-confirmed historical rate.
+
+
 -- Investigation 35: Evaluate formula-based imputation for TE001843
 -- Purpose:
 -- - Test whether $38.96 reproduces TE001843's recorded labor cost
@@ -1199,7 +1207,10 @@ labor_dates AS (
             WHEN project_id = 'P996' THEN 'P003'
             ELSE project_id
         END AS corrected_project_id,
-        TRY_CAST(work_date AS DATE) AS parsed_work_date
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS parsed_work_date
     FROM ranked_labor
     WHERE duplicate_rank = 1
 ),
@@ -1302,7 +1313,10 @@ labor_dates AS (
             WHEN project_id = 'P996' THEN 'P003'
             ELSE project_id
         END AS corrected_project_id,
-        TRY_CAST(work_date AS DATE) AS parsed_work_date
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS parsed_work_date
     FROM ranked_labor
     WHERE duplicate_rank = 1
 ),
@@ -1375,16 +1389,18 @@ ORDER BY post_baseline_labor_entries DESC;
 --   project-level schedule-risk analysis.
 
 
--- Investigation 40: Determine labor-entry grain and overtime interpretability
+-- Investigation 40: Determine employee-date labor-entry grain
 -- Purpose:
 -- - Determine whether employees can have multiple labor entries on the same
---   work_date and whether those entries span multiple projects.
--- - Inspect whether work_date follows a consistent weekday pattern that could
---   indicate a weekly time-entry or pay-period convention.
--- - Assess whether the available fields provide enough evidence to validate
---   the classification of regular and overtime hours.
--- - Avoid treating regular_hours above 40 as erroneous without a documented
---   workweek definition or confirmed row grain.
+--   work_date.
+-- - Identify whether same-date entries represent allocations across multiple
+--   projects.
+-- - Aggregate regular and overtime hours at the employee-date level without
+--   assuming that work_date represents a daily or weekly reporting period.
+-- - Preserve raw project IDs while applying the confirmed P996-to-P003
+--   correction for analytical calculations.
+-- - Avoid reclassifying regular or overtime hours until the entry grain and
+--   authoritative overtime rules are established.
 WITH ranked_labor AS (
     SELECT
         *,
@@ -1394,29 +1410,171 @@ WITH ranked_labor AS (
         ) AS duplicate_rank
     FROM read_csv_auto('data/raw/labor_entries.csv')
 ),
-cleaned_labor AS (
+standardized_labor AS (
     SELECT
+        time_entry_id,
         employee_id,
-        TRY_CAST(work_date AS DATE) AS parsed_work_date,
-        project_id,
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS parsed_work_date,
+        project_id AS raw_project_id,
+        CASE
+            WHEN project_id = 'P996' THEN 'P003'
+            ELSE project_id
+        END AS corrected_project_id,
         regular_hours,
         overtime_hours
     FROM ranked_labor
     WHERE duplicate_rank = 1
+),
+employee_date_summary AS (
+    SELECT
+        employee_id,
+        parsed_work_date,
+        COUNT(*) AS labor_entry_count,
+        COUNT(DISTINCT corrected_project_id) AS distinct_project_count,
+        LIST(
+            DISTINCT raw_project_id
+            ORDER BY raw_project_id
+        ) AS raw_project_ids,
+        LIST(
+            DISTINCT corrected_project_id
+            ORDER BY corrected_project_id
+        ) AS corrected_project_ids,
+        ROUND(SUM(regular_hours), 4) AS total_regular_hours,
+        ROUND(SUM(overtime_hours), 2) AS total_overtime_hours
+    FROM standardized_labor
+    GROUP BY
+        employee_id,
+        parsed_work_date
 )
 SELECT
     employee_id,
     parsed_work_date,
-    COUNT(*) AS labor_entry_count,
-    COUNT(DISTINCT project_id) AS distinct_project_count,
-    SUM(regular_hours) AS total_regular_hours,
-    SUM(overtime_hours) AS total_overtime_hours
-FROM cleaned_labor
-GROUP BY
-    employee_id,
-    parsed_work_date
-HAVING COUNT(*) > 1
+    labor_entry_count,
+    distinct_project_count,
+    raw_project_ids,
+    corrected_project_ids,
+    total_regular_hours,
+    total_overtime_hours
+FROM employee_date_summary
+WHERE labor_entry_count > 1
 ORDER BY
     labor_entry_count DESC,
+    distinct_project_count DESC,
     employee_id,
     parsed_work_date;
+
+-- Findings:
+-- - 4,316 employee-date combinations contain more than one deduplicated
+--   labor entry, confirming that employee_id and work_date do not form a
+--   unique row key.
+-- - Same-date entries can span multiple projects. The largest observed group
+--   was E101 on 2024-02-26, with eight entries across six corrected projects.
+-- - That group contains 298.68 regular hours and 3.88 overtime hours, which
+--   cannot reasonably represent one employee's daily labor total.
+-- - The results suggest that rows may represent project-level allocations or
+--   a broader reporting period, but they do not establish whether work_date
+--   represents a weekly, biweekly, monthly, or other reporting convention.
+-- - Because the reporting period and authoritative overtime rule are unknown,
+--   regular-hours values above 40 cannot be classified as confirmed errors.
+-- - Preserve the recorded regular and overtime classifications without
+--   reallocation unless an authoritative business rule becomes available.
+-- - time_entry_id remains the only confirmed row-level identifier.
+
+
+-- Investigation 40A: Inspect labor work_date weekday patterns
+-- Purpose:
+-- - Determine whether parsed work_date values follow a consistent weekday
+--   pattern across employees.
+-- - Evaluate unique employee-date combinations so multiple project
+--   allocations on the same date do not disproportionately influence the
+--   distribution.
+-- - Identify whether work dates cluster on a recurring weekday, such as
+--   Friday or Sunday, which could suggest a timesheet or reporting-period
+--   convention.
+-- - Use the results to assess the interpretability of work_date while
+--   avoiding unsupported conclusions about payroll or overtime policy.
+WITH ranked_labor AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY time_entry_id
+            ORDER BY time_entry_id
+        ) AS duplicate_rank
+    FROM read_csv_auto('data/raw/labor_entries.csv')
+),
+standardized_labor AS (
+    SELECT
+        employee_id,
+        COALESCE(
+            TRY_CAST(work_date AS DATE),
+            CAST(TRY_STRPTIME(work_date, '%m/%d/%Y') AS DATE)
+        ) AS parsed_work_date
+    FROM ranked_labor
+    WHERE duplicate_rank = 1
+),
+unique_employee_dates AS (
+    SELECT DISTINCT
+        employee_id,
+        parsed_work_date
+    FROM standardized_labor
+    WHERE parsed_work_date IS NOT NULL
+)
+
+SELECT
+    ISODOW(parsed_work_date) AS weekday_number,
+    DAYNAME(parsed_work_date) AS weekday_name,
+    COUNT(*) AS unique_employee_date_count
+FROM unique_employee_dates
+GROUP BY
+    weekday_number,
+    weekday_name
+ORDER BY weekday_number;
+
+-- Findings:
+-- - The 11,995 unique employee-date combinations are distributed nearly
+--   evenly across all seven weekdays.
+-- - Tuesday has the highest count at 1,748 (14.57%), while Friday has the
+--   lowest at 1,672 (13.94%), a difference of only 76 combinations or
+--   0.63 percentage points.
+-- - No weekday shows meaningful concentration, so the results do not support
+--   the hypothesis that work_date represents a recurring weekly reporting
+--   boundary.
+-- - The distribution does not establish what period work_date represents;
+--   therefore, it provides no basis for reclassifying recorded regular or
+--   overtime hours.
+
+
+-- Labor Entries Profiling Conclusion
+-- Confirmed cleaning actions:
+-- - Remove the extra copy of the exact duplicate TE000222 while retaining one
+--   valid record.
+-- - Standardize work_date using the validated direct-cast and M/D/YYYY
+--   fallback parsing rule.
+-- - Correct TE000408's project ID from P996 to P003 in the cleaned output
+--   while preserving and flagging the raw value.
+-- - Derive TE001843's cleaned hourly_rate as 38.96, preserve the raw NULL,
+--   and flag the value as reverse-calculated from labor_cost.
+
+-- Preserved and flagged exceptions:
+-- - Preserve TE001216's General Labor trade value and flag it as unresolved;
+--   available employee history does not support mapping it to another trade.
+-- - Preserve TE003191's recorded labor_cost and flag its unexplained $125.00
+--   difference from the primary validation formula.
+-- - Preserve the 2,818 post-baseline labor entries across 78 projects as valid
+--   schedule-variance evidence.
+
+-- Analytical limitations and downstream decisions:
+-- - time_entry_id is the confirmed row-level key after duplicate removal.
+-- - Use the combined-total labor-cost formula as the primary validation
+--   method.
+-- - The reporting cadence represented by work_date remains unknown, and its
+--   weekday distribution does not support a recurring weekly boundary.
+-- - Preserve recorded regular_hours and overtime_hours classifications
+--   because no authoritative reporting-period or overtime rule is available.
+-- - Preserve four decimal places for regular_hours and two decimal places for
+--   overtime_hours, hourly_rate, and labor_cost.
+-- - Select final DECIMAL widths during cleaned-schema implementation after
+--   evaluating downstream aggregation requirements.
