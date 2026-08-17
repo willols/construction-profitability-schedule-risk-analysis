@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 14, 2026
+Last updated: August 17, 2026
 
 ## Current Phase
 
@@ -13,14 +13,22 @@ First-pass standalone profiling is complete for:
 - `cost_transactions.csv`
 - `labor_entries.csv`
 
-Labor timeline profiling was revalidated with the complete date-parsing rule.
-Investigations 40 and 40A resolved the employee-date grain and overtime
-interpretability questions.
+Labor timeline profiling and the employee-date grain and overtime
+interpretability investigations are complete.
 
-Profiling of `project_updates.csv` is complete through Investigation 42.
-The dataset structure, sample values, and `update_id` completeness and
-uniqueness have been evaluated. One duplicate `update_id` occurrence requires
-inspection.
+Profiling of `project_updates.csv` has been executed through Investigation 45B.
+The duplicated `update_id` has been resolved, completeness and text-quality
+checks are complete, the missing forecast date has been investigated, and
+`report_date` parsing and cutoff validation are complete.
+
+The initial project-update business-grain test found no raw project-date
+combinations containing multiple distinct updates. Because one report date uses
+a different valid format, this conclusion requires revalidation using
+standardized dates.
+
+Investigation 46 has been documented but not executed. Its next purpose is to
+determine whether `forecast_completion_date` contains meaningful time
+components or should use `DATE` in the cleaned analytical layer.
 
 `change_orders.csv` has not yet been profiled.
 
@@ -36,7 +44,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Standalone profiling complete |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql` | Standalone and required relationship profiling complete |
 | `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Standalone profiling complete through Investigation 40A |
-| `project_updates.csv` | `sql/05_project_updates_profiling.sql` | In progress through Investigation 42 |
+| `project_updates.csv` | `sql/05_project_updates_profiling.sql` | In progress through Investigation 45B; Investigation 46 purpose documented |
 | `change_orders.csv` | Planned: `sql/06_change_orders_profiling.sql` | Not started |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -451,40 +459,111 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling is in progress through Investigation 42.
+Profiling has been executed through Investigation 45B. Investigation 46 has
+been documented but not executed.
 
-#### Structure and Candidate Grain
+#### Structure and Row-Level Identifier
 
-- `project_updates.csv` contains nine columns.
+- `project_updates.csv` contains 726 raw rows and nine columns.
 - `update_id`, `project_id`, `primary_delay_reason`, and `submitted_by` were
   inferred as `VARCHAR`.
-- `report_date` was inferred as `VARCHAR`.
-- `planned_pct_complete` was inferred as `DOUBLE`, while
-  `actual_pct_complete` was inferred as `VARCHAR`.
-- `estimated_cost_to_complete` was inferred as `DOUBLE`.
+- `report_date` and `actual_pct_complete` were inferred as `VARCHAR`.
+- `planned_pct_complete` and `estimated_cost_to_complete` were inferred as
+  `DOUBLE`.
 - `forecast_completion_date` was inferred as `TIMESTAMP`.
-- Sample records suggest one update for one project and reporting date.
-- The sampled P001 records occur approximately every four weeks.
-- Sampled completion values appear to use a 0-to-100 scale.
-- Sampled forecast timestamps contain midnight values, suggesting that the
-  field may represent a calendar date without meaningful time-of-day data.
-- Schema, type, and grain observations remain preliminary until validated
-  across the complete dataset.
+- The file contains 726 populated `update_id` values and 725 distinct
+  identifiers.
+- UPD00655 occurs twice, and the two complete records match across all nine
+  columns.
+- After removing one exact UPD00655 duplicate, the expected cleaned row count
+  and distinct `update_id` count are both 725.
 
-#### Update-ID Validation
+Decision:
 
-- `project_updates.csv` contains 726 rows.
-- All 726 rows contain a non-NULL, nonblank `update_id`.
-- The dataset contains 725 distinct `update_id` values.
-- One duplicate `update_id` occurrence requires inspection.
-- `update_id` is complete but cannot be confirmed as the row-level key until
-  the duplicated identifier is evaluated.
+- Retain one UPD00655 record and remove the repeated occurrence only in the
+  cleaned analytical layer.
+- Use `update_id` as the cleaned row-level identifier.
+- Preserve the raw CSV unchanged.
 
-Current decision:
+#### Candidate Business Grain
 
-- Preserve all raw records until the duplicate is inspected.
-- Do not establish a duplicate-removal rule yet.
-- Continue treating `update_id` as the candidate row-level key.
+- The initial grain test grouped records by raw `project_id` and `report_date`.
+- No raw project-date combination contained more than one distinct
+  `update_id`.
+- Investigation 45 later established that one report date uses a different
+  valid format.
+- Raw text grouping could treat two representations of the same calendar date
+  as different groups.
+
+Decision:
+
+- One project update per project and report date remains the candidate business
+  grain.
+- Revalidate the grain using `standardized_report_date` before treating it as
+  final.
+
+#### Completeness and Text Quality
+
+- Eight of the nine columns contain no NULL values.
+- `forecast_completion_date` contains one NULL value.
+- The missing value belongs to UPD00664 for project P088.
+- None of the four `VARCHAR` fields contain blank or whitespace-only values.
+- None of their populated values change after applying `TRIM()`.
+- No leading- or trailing-whitespace normalization is currently required.
+- Internal spaces were not targeted because they may be legitimate parts of
+  populated values.
+
+#### Missing Forecast Completion Date
+
+- P088 contains four project-update records.
+- Its first two updates contain a forecast date of July 27, 2026.
+- Its third update contains a forecast date of July 28, 2026.
+- Those three updates list `Owner decision / change order` as the primary delay
+  reason.
+- The fourth update, UPD00664, was reported on June 30, 2026.
+- UPD00664 records planned completion of 80.9%, actual completion of 81.7%, and
+  a NULL forecast date.
+- Its primary delay reason changes to `Subcontractor availability`.
+- The new delay introduces an unknown scheduling impact, so the earlier
+  forecast cannot be carried forward reliably.
+
+Decision:
+
+- Preserve UPD00664's NULL `forecast_completion_date` in the cleaned analytical
+  layer.
+- Flag the missing value for business clarification.
+- Do not substitute a prior forecast or later actual completion date.
+- Preserve the raw CSV unchanged.
+
+#### Report Dates
+
+- All 726 `report_date` values are populated.
+- A total of 725 values convert directly to `DATE`.
+- One value requires the `%m/%d/%Y` fallback.
+- Zero values fail both accepted parsing methods.
+- UPD00045 for project P006 contains the fallback-parsed value.
+- Its raw `report_date` of `8/31/2024` standardizes to `2024-08-31`.
+- The valid format variation explains why DuckDB inferred the column as
+  `VARCHAR`.
+- Standardized report dates range from February 25, 2023, through June 30,
+  2026.
+- The latest report date equals the established reporting cutoff.
+- Zero project-update records occur after the cutoff.
+
+Decision:
+
+- Convert cleaned `report_date` values to `DATE`.
+- Attempt standard DATE conversion first, followed by the validated
+  `%m/%d/%Y` fallback.
+- Preserve the raw source values unchanged.
+- No report-date exclusions are required.
+
+#### Forecast Completion Date Type
+
+- `forecast_completion_date` was inferred as `TIMESTAMP`.
+- Sampled populated values appear to use midnight timestamps.
+- The complete column has not yet been tested for non-midnight values.
+- The cleaned type remains unresolved pending Investigation 46.
 
 ## Unresolved Items
 
@@ -514,19 +593,19 @@ Current decision:
 
 ### Project Updates
 
-- Identify and inspect the duplicated `update_id`.
-- Confirm whether `project_id` and `report_date` form a unique business grain.
-- Profile completeness across all nine columns.
-- Validate `report_date` formatting, parseability, range, and reporting cutoff.
+- Revalidate the candidate business grain using standardized report dates.
+- Determine whether `forecast_completion_date` contains meaningful time
+  components or should use `DATE`.
+- Validate forecast-date ranges and logical relationships after selecting the
+  appropriate type.
+- Obtain stakeholder clarification for UPD00664's missing forecast date.
 - Determine why `actual_pct_complete` was inferred as `VARCHAR`.
 - Validate planned and actual percentage scales, ranges, precision, and
   chronological progression.
 - Profile `estimated_cost_to_complete` range, precision, and relationship with
   project progress.
-- Determine whether `forecast_completion_date` contains meaningful time
-  components or should be stored as `DATE`.
 - Profile `primary_delay_reason` and `submitted_by` values.
-- Validate project-update IDs against `projects.csv`.
+- Validate project-update project IDs against `projects.csv`.
 
 ### Remaining Datasets and Relationships
 
@@ -549,14 +628,18 @@ Current decision:
 
 Open `sql/05_project_updates_profiling.sql`.
 
-Begin Investigation 42A by identifying the `update_id` that occurs more than
-once. Use a grouped count to isolate the duplicated identifier, then retrieve
-and compare its complete records.
+First, revalidate Investigation 43 using the established standardized
+`report_date` expression. Group by `project_id` and
+`standardized_report_date`, then identify combinations containing more than one
+distinct `update_id`.
 
-Determine whether the rows are exact duplicates or distinct project updates
-that incorrectly share an identifier. Use that evidence to decide whether one
-row should be removed in cleaned output or whether the identifier requires a
-different correction.
+Use the result to confirm or revise the candidate business grain of one project
+update per project and reporting date.
+
+After documenting that result, continue Investigation 46. Count total rows,
+populated `forecast_completion_date` values, midnight timestamps, and
+non-midnight timestamps. Use the evidence to determine whether the time
+component is meaningful or whether `DATE` is the appropriate cleaned type.
 
 ## Latest Analysis Commit
 

@@ -3,6 +3,120 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 17, 2026
+
+### Work Completed
+
+- Completed Investigation 42A by identifying the duplicated `update_id`.
+- Completed Investigation 42B by retrieving and comparing both complete records
+  associated with the duplicated identifier.
+- Performed the initial Investigation 43 business-grain test using the raw
+  `(project_id, report_date)` values.
+- The initial test returned no project-date combinations containing multiple
+  distinct `update_id` values.
+- Because one `report_date` uses a different valid format, the business-grain
+  conclusion remains provisional until the test is repeated using standardized
+  dates.
+- Completed Investigation 44 by profiling NULL completeness across all nine
+  columns.
+- Completed Investigation 44A by inspecting the record with the missing
+  `forecast_completion_date` and reviewing the complete update history for its
+  project.
+- Completed Investigation 44B by checking all four `VARCHAR` fields for blank
+  or whitespace-only values.
+- Completed Investigation 44C by checking the same text fields for leading or
+  trailing whitespace.
+- Completed Investigation 45 by testing `report_date` conversion through direct
+  DATE parsing and the established `M/D/YYYY` fallback.
+- Completed Investigation 45A by inspecting the one fallback-parsed
+  `report_date`.
+- Completed Investigation 45B by validating the standardized `report_date`
+  range and reporting cutoff.
+- Began Investigation 46 by documenting the purpose of validating whether
+  `forecast_completion_date` requires `TIMESTAMP` precision or should use
+  `DATE`.
+
+### Decisions and Reasoning
+
+- UPD00655 is an exact duplicate because both associated records match across
+  all nine columns.
+- One UPD00655 occurrence will be retained and the other removed only in the
+  cleaned analytical layer.
+- After exact-duplicate removal, `update_id` can serve as the project-update
+  row-level identifier.
+- After exact-duplicate removal, `(project_id, report_date)` defines the
+  observed business grain of one project update for one project on one report
+  date.
+- UPD00664's missing `forecast_completion_date` cannot be inferred reliably
+  from the available evidence.
+- P088's earlier forecast date cannot be carried forward because its latest
+  update introduces a different delay reason, `Subcontractor availability`,
+  with an unknown schedule impact.
+- UPD00664's NULL `forecast_completion_date` will remain NULL in the cleaned
+  analytical layer and be flagged for business clarification.
+- No blank, whitespace-only, leading-whitespace, or trailing-whitespace
+  standardization is required for the four project-update text fields.
+- Internal spaces were not targeted because they may be legitimate parts of
+  identifiers, names, and categorical values.
+- Cleaned `report_date` values will use `DATE`.
+- Standard DATE conversion will be attempted first, with `%m/%d/%Y` parsing
+  used as a fallback.
+- No date-based exclusions are required because no project-update report date
+  occurs after the June 30, 2026 reporting cutoff.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- `project_updates.csv` contains 726 raw rows and 725 distinct `update_id`
+  values.
+- UPD00655 occurs twice, and the two records are exact duplicates across all
+  columns.
+- After removing one UPD00655 occurrence, the expected cleaned row count and
+  distinct `update_id` count are both 725.
+- No `(project_id, report_date)` combination contains more than one distinct
+  `update_id`.
+- Eight of the nine columns contain no NULL values.
+- `forecast_completion_date` contains one NULL value belonging to UPD00664 for
+  project P088.
+- P088 contains four project-update records.
+- P088's first two updates contain a forecast date of July 27, 2026, and its
+  third contains July 28, 2026.
+- Those three updates list `Owner decision / change order` as the primary delay
+  reason.
+- P088's fourth update, UPD00664, was reported on June 30, 2026, records planned
+  completion of 80.9%, actual completion of 81.7%, and a NULL forecast date.
+- UPD00664 changes the primary delay reason to `Subcontractor availability`.
+- None of the four `VARCHAR` fields contain blank or whitespace-only values.
+- None of the populated values in the four `VARCHAR` fields change after
+  applying `TRIM()`, confirming that no leading or trailing whitespace is
+  present.
+- Of the 726 populated `report_date` values, 725 convert directly to `DATE`, one
+  requires the `%m/%d/%Y` fallback, and zero fail both parsing methods.
+- UPD00045 for project P006 contains the only fallback-parsed date.
+- UPD00045's raw `report_date` of `8/31/2024` standardizes to `2024-08-31`.
+- The single valid format variation explains why DuckDB inferred `report_date`
+  as `VARCHAR`.
+- Standardized `report_date` values range from February 25, 2023, through
+  June 30, 2026.
+- The latest report date equals the established reporting cutoff.
+- Zero project-update records occur after the reporting cutoff.
+
+### Next Session
+
+First, revalidate Investigation 43 using `standardized_report_date` rather than
+the raw `VARCHAR` value. Group by `project_id` and the standardized date, then
+identify combinations containing more than one distinct `update_id`.
+
+Use the result to confirm or revise the candidate business grain of one project
+update per project and report date.
+
+After revalidating the grain, resume Investigation 46 by counting total rows,
+populated `forecast_completion_date` values, timestamps recorded at midnight,
+and timestamps containing a non-midnight time. Use the results to determine
+whether `TIMESTAMP` precision is meaningful or whether `DATE` is the more
+appropriate cleaned type.
+
 ## August 14, 2026
 
 ### Work Completed
