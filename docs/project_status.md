@@ -641,14 +641,12 @@ populated `forecast_completion_date` values, midnight timestamps, and
 non-midnight timestamps. Use the evidence to determine whether the time
 component is meaningful or whether `DATE` is the appropriate cleaned type.
 
-## Latest Analysis Commit
-
 The latest committed analysis is:
 
 - Commit:
-  [`2ec87e988f0abe7669cff898e85cd62d7289e415`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/2ec87e988f0abe7669cff898e85cd62d7289e415)
-- Message: `Complete labor profiling and begin project updates`
-- Date: August 14, 2026
+  [`d4a09b310c97e6ee96363a04a7f04b14966a5e2b`](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/d4a09b310c97e6ee96363a04a7f04b14966a5e2b)
+- Message: `Profile project update quality and report dates`
+- Date: August 17, 2026
 
 The latest correction commit is:
 
