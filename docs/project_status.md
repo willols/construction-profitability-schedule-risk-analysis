@@ -751,10 +751,10 @@ minimum decimal scale required for the cleaned `actual_pct_complete` type.
 
 The latest committed analysis is:
 
-* Commit:
-  [d4a09b310c97e6ee96363a04a7f04b14966a5e2b](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/d4a09b310c97e6ee96363a04a7f04b14966a5e2b)
-* Message: `Profile project update quality and report dates`
-* Date: August 17, 2026
+- Commit:
+  [f5512680c766ee1e6d3d96dbc044aeece0d1d76a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/f5512680c766ee1e6d3d96dbc044aeece0d1d76a)
+- Message: `Profile project update forecasts and percentages`
+- Date: August 18, 2026
 
 The latest correction commit is:
 

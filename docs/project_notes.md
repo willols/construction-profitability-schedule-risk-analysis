@@ -71,7 +71,18 @@ and lessons. Add each new dated entry directly below this introduction.
 
 ### Verification and Closeout
 
-- Full-file DuckDB execution, Git diff validation, and commit and push closeout remain pending.
+- The complete `sql/05_project_updates_profiling.sql` file executed through the
+  DuckDB CLI with `-bail` and returned exit code 0.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- The analysis commit included:
+  - `sql/05_project_updates_profiling.sql`
+  - `docs/project_notes.md`
+  - `docs/project_status.md`
+- Analysis commit
+  [f5512680c766ee1e6d3d96dbc044aeece0d1d76a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/f5512680c766ee1e6d3d96dbc044aeece0d1d76a)
+  was created on `main` with the message
+  `Profile project update forecasts and percentages`.
+- The analysis commit was pushed successfully to `origin/main`.
 
 ### Next Session
 
