@@ -3,6 +3,86 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 18, 2026
+
+### Work Completed
+
+- Completed Investigation 43A by repeating the project-update business-grain test with standardized `report_date` values.
+- Completed Investigation 46 by determining whether the time component of `forecast_completion_date` contains meaningful information.
+- Completed Investigation 47 by profiling the standardized forecast-date range and comparing forecast dates with report dates and the reporting cutoff.
+- Completed Investigation 47A by inspecting the 40 records whose forecast completion dates precede their report dates.
+- Completed Investigation 48 by testing the numeric compatibility of `actual_pct_complete`.
+- Completed Investigation 48A by identifying and inspecting the single value that failed direct numeric conversion.
+- Completed Investigation 48B by validating percent-symbol removal across all `actual_pct_complete` values.
+- Completed Investigation 49 by profiling the standardized `actual_pct_complete` range and boundary values.
+- Completed Investigation 49A by identifying and inspecting the single percentage value above 100.
+- Established Investigation 49B as the next follow-up to inspect project P040's complete update progression.
+- Used CTEs to separate standardization logic from downstream validation and row-level inspection.
+
+### Decisions and Reasoning
+
+- Standardizing `report_date` values did not reveal any hidden project-date grain violations.
+- The observed business grain is one project update per project and standardized reporting date.
+- `update_id` remains the cleaned row-level identifier after removing one occurrence of the exact UPD00655 duplicate.
+- The time portion of `forecast_completion_date` contains no observed information because every populated value is recorded at midnight.
+- Cleaned `forecast_completion_date` values will therefore use `DATE` rather than `TIMESTAMP`.
+- UPD00664's missing forecast date will remain NULL and continue to be flagged for business clarification.
+- Forecasts extending beyond the June 30, 2026 reporting cutoff will remain because they can represent legitimate future completion expectations.
+- Forecast dates preceding their report dates are not automatically data-quality errors. They may represent post-completion reporting, overdue work, or stale forecasts.
+- The 40 forecast-before-report records will remain unchanged pending project-timeline and completion-status comparisons.
+- `actual_pct_complete` will be standardized by removing percent symbols before numeric conversion.
+- UPD00164's raw value of `89.7%` will standardize to `89.7` without changing the dataset's 0-to-100 percentage scale.
+- Raw CSV values will remain unchanged; percentage normalization will occur only in the cleaned analytical layer.
+- `DECIMAL(10,4)` remains a diagnostic conversion type. The final cleaned percentage type will be selected after precision testing.
+- UPD00313's `actual_pct_complete` value of 105 will not be capped or corrected until P040's neighboring updates have been inspected.
+- No cleaned analytical output was implemented during this session.
+
+### Key Results
+
+- The standardized business-grain test returned zero project-date combinations containing multiple distinct `update_id` values.
+- `project_updates.csv` contains 726 total rows and 725 populated `forecast_completion_date` values.
+- All 725 populated forecast values contain midnight timestamps, while zero contain non-midnight timestamps.
+- Standardized forecast completion dates range from May 14, 2023, through January 23, 2027.
+- Of the 725 populated forecast dates:
+  - 40 occur before their standardized report date.
+  - 75 occur on their standardized report date.
+  - 610 occur after their standardized report date.
+- The three relationship categories reconcile to all 725 populated forecast dates.
+- Sixty-nine forecast dates extend beyond the June 30, 2026 reporting cutoff.
+- The 40 forecast-before-report records span eight projects: P076, P077, P083, P084, P085, P090, P091, and P092.
+- Their forecast-to-report gaps range from 1 to 165 days.
+- All 40 records contain `planned_pct_complete` values of 100.
+- Their raw `actual_pct_complete` values suggest a mixture of post-completion reporting and overdue or stale forecasts, but no correction is supported by the current evidence.
+- DuckDB infers `actual_pct_complete` as `VARCHAR`.
+- All 726 `actual_pct_complete` values are populated.
+- A total of 725 values convert directly to `DECIMAL(10,4)`, while one fails direct conversion.
+- The failed value belongs to UPD00164 for project P022 and is stored as `89.7%`.
+- Exactly one raw value contains a percent symbol.
+- Removing percent symbols allows all 726 values to convert successfully to `DECIMAL(10,4)`, leaving zero conversion failures.
+- Standardized `actual_pct_complete` values range from 7.5 through 105.
+- Zero standardized values are below 0, and zero are equal to 0.
+- One standardized value exceeds 100.
+- A total of 108 standardized values are equal to 100.
+- The above-range value belongs to UPD00313 for project P040.
+- UPD00313 was reported on July 10, 2024, with a forecast completion date of September 27, 2024.
+- UPD00313 records `planned_pct_complete` of 65.4, `actual_pct_complete` of 105, and `Labor availability` as its primary delay reason.
+- The 105 value exceeds both the expected 100% maximum and the planned value by 39.6 percentage points.
+- The available evidence makes the value suspicious but does not establish its intended replacement.
+
+### Verification and Closeout
+
+- Full-file DuckDB execution, Git diff validation, and commit and push closeout remain pending.
+
+### Next Session
+
+Begin Investigation 49B by writing its purpose comment.
+
+Retrieve every update for project P040 and order the records by standardized `report_date`. Include the update identifier, standardized report and forecast dates, planned completion percentage, raw and standardized actual completion percentage, and primary delay reason.
+
+Use the progression to determine whether UPD00313's `actual_pct_complete` value of 105 is an isolated anomaly and whether the surrounding records support a defensible correction. Do not modify or cap the value without sufficient evidence.
+
+After resolving or flagging UPD00313, continue with percentage-precision testing to determine the minimum decimal scale required for the cleaned `actual_pct_complete` type.
+
 ## August 17, 2026
 
 ### Work Completed

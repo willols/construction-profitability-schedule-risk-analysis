@@ -148,37 +148,54 @@ WHERE update_id = 'UPD00655';
 --   only in the cleaned analytical layer.
 
 
--- Investigation 43: Validate the project-update business grain
+-- Investigation 43A: Revalidate the project-update business grain using
+-- standardized report dates
 -- Purpose:
--- - Test whether each deduplicated record represents one project update per
---   project_id and report_date.
--- - Identify project-date combinations associated with multiple distinct
---   update_id values.
--- - Determine whether (project_id, report_date) defines the business grain or
---   whether multiple updates can occur for the same project on the same date.
--- - Exclude the exact UPD00655 duplicate so it does not create a false grain
---   violation.
+-- - Revalidate whether one distinct update_id exists per project_id and
+--   standardized_report_date.
+-- - Prevent different raw date formats representing the same calendar date from
+--   being treated as separate project-date combinations.
+-- - Identify standardized project-date combinations associated with multiple
+--   distinct update_id values.
+-- - Count distinct update_id values so the repeated UPD00655 occurrence does not
+--   create a false grain violation.
+-- - Confirm or revise the candidate business grain of one project update per
+--   project and standardized reporting date.
+WITH standardized_updates AS (
+    SELECT
+        project_id,
+        update_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
 SELECT
     project_id,
-    report_date,
+    standardized_report_date,
     COUNT(DISTINCT update_id) AS distinct_update_count
-FROM read_csv_auto('data/raw/project_updates.csv')
+FROM standardized_updates
 GROUP BY
     project_id,
-    report_date
+    standardized_report_date
 HAVING COUNT(DISTINCT update_id) > 1
 ORDER BY
     distinct_update_count DESC,
     project_id,
-    report_date;
+    standardized_report_date;
 
 -- Findings:
--- - No (project_id, report_date) combination is associated with more than one
+-- - No (project_id, standardized_report_date) combination contains more than one
 --   distinct update_id.
--- - After removing the exact UPD00655 duplicate, each row represents one project
---   update for one project on one report date.
--- - Therefore, (project_id, report_date) defines the observed business grain,
---   while update_id serves as the cleaned row-level identifier.
+-- - Standardizing report_date values did not reveal any project-date combinations
+--   that were hidden by inconsistent raw date formats.
+-- - The repeated UPD00655 occurrence does not create a false grain violation
+--   because both records share the same update_id.
+-- - Therefore, the observed business grain is one project update per project and
+--   standardized reporting date.
+-- - update_id remains the cleaned row-level identifier.
 
 
 -- Investigation 44: Assess project-update column completeness
@@ -465,3 +482,389 @@ FROM standardized;
 -- - Determine whether any records contain a meaningful non-midnight time.
 -- - Decide whether TIMESTAMP precision carries useful information or whether
 --   DATE is the more appropriate type for the cleaned analytical layer.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(forecast_completion_date) AS populated_forecast_date_count,
+    COUNT(*) FILTER (
+        WHERE forecast_completion_date IS NOT NULL
+        AND CAST(forecast_completion_date AS TIME) = TIME '00:00:00'
+        ) AS midnight_timestamp_count,
+    COUNT(*) FILTER (
+        WHERE forecast_completion_date IS NOT NULL
+        AND CAST(forecast_completion_date AS TIME) <> TIME '00:00:00'
+    ) AS non_midnight_timestamp_count
+FROM read_csv_auto('data/raw/project_updates.csv');
+
+-- Findings:
+-- - The dataset contains 726 total rows, including 725 populated
+--   forecast_completion_date values and one NULL value.
+-- - All 725 populated values contain midnight timestamps, and zero contain
+--   non-midnight time values.
+-- - The counts reconcile: 725 populated values equal 725 midnight timestamps
+--   plus zero non-midnight timestamps.
+-- - The one-row difference between the total and populated counts is caused by
+--   the known NULL forecast_completion_date for UPD00664 identified in
+--   Investigation 44.
+-- - Because the time component contains no additional information in the
+--   observed data, convert forecast_completion_date to DATE in the cleaned
+--   analytical layer while preserving UPD00664 as NULL.
+
+
+-- Investigation 47: Validate the forecast-date range and its relationship to
+-- the reporting date
+-- Purpose:
+-- - Identify the minimum and maximum populated forecast_completion_date values.
+-- - Classify populated forecast dates as before, equal to, or after the
+--   corresponding standardized report_date.
+-- - Count forecast dates extending beyond the June 30, 2026 reporting cutoff.
+-- - Identify date relationships requiring further investigation without
+--   automatically classifying them as data errors.
+-- - Preserve the known NULL forecast date for UPD00664 and exclude it from
+--   populated-date relationship counts.
+WITH standardized_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(standardized_forecast_completion_date)
+        AS populated_forecast_date_count,
+    COUNT(*) FILTER (
+        WHERE standardized_forecast_completion_date IS NULL
+    ) AS null_forecast_date_count,
+    MIN(standardized_forecast_completion_date)
+        AS earliest_forecast_completion_date,
+    MAX(standardized_forecast_completion_date)
+        AS latest_forecast_completion_date,
+    COUNT(*) FILTER (
+        WHERE standardized_forecast_completion_date < standardized_report_date
+    ) AS forecast_before_report_date_count,
+    COUNT(*) FILTER (
+        WHERE standardized_forecast_completion_date = standardized_report_date
+    ) AS forecast_on_report_date_count,
+    COUNT(*) FILTER (
+        WHERE standardized_forecast_completion_date > standardized_report_date
+    ) AS forecast_after_report_date_count,
+    COUNT(*) FILTER (
+        WHERE standardized_forecast_completion_date > DATE '2026-06-30'
+    ) AS forecast_after_cutoff_count
+FROM standardized_updates;
+
+-- Findings:
+-- - The dataset contains 726 total rows, including 725 populated forecast dates
+--   and the known NULL value for UPD00664.
+-- - The observed forecast-date range is May 14, 2023 through January 23, 2027.
+-- - Of the 725 populated forecasts, 40 occur before their report date, 75 occur
+--   on their report date, and 610 occur after their report date.
+-- - The relationship counts reconcile to all 725 populated forecast dates.
+-- - The 40 forecasts preceding their report date require row-level investigation
+--   but are not classified as data errors based on this result alone.
+-- - Sixty-nine forecasts extend beyond the June 30, 2026 reporting cutoff. This
+--   is not inherently problematic because forecasts may represent future
+--   completion dates.
+
+
+-- Investigation 47A: Inspect forecast dates preceding their report dates
+-- Purpose:
+-- - Inspect the 40 records where the standardized forecast completion date
+--   precedes the standardized report date.
+-- - Quantify how many days each forecast precedes its report date.
+-- - Review project identifiers, percentage-completion values, and primary delay
+--   reasons for business context and recurring patterns.
+-- - Distinguish potentially overdue or stale forecasts from possible
+--   data-quality problems without correcting or reclassifying any records.
+WITH standardized_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        planned_pct_complete,
+        actual_pct_complete,
+        primary_delay_reason,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    update_id,
+    project_id,
+    standardized_report_date,
+    standardized_forecast_completion_date,
+    DATE_DIFF(
+        'day',
+        standardized_forecast_completion_date,
+        standardized_report_date
+    ) AS days_forecast_precedes_report_date,
+    planned_pct_complete,
+    actual_pct_complete,
+    primary_delay_reason
+FROM standardized_updates
+WHERE standardized_forecast_completion_date < standardized_report_date
+ORDER BY
+    days_forecast_precedes_report_date DESC,
+    project_id,
+    standardized_report_date,
+    update_id;
+
+-- Findings:
+-- - Forty records across eight projects have forecast completion dates preceding
+--   their corresponding report dates.
+-- - The affected projects are P076, P077, P083, P084, P085, P090, P091, and
+--   P092.
+-- - The forecast-to-report gaps range from 1 to 165 days.
+-- - All 40 records contain a planned_pct_complete value of 100.
+-- - The raw actual_pct_complete values show that some updates report 100%
+--   completion while others remain below 100%.
+-- - The pattern may represent a combination of post-completion reporting and
+--   overdue or stale forecasts.
+-- - Preserve all 40 records because this evidence does not establish a
+--   data-quality error.
+-- - Validate the percentage fields and compare these records with project status
+--   and actual completion dates before assigning a final business classification.
+
+
+-- Investigation 48: Determine why actual_pct_complete is inferred as VARCHAR
+-- Purpose:
+-- - Inspect the raw actual_pct_complete values and identify any formatting or
+--   content that prevents consistent numeric type inference.
+-- - Test whether all populated values can be converted directly to a numeric
+--   type without normalization.
+-- - Identify and inspect any values that fail numeric conversion.
+-- - Evaluate the observed range and precision before selecting an appropriate
+--   cleaned numeric type.
+SELECT
+    TYPEOF(actual_pct_complete) AS inferred_type,
+    COUNT(*) AS total_rows,
+    COUNT(actual_pct_complete) AS populated_value_count,
+    COUNT(
+        TRY_CAST(actual_pct_complete AS DECIMAL(10, 4))
+    ) AS successful_conversion_count,
+    COUNT(*) FILTER (
+        WHERE actual_pct_complete IS NOT NULL
+          AND TRY_CAST(
+              actual_pct_complete AS DECIMAL(10, 4)
+          ) IS NULL
+    ) AS failed_conversion_count
+FROM read_csv_auto('data/raw/project_updates.csv')
+GROUP BY
+    TYPEOF(actual_pct_complete);
+
+-- Findings:
+-- - DuckDB infers actual_pct_complete as VARCHAR.
+-- - All 726 rows contain a populated actual_pct_complete value.
+-- - Of the 726 populated values, 725 convert successfully to DECIMAL(10,4)
+--   without normalization and one fails conversion.
+-- - The single incompatible value likely caused DuckDB to infer the complete
+--   column as VARCHAR rather than a numeric type.
+-- - Inspect the failed value before defining a normalization rule or selecting
+--   the final cleaned numeric type.
+
+
+-- Investigation 48A: Inspect the failed actual_pct_complete conversion
+-- Purpose:
+-- - Identify the record and raw actual_pct_complete value that fails direct
+--   conversion to DECIMAL(10,4).
+-- - Review the affected update_id, project_id, report date, planned completion
+--   percentage, and related project-update context.
+-- - Determine whether the failure is caused by a formatting inconsistency or a
+--   genuinely invalid percentage value.
+-- - Avoid defining a normalization rule until the raw value has been inspected.
+SELECT
+    update_id,
+    project_id,
+    report_date,
+    forecast_completion_date,
+    planned_pct_complete,
+    actual_pct_complete,
+    primary_delay_reason
+FROM read_csv_auto('data/raw/project_updates.csv')
+WHERE actual_pct_complete IS NOT NULL
+  AND TRY_CAST(actual_pct_complete AS DECIMAL(10, 4)) IS NULL
+ORDER BY
+    update_id;
+
+-- Findings:
+-- - The failed conversion occurs in update_id UPD00164 for project P022.
+-- - Its raw actual_pct_complete value is 89.7%.
+-- - The percent symbol prevents direct conversion of the complete string to
+--   DECIMAL(10,4).
+-- - Removing the percent symbol produces 89.7, which is consistent with the
+--   apparent 0-to-100 scale used by the other percentage values.
+-- - Treat the value as a formatting inconsistency rather than an invalid
+--   percentage, pending validation of the normalization rule across all rows.
+-- - Preserve the raw CSV value and apply any validated normalization only in the
+--   cleaned analytical layer.
+
+
+-- Investigation 48B: Validate percent-symbol normalization
+-- Purpose:
+-- - Test whether removing the percent symbol from actual_pct_complete allows all
+--   populated values to convert successfully to DECIMAL(10,4).
+-- - Count the values containing a percent symbol before normalization.
+-- - Confirm that the normalization resolves UPD00164 without altering the
+--   numeric meaning or scale of the value.
+-- - Identify any conversion failures remaining after normalization.
+-- - Preserve the raw CSV and apply the validated rule only in the cleaned
+--   analytical layer.
+WITH standardized_percentages AS (
+    SELECT
+        actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(10, 4)
+        ) AS standardized_actual_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(actual_pct_complete) AS populated_value_count,
+    COUNT(*) FILTER (
+        WHERE STRPOS(actual_pct_complete, '%') > 0
+    ) AS percent_symbol_value_count,
+    COUNT(standardized_actual_pct_complete)
+        AS successful_standardization_count,
+    COUNT(*) FILTER (
+        WHERE actual_pct_complete IS NOT NULL
+          AND standardized_actual_pct_complete IS NULL
+    ) AS failed_standardization_count
+FROM standardized_percentages;
+
+-- Findings:
+-- - All 726 actual_pct_complete values are populated, and exactly one raw value
+--   contains a percent symbol.
+-- - Removing the percent symbol allows all 726 values to convert successfully to
+--   DECIMAL(10,4), with zero remaining conversion failures.
+-- - UPD00164 standardizes from 89.7% to 89.7 without changing the percentage
+--   scale.
+-- - Remove percent symbols when standardizing actual_pct_complete in the cleaned
+--   project-updates layer.
+-- - Preserve the original value in the raw CSV.
+-- - DECIMAL(10,4) is currently a diagnostic conversion type; select the final
+--   cleaned numeric type after validating the standardized range and precision.
+
+
+-- Investigation 49: Profile the standardized actual_pct_complete range and
+-- precision
+-- Purpose:
+-- - Apply the validated percent-symbol normalization before evaluating the
+--   percentage values numerically.
+-- - Identify the minimum and maximum standardized actual_pct_complete values.
+-- - Count values below 0 or above 100 that violate the expected percentage
+--   range and require further investigation.
+-- - Count values equal to the boundary values of 0 and 100.
+-- - Test whether rounding to zero, one, or two decimal places changes any
+--   observed values.
+-- - Use the range and precision evidence to select an appropriate cleaned
+--   DECIMAL type without altering the raw data.
+WITH standardized_percentages AS (
+    SELECT
+        actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(10, 4)
+        ) AS standardized_actual_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(standardized_actual_pct_complete)
+        AS populated_actual_pct_count,
+    MIN(standardized_actual_pct_complete)
+        AS minimum_actual_pct,
+    MAX(standardized_actual_pct_complete)
+        AS maximum_actual_pct,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete < 0
+    ) AS actual_pct_below_zero_count,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete > 100
+    ) AS actual_pct_above_100_count,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete = 0
+    ) AS actual_pct_at_zero_count,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete = 100
+    ) AS actual_pct_at_100_count
+FROM standardized_percentages;
+
+-- Findings:
+-- - All 726 actual_pct_complete values standardize successfully to numeric
+--   values.
+-- - The observed standardized range is 7.5 through 105.
+-- - Zero values are below 0, and zero values are equal to 0.
+-- - One value exceeds the expected maximum of 100.
+-- - The single above-range value is 105 because it is also the observed maximum.
+-- - A total of 108 values are equal to 100.
+-- - Inspect the 105 value and its project-update context before classifying it as
+--   a data-quality error or defining a cleaning decision.
+
+
+-- Investigation 49A: Inspect the actual_pct_complete value exceeding 100
+-- Purpose:
+-- - Identify the update_id and project_id associated with the standardized
+--   actual_pct_complete value above 100.
+-- - Review its raw and standardized percentage values, planned completion,
+--   report date, forecast completion date, and delay context.
+-- - Inspect neighboring updates for the same project to determine whether the
+--   value is isolated or part of a broader progression pattern.
+-- - Determine whether the value reflects a formatting issue, an unexpected
+--   business definition, or a probable data-entry error.
+-- - Avoid correcting or capping the value until the surrounding evidence has
+--   been reviewed.
+WITH standardized_percentages AS (
+    SELECT
+        update_id,
+        project_id,
+        report_date,
+        forecast_completion_date,
+        planned_pct_complete,
+        actual_pct_complete,
+        primary_delay_reason,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(10, 4)
+        ) AS standardized_actual_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    update_id,
+    project_id,
+    report_date,
+    forecast_completion_date,
+    planned_pct_complete,
+    actual_pct_complete,
+    standardized_actual_pct_complete,
+    primary_delay_reason
+FROM standardized_percentages
+WHERE standardized_actual_pct_complete > 100;
+
+-- Preliminary findings:
+-- - The above-range value occurs in update_id UPD00313 for project P040.
+-- - The update was reported on July 10, 2024, with a forecast completion date of
+--   September 27, 2024.
+-- - planned_pct_complete is 65.4, while actual_pct_complete is 105.
+-- - The reported actual value exceeds both the expected 100% maximum and the
+--   planned value by 39.6 percentage points.
+-- - The primary delay reason is Labor availability.
+-- - This context increases suspicion that 105 is erroneous, but it does not
+--   establish the intended replacement value.
+-- - Inspect P040's update history before making a cleaning decision.
+
+
+-- Next step:
+-- Investigation 49B: Inspect project P040's update progression
