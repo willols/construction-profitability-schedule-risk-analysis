@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 18, 2026
+Last updated: August 19, 2026
 
 ## Current Phase
 
@@ -16,15 +16,9 @@ First-pass standalone profiling is complete for:
 Labor timeline profiling and the employee-date grain and overtime
 interpretability investigations are complete.
 
-Profiling of `project_updates.csv` has been executed through Investigation 49A.
-The standardized business grain has been confirmed, the forecast-completion
-date type and within-file date relationships have been profiled, and the
-`actual_pct_complete` formatting issue and numeric range have been investigated.
+Profiling of `project_updates.csv` has been executed through Investigation 54. Investigation 49B resolved the P040 follow-up, final numeric types have been selected for actual and planned completion percentages, and the update-level planned-versus-actual relationship has been summarized.
 
-Investigation 49A identified UPD00313 for project P040 as the only update with
-an `actual_pct_complete` value above 100. Investigation 49B is the next task and
-will inspect P040's update progression before any correction or final
-classification is made.
+Investigation 54A has been documented and its query has been prepared, but it has not yet been executed. The next task is to retrieve and assess every record tied at the minimum and maximum completion variances.
 
 `change_orders.csv` has not yet been profiled.
 
@@ -40,7 +34,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `project_budgets.csv`   | `sql/02_project_budgets_profiling.sql`        | Standalone profiling complete                                    |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
 | `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 49A; Investigation 49B is next |
+| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 54; Investigation 54A prepared |
 | `change_orders.csv`     | Planned: `sql/06_change_orders_profiling.sql` | Not started                                                      |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -457,8 +451,7 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling has been executed through Investigation 49A. Investigation 49B is the
-next task.
+Profiling has been executed through Investigation 54. Investigation 54A has been documented and its query has been prepared, but the query has not yet been executed.
 
 #### Structure and Row-Level Identifier
 
@@ -607,56 +600,93 @@ Decision:
 
 #### Actual Completion Percentage
 
-* DuckDB infers `actual_pct_complete` as `VARCHAR`.
-* All 726 rows contain populated `actual_pct_complete` values.
-* A total of 725 values convert directly to `DECIMAL(10,4)`.
-* One populated value fails direct numeric conversion.
-* The failed value belongs to UPD00164 for project P022 and is stored as
-  `89.7%`.
-* The percent symbol explains the direct conversion failure and the raw
-  `VARCHAR` inference.
-* Exactly one raw value contains a percent symbol.
-* Removing percent symbols allows all 726 values to convert successfully to
-  `DECIMAL(10,4)`, leaving zero conversion failures.
-* UPD00164 standardizes from `89.7%` to `89.7`, which preserves the dataset's
-  apparent 0-to-100 percentage scale.
-* Standardized `actual_pct_complete` values range from 7.5 through 105.
-* Zero standardized values are below 0.
-* Zero standardized values are equal to 0.
-* One standardized value exceeds 100.
-* A total of 108 standardized values are equal to 100.
+- DuckDB infers `actual_pct_complete` as `VARCHAR`.
+- All 726 rows contain populated values.
+- A total of 725 values convert directly to diagnostic `DECIMAL(10, 4)` values.
+- UPD00164 contains the only direct conversion failure and is stored as `89.7%`.
+- Removing percent symbols allows all 726 values to convert successfully.
+- Standardized values range from 7.5 through 105.
+- Zero values are below 0 or equal to 0.
+- One value exceeds 100, and 108 values equal 100.
+- Casting standardized values to zero decimal places changes 549 values.
+- Casting to one, two, or three decimal places changes zero values.
+- One decimal place is therefore the minimum lossless scale.
+- The maximum value of 105 requires three integer digits.
 
 Decision:
 
-* Remove percent symbols before converting `actual_pct_complete` in the cleaned
-  analytical layer.
-* Preserve UPD00164's numeric meaning and standardize `89.7%` to `89.7`.
-* Preserve the raw source value unchanged.
-* Treat `DECIMAL(10,4)` as a diagnostic conversion type rather than the final
-  cleaned type.
-* Select the final cleaned DECIMAL precision and scale after completing the
-  pending precision tests.
+- Remove percent symbols before numeric conversion.
+- Standardize UPD00164 from `89.7%` to `89.7`.
+- Use `DECIMAL(4, 1)` for cleaned `actual_pct_complete`.
+- Preserve all raw source values unchanged.
 
-#### Above-Range Actual Completion Percentage
+#### Above-Range Actual Completion and P040 Progression
 
-* UPD00313 for project P040 contains the only standardized
-  `actual_pct_complete` value above 100.
-* UPD00313 was reported on July 10, 2024.
-* Its forecast completion date is September 27, 2024.
-* It records `planned_pct_complete` of 65.4 and `actual_pct_complete` of 105.
-* The actual percentage exceeds the expected 100% maximum.
-* It also exceeds the planned percentage by 39.6 percentage points.
-* Its primary delay reason is `Labor availability`.
-* The surrounding fields increase suspicion that 105 is erroneous, but they do
-  not establish the intended replacement value.
+- UPD00313 for P040 contains the only standardized actual percentage above 100.
+- P040 contains eight updates from March 20 through September 29, 2024.
+- Its actual completion progresses through 10.5, 25, 40, 50.9, 105, 77.2, 90, and 100.
+- UPD00313's value of 105 creates the only nonmonotonic step in the otherwise increasing progression.
+- The value rises from 50.9 to 105 and then falls to 77.2.
+- UPD00313 records planned completion of 65.4, producing a positive variance of 39.6 percentage points.
+- The progression provides strong evidence that 105 is anomalous but does not establish its intended replacement.
 
 Decision:
 
-* Do not cap, replace, or otherwise correct UPD00313's value without additional
-  evidence.
-* Inspect P040's complete update progression in Investigation 49B.
-* Preserve and flag the value if the neighboring records do not support a
-  defensible correction.
+- Preserve UPD00313's value of 105 in the cleaned analytical layer.
+- Flag the record for stakeholder clarification.
+- Do not cap the value at 100 or infer another replacement without authoritative evidence.
+
+#### Planned Completion Percentage
+
+- All 726 `planned_pct_complete` values are populated.
+- All 726 values convert directly to diagnostic `DECIMAL(10, 4)` values.
+- Zero NULL values and zero conversion failures were identified.
+- No formatting normalization is required.
+- Standardized values range from 8.8 through 100.
+- Zero values fall below 0 or above 100.
+- Zero values equal 0, while 185 equal 100.
+- Casting to zero decimal places changes 488 values.
+- Casting to one, two, or three decimal places changes zero values.
+- One decimal place is therefore the minimum lossless scale.
+- The maximum value of 100 requires three integer digits.
+
+Decision:
+
+- Convert `planned_pct_complete` directly to `DECIMAL(4, 1)`.
+- Do not apply the percent-symbol normalization used for `actual_pct_complete`.
+- Preserve the raw source values unchanged.
+
+#### Planned-Versus-Actual Completion
+
+Completion variance is defined in percentage points as:
+
+```text
+actual_pct_complete - planned_pct_complete
+```
+
+Interpretation:
+
+- Positive variance means actual progress is ahead of plan.
+- Zero variance means actual progress equals plan.
+- Negative variance means actual progress is behind plan.
+
+After exact-duplicate removal:
+
+- All 725 unique updates contain testable completion variances.
+- Actual completion is ahead of plan in 61 updates.
+- Actual completion equals plan in 105 updates.
+- Actual completion is behind plan in 559 updates.
+- The three categories reconcile to all 725 unique updates.
+- Completion variance ranges from -32.7 through 39.6 percentage points.
+- These counts describe update records, not distinct projects.
+- UPD00313 itself produces a positive variance of 39.6 percentage points, matching the observed maximum.
+- Investigation 54A must still identify every record tied at either extreme and determine whether the minimum represents plausible project performance or another data-quality anomaly.
+
+Decision:
+
+- Perform planned-versus-actual comparisons only after exact-duplicate removal.
+- Use standardized `DECIMAL(4, 1)` values for both percentage fields.
+- Do not interpret the maximum positive variance as valid performance without completing Investigation 54A.
 
 ## Unresolved Items
 
@@ -686,21 +716,16 @@ Decision:
 
 ### Project Updates
 
-* Obtain stakeholder clarification for UPD00664's missing forecast date.
-* Complete Investigation 49B by inspecting P040's update progression and
-  determine whether UPD00313's `actual_pct_complete` value of 105 can be
-  corrected defensibly or must remain preserved and flagged.
-* Complete standardized `actual_pct_complete` precision testing and select its
-  final cleaned DECIMAL type.
-* Profile `planned_pct_complete` scale, range, precision, and numeric type.
-* Validate planned-versus-actual completion relationships and chronological
-  percentage progression.
-* Compare the 40 forecast-before-report records with project status, baseline
-  completion, and actual completion dates.
-* Profile `estimated_cost_to_complete` range, precision, and relationship with
-  project progress.
-* Profile `primary_delay_reason` and `submitted_by` values.
-* Validate project-update project IDs against `projects.csv`.
+- Obtain stakeholder clarification for UPD00664's missing forecast date.
+- Obtain stakeholder clarification for UPD00313's preserved actual-completion value of 105.
+- Execute Investigation 54A and identify every update tied at the minimum and maximum completion variances.
+- Determine whether the minimum variance of -32.7 percentage points represents plausible behind-plan performance or another data-quality anomaly.
+- Inspect the affected projects' chronological histories if the extreme records alone do not support a conclusion.
+- Validate project-level chronological progression of planned and actual completion percentages.
+- Compare the 40 forecast-before-report records with project status, baseline completion, and actual completion dates.
+- Profile `estimated_cost_to_complete` range, precision, and relationship with project progress.
+- Profile `primary_delay_reason` and `submitted_by`.
+- Validate project-update project IDs against `projects.csv`.
 
 ### Remaining Datasets and Relationships
 
@@ -723,38 +748,30 @@ Decision:
 
 Open `sql/05_project_updates_profiling.sql`.
 
-Begin Investigation 49B by writing its purpose comment. Do not write the SQL
-query until the purpose comment has been reviewed.
+Execute the prepared Investigation 54A query. Retrieve every record tied at the minimum completion variance of -32.7 percentage points or the maximum completion variance of 39.6 percentage points.
 
-Retrieve every project-update record for P040 and order the results by
-standardized `report_date`. Include:
+For each extreme record, inspect:
 
-* `update_id`
-* `project_id`
-* standardized `report_date`
-* standardized `forecast_completion_date`
-* `planned_pct_complete`
-* raw `actual_pct_complete`
-* standardized `actual_pct_complete`
-* `primary_delay_reason`
+- `update_id`
+- `project_id`
+- standardized `report_date`
+- standardized `forecast_completion_date`
+- standardized `planned_pct_complete`
+- raw and standardized `actual_pct_complete`
+- completion variance in percentage points
+- `primary_delay_reason`
 
-Use the chronological progression to determine whether UPD00313's
-`actual_pct_complete` value of 105 is an isolated anomaly and whether the
-neighboring records support a defensible correction.
+Confirm whether UPD00313 is the only record tied at the maximum and identify every record tied at the minimum.
 
-Do not cap or replace the value through assumption. If the intended value cannot
-be supported by evidence, preserve 105 and flag UPD00313 for stakeholder
-clarification.
+Determine whether the minimum represents plausible behind-plan performance or another data-quality anomaly. If the extreme records alone are insufficient, inspect the affected projects' complete chronological update histories.
 
-After Investigation 49B, continue percentage-precision testing to determine the
-minimum decimal scale required for the cleaned `actual_pct_complete` type.
+After documenting Investigation 54A, execute the complete `sql/05_project_updates_profiling.sql` file and perform the normal verification and Git closeout.
 
 The latest committed analysis is:
 
-- Commit:
-  [f5512680c766ee1e6d3d96dbc044aeece0d1d76a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/f5512680c766ee1e6d3d96dbc044aeece0d1d76a)
-- Message: `Profile project update forecasts and percentages`
-- Date: August 18, 2026
+- Commit: [e6f028a79a9e1a4bf59cdfab2ef1880767b140cc](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e6f028a79a9e1a4bf59cdfab2ef1880767b140cc)
+- Message: `Profile project update percentages and variance`
+- Date: August 19, 2026
 
 The latest correction commit is:
 

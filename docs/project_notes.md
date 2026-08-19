@@ -3,6 +3,83 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 19, 2026
+
+### Work Completed
+
+- Completed Investigation 49B by inspecting project P040's complete chronological update history.
+- Completed Investigation 50 by determining the minimum lossless decimal scale and final cleaned type for `actual_pct_complete`.
+- Completed Investigation 51 by profiling the completeness and direct numeric compatibility of `planned_pct_complete`.
+- Completed Investigation 52 by validating the standardized range and boundary values of `planned_pct_complete`.
+- Completed Investigation 53 by determining the minimum lossless decimal scale and final cleaned type for `planned_pct_complete`.
+- Completed Investigation 54 by comparing standardized actual and planned completion across the 725 unique project updates.
+- Defined completion variance in percentage points as standardized actual completion minus standardized planned completion.
+- Applied the established exact-duplicate removal before calculating the update-level completion-variance summary.
+- Began Investigation 54A by documenting its purpose and constructing a dynamic query to retrieve the minimum- and maximum-variance records.
+- Used separate CTEs for standardized updates, calculated completion variances, and aggregate variance bounds.
+- Ended the session before executing Investigation 54A.
+
+### Decisions and Reasoning
+
+- UPD00313's `actual_pct_complete` value of 105 is likely a data-quality error because P040's actual completion rises from 50.9 to 105 and then falls to 77.2.
+- P040's surrounding records do not provide enough evidence to determine the intended replacement value.
+- UPD00313's value of 105 will remain unchanged in the cleaned analytical layer and will be flagged for stakeholder clarification.
+- The value will not be capped at 100 because doing so would incorrectly imply that P040 was complete in July 2024.
+- Standardized `actual_pct_complete` will use `DECIMAL(4,1)`.
+- Standardized `planned_pct_complete` will also use `DECIMAL(4,1)`, based on an independent completeness, range, and precision assessment.
+- `planned_pct_complete` requires no formatting-normalization rule because every populated value converts directly to a numeric type.
+- Positive completion variance represents actual progress ahead of plan, zero represents progress on plan, and negative variance represents progress behind plan.
+- Planned-versus-actual comparisons will use the cleaned business grain of 725 unique project updates rather than all 726 raw rows.
+- Investigation 54 describes update records, not distinct projects. The 559 behind-plan updates must not be described as 559 separate projects.
+- The maximum positive variance should not be interpreted as valid ahead-of-plan performance until Investigation 54A confirms its source records and any ties.
+- No raw CSV values were modified, and no cleaned analytical output was implemented during this session.
+
+### Key Results
+
+- P040 contains eight updates from March 20 through September 29, 2024.
+- Its standardized actual completion progresses through 10.5, 25, 40, 50.9, 105, 77.2, 90, and 100.
+- UPD00313's value of 105 is the only break in P040's otherwise increasing actual-completion progression.
+- All 726 populated `actual_pct_complete` values were included in the precision test.
+- Casting standardized actual completion to zero decimal places changed 549 values.
+- Casting standardized actual completion to one, two, or three decimal places changed zero values.
+- One decimal place is therefore the minimum lossless scale for `actual_pct_complete`.
+- All 726 `planned_pct_complete` values are populated, and zero are NULL.
+- All 726 planned-completion values convert directly to diagnostic `DECIMAL(10,4)` values, with zero conversion failures.
+- Standardized planned-completion values range from 8.8 through 100.
+- Zero planned values fall below 0 or above 100.
+- Zero planned values equal 0, while 185 equal 100.
+- Casting standardized planned completion to zero decimal places changed 488 values.
+- Casting standardized planned completion to one, two, or three decimal places changed zero values.
+- One decimal place is therefore the minimum lossless scale for `planned_pct_complete`.
+- Investigation 54 evaluated 725 unique updates with 725 testable completion variances.
+- Actual completion was ahead of plan in 61 updates, equal to plan in 105 updates, and behind plan in 559 updates.
+- The three categories reconcile to all 725 unique updates.
+- Completion variance ranges from 32.7 percentage points behind plan to 39.6 percentage points ahead of plan.
+- UPD00313 itself produces a positive variance of 39.6 percentage points, matching the observed maximum, but Investigation 54A remains necessary to retrieve every record tied at either extreme.
+- The update responsible for the minimum variance of negative 32.7 percentage points has not yet been identified.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 49B through 54 executed successfully, and their results were reviewed.
+- The prepared Investigation 54A query was not executed.
+- The complete `sql/05_project_updates_profiling.sql` file was not rerun; full-file verification remains a next-session task.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit [e6f028a79a9e1a4bf59cdfab2ef1880767b140cc](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e6f028a79a9e1a4bf59cdfab2ef1880767b140cc) was created on `main` with the message `Profile project update percentages and variance`.
+- The analysis commit included `sql/05_project_updates_profiling.sql`.
+- The analysis commit was pushed successfully to `origin/main`.
+
+### Next Session
+
+Begin by executing the prepared Investigation 54A query.
+
+Confirm whether UPD00313 is the only record tied at the maximum completion variance of 39.6 percentage points and identify every record tied at the minimum variance of negative 32.7 percentage points.
+
+Inspect each extreme record's project, report date, forecast completion date, planned completion, raw and standardized actual completion, and primary delay reason. Determine whether the minimum represents plausible behind-plan performance or another data-quality anomaly.
+
+If the aggregate records do not provide enough evidence, inspect the affected projects' complete chronological update histories before making any correction or preservation decision.
+
+After documenting Investigation 54A, rerun the complete profiling file and perform the normal Git closeout.
+
 ## August 18, 2026
 
 ### Work Completed
