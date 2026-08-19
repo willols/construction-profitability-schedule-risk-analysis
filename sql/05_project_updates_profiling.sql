@@ -866,5 +866,380 @@ WHERE standardized_actual_pct_complete > 100;
 -- - Inspect P040's update history before making a cleaning decision.
 
 
--- Next step:
 -- Investigation 49B: Inspect project P040's update progression
+-- Purpose:
+-- - Inspect P040's chronological update history to determine whether neighboring
+--   records explain or contradict UPD00313's actual_pct_complete value of 105.
+-- - Correct the value only if the progression provides defensible evidence;
+--   otherwise preserve it and flag it for stakeholder clarification.
+WITH standardized_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date,
+        planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(10, 4)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    update_id,
+    project_id,
+    standardized_report_date,
+    standardized_forecast_completion_date,
+    planned_pct_complete,
+    raw_actual_pct_complete,
+    standardized_actual_pct_complete,
+    primary_delay_reason
+FROM standardized_updates
+WHERE project_id = 'P040'
+ORDER BY standardized_report_date;
+
+-- Findings:
+-- - P040 contains eight chronological updates from 2024-03-20 through 2024-09-29.
+-- - Actual completion increases across every update except UPD00313, where it
+--   rises from 50.9 to 105 before falling to 77.2 in the following update.
+--
+-- Interpretation:
+-- - The nonmonotonic progression indicates that UPD00313's value of 105 is
+--   likely a data-quality error.
+-- - Neighboring records do not provide sufficient evidence to determine the
+--   intended replacement value.
+--
+-- Decision:
+-- - Preserve UPD00313's value of 105 in the cleaned analytical layer and flag
+--   it for stakeholder clarification. Do not cap or correct the value.
+
+
+-- Investigation 50: Determine the required scale for actual_pct_complete
+-- Purpose:
+-- - DECIMAL(10,4) has been used as a diagnostic type while standardizing
+--   actual_pct_complete.
+-- - Test progressively smaller decimal scales to identify the minimum scale
+--   that preserves every standardized value without rounding changes.
+-- - Use the result to select the final DECIMAL type for the cleaned analytical layer.
+WITH standardized_updates AS (
+    SELECT
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(10, 4)
+        ) AS standardized_actual_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(standardized_actual_pct_complete) AS testable_values,
+    COUNT(*) FILTER (
+    WHERE standardized_actual_pct_complete
+        <> CAST(standardized_actual_pct_complete AS DECIMAL(10,0))
+    ) AS values_changed_at_0_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_actual_pct_complete
+        <> CAST(standardized_actual_pct_complete AS DECIMAL(10,1))
+    ) AS values_changed_at_1_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_actual_pct_complete
+        <> CAST(standardized_actual_pct_complete AS DECIMAL(10,2))
+    ) AS values_changed_at_2_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_actual_pct_complete
+        <> CAST(standardized_actual_pct_complete AS DECIMAL(10,3))
+    ) AS values_changed_at_3_decimal
+FROM standardized_updates;
+
+-- Findings:
+-- - All 726 populated actual_pct_complete values were successfully standardized
+--   and included in the precision test.
+-- - Casting to zero decimal places changed 549 values.
+-- - Casting to one, two, or three decimal places changed zero values.
+-- - One decimal place is therefore the minimum lossless scale.
+-- - Select DECIMAL(4,1) as the final type because the maximum value of 105
+--   requires three integer digits and the data requires one fractional digit.
+
+
+-- Investigation 51: Check completeness and numeric compatibility of planned_pct_complete
+-- Purpose:
+-- - Determine whether every planned_pct_complete value is populated and can be
+--   converted directly to a diagnostic DECIMAL(10,4) value.
+-- - Quantify NULL values and conversion failures before defining a
+--   standardization rule.
+-- - Isolate any incompatible raw values for further investigation rather than
+--   assuming they follow the same formatting as actual_pct_complete.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(planned_pct_complete) AS populated_values,
+    COUNT(*) FILTER (
+        WHERE planned_pct_complete IS NULL
+    ) AS null_values,
+    COUNT(*) FILTER (
+        WHERE planned_pct_complete IS NOT NULL
+          AND TRY_CAST(
+              planned_pct_complete AS DECIMAL(10,4)
+          ) IS NOT NULL
+    ) AS successful_direct_conversions,
+    COUNT(*) FILTER (
+        WHERE planned_pct_complete IS NOT NULL
+          AND TRY_CAST(
+              planned_pct_complete AS DECIMAL(10,4)
+          ) IS NULL
+    ) AS failed_direct_conversions
+FROM read_csv_auto('data/raw/project_updates.csv');
+
+-- Findings:
+-- - All 726 rows contain populated planned_pct_complete values; zero are NULL.
+-- - All 726 values convert directly to diagnostic DECIMAL(10,4) values.
+-- - No direct-conversion failures were identified.
+-- - No formatting normalization rule is required before standardizing
+--   planned_pct_complete.
+
+
+-- Investigation 52: Validate the standardized range of planned_pct_complete
+-- Purpose:
+-- - Determine the minimum and maximum standardized planned percentages.
+-- - Count values below 0 or above 100 as potential range anomalies.
+-- - Count values equal to 0 or 100 separately to understand representation at
+--   the expected boundaries.
+-- - Identify whether any out-of-range records require further investigation
+--   before selecting the final DECIMAL type.
+WITH standardized_updates AS (
+    SELECT
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(10,4)
+            ) AS standardized_planned_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    MIN(standardized_planned_pct_complete)
+        AS minimum_standardized_planned_pct_complete,
+    MAX(standardized_planned_pct_complete)
+        AS maximum_standardized_planned_pct_complete,
+    COUNT(*) FILTER (
+        WHERE standardized_planned_pct_complete = 0
+    ) AS planned_pct_at_0,
+    COUNT(*) FILTER (
+        WHERE standardized_planned_pct_complete < 0
+    ) AS planned_pct_below_0,
+    COUNT(*) FILTER (
+        WHERE standardized_planned_pct_complete = 100
+    ) AS planned_pct_at_100,
+    COUNT(*) FILTER (
+        WHERE standardized_planned_pct_complete > 100
+    ) AS planned_pct_above_100
+FROM standardized_updates;
+
+-- Findings:
+-- - Standardized planned_pct_complete values range from 8.8 through 100.
+-- - Zero values fall below 0 or above 100, and zero values equal 0.
+-- - A total of 185 values equal the upper boundary of 100.
+-- - All 726 values fall within the expected 0–100 range; no range anomalies
+--   require further row-level investigation.
+
+
+-- Investigation 53: Determine the required scale for planned_pct_complete
+-- Purpose:
+-- - DECIMAL(10,4) has been used as a diagnostic type while validating
+--   planned_pct_complete.
+-- - Test progressively smaller decimal scales to identify the minimum scale
+--   that preserves every standardized value without rounding changes.
+-- - Use the result and validated range to select the final DECIMAL type for
+--   the cleaned analytical layer.
+WITH standardized_updates AS (
+    SELECT
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(10,4)
+            ) AS standardized_planned_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS row_count,
+    COUNT(standardized_planned_pct_complete) AS testable_values,
+    COUNT(*) FILTER (
+    WHERE standardized_planned_pct_complete
+        <> CAST(standardized_planned_pct_complete AS DECIMAL(10,0))
+    ) AS values_changed_at_0_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_planned_pct_complete
+        <> CAST(standardized_planned_pct_complete AS DECIMAL(10,1))
+    ) AS values_changed_at_1_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_planned_pct_complete
+        <> CAST(standardized_planned_pct_complete AS DECIMAL(10,2))
+    ) AS values_changed_at_2_decimal,
+    COUNT(*) FILTER (
+    WHERE standardized_planned_pct_complete
+        <> CAST(standardized_planned_pct_complete AS DECIMAL(10,3))
+    ) AS values_changed_at_3_decimal
+FROM standardized_updates;
+
+-- Findings:
+-- - All 726 populated planned_pct_complete values were successfully standardized
+--   and included in the precision test.
+-- - Casting to zero decimal places changed 488 values.
+-- - Casting to one, two, or three decimal places changed zero values.
+-- - One decimal place is therefore the minimum lossless scale.
+-- - Select DECIMAL(4,1) as the final type because the maximum value of 100
+--   requires three integer digits and the data requires one fractional digit.
+
+
+-- Investigation 54: Compare planned and actual completion percentages
+-- Purpose:
+-- - Compare standardized actual and planned completion at each project update.
+-- - Calculate completion variance in percentage points as actual_pct_complete
+--   minus planned_pct_complete.
+-- - Classify updates as ahead of plan, on plan, or behind plan based on the
+--   direction of the variance.
+-- - Summarize category counts and the minimum and maximum variance to identify
+--   unusual differences requiring row-level investigation.
+WITH standardized_updates AS(
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        TRY_CAST(
+                planned_pct_complete AS DECIMAL(4,1)
+                ) AS standardized_planned_pct_complete,
+        TRY_CAST(
+                REPLACE(actual_pct_complete, '%', '')
+                AS DECIMAL(4,1)
+            ) AS standardized_actual_pct_complete
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+completion_variances AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_planned_pct_complete,
+        standardized_actual_pct_complete,
+        standardized_actual_pct_complete
+            - standardized_planned_pct_complete
+                AS completion_variance_percentage_points
+    FROM standardized_updates
+)
+
+SELECT
+    COUNT(*) AS total_unique_updates,
+    COUNT(completion_variance_percentage_points)
+        AS testable_variances,
+    COUNT(*) FILTER (
+        WHERE completion_variance_percentage_points > 0
+    ) AS ahead_of_plan_updates,
+    COUNT(*) FILTER (
+        WHERE completion_variance_percentage_points = 0
+    ) AS on_plan_updates,
+    COUNT(*) FILTER (
+        WHERE completion_variance_percentage_points < 0
+    ) AS behind_plan_updates,
+    MIN(completion_variance_percentage_points)
+        AS minimum_completion_variance_percentage_points,
+    MAX(completion_variance_percentage_points)
+        AS maximum_completion_variance_percentage_points
+FROM completion_variances;
+
+-- Findings:
+-- - After exact-duplicate removal, all 725 unique updates contain testable
+--   planned-versus-actual completion variances.
+-- - Actual completion is ahead of plan in 61 updates, equal to plan in 105
+--   updates, and behind plan in 559 updates.
+-- - The three comparison categories reconcile to all 725 testable updates.
+-- - Completion variance ranges from 32.7 percentage points behind plan to
+--   39.6 percentage points ahead of plan.
+-- - These results describe individual update records, not distinct projects;
+--   they do not establish that 559 separate projects were behind plan.
+-- - The maximum positive variance is consistent with the previously flagged
+--   UPD00313 value of 105 and should not be treated as valid performance
+--   without row-level confirmation.
+-- - The minimum and maximum variance records require inspection before the
+--   extremes receive further business interpretation.
+
+
+-- Investigation 54A: Inspect extreme completion-variance records
+-- Purpose:
+-- - Trace the minimum and maximum completion variances back to their source
+--   project-update records.
+-- - Inspect each record's identifiers, standardized dates, planned and actual
+--   completion values, completion variance, and reported delay context.
+-- - Confirm whether the maximum variance is caused by the previously flagged
+--   UPD00313 value of 105 and determine whether the minimum variance represents
+--   plausible project performance or another data-quality anomaly.
+-- - Determine whether either project's surrounding update history requires
+--   further investigation.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+completion_variances AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        raw_actual_pct_complete,
+        standardized_actual_pct_complete,
+        standardized_actual_pct_complete
+            - standardized_planned_pct_complete
+                AS completion_variance_percentage_points,
+        primary_delay_reason
+    FROM standardized_updates
+),
+
+variance_bounds AS (
+    SELECT
+        MIN(completion_variance_percentage_points) AS minimum_variance,
+        MAX(completion_variance_percentage_points) AS maximum_variance
+    FROM completion_variances
+)
+
+SELECT
+    cv.update_id,
+    cv.project_id,
+    cv.standardized_report_date,
+    cv.standardized_forecast_completion_date,
+    cv.standardized_planned_pct_complete,
+    cv.raw_actual_pct_complete,
+    cv.standardized_actual_pct_complete,
+    cv.completion_variance_percentage_points,
+    cv.primary_delay_reason,
+    CASE
+        WHEN cv.completion_variance_percentage_points = vb.minimum_variance
+            THEN 'minimum_variance'
+        WHEN cv.completion_variance_percentage_points = vb.maximum_variance
+            THEN 'maximum_variance'
+    END AS variance_extreme
+FROM completion_variances AS cv
+CROSS JOIN variance_bounds AS vb
+WHERE cv.completion_variance_percentage_points
+      IN (vb.minimum_variance, vb.maximum_variance)
+ORDER BY
+    cv.completion_variance_percentage_points,
+    cv.update_id;
