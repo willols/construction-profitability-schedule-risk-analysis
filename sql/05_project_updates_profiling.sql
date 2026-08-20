@@ -1243,3 +1243,199 @@ WHERE cv.completion_variance_percentage_points
 ORDER BY
     cv.completion_variance_percentage_points,
     cv.update_id;
+
+-- Findings:
+-- - The maximum completion variance of +39.6 percentage points occurs only
+--   for update_id UPD00313 and project_id P040. The variance calculation is
+--   accurate, but the extreme result is driven by the previously identified
+--   actual_pct_complete value of 105, which is likely erroneous.
+-- - The minimum completion variance of -32.7 percentage points occurs only
+--   for update_id UPD00395 and project_id P052. The percentage values are
+--   within the expected range, so the result could represent legitimate
+--   behind-plan performance. Inspect P052's chronological update history to
+--   determine whether its planned and actual completion progression supports
+--   this interpretation or indicates another data-quality anomaly.
+
+
+-- Investigation 54B: Inspect P052's chronological update history
+-- Purpose:
+-- - Review P052's updates in chronological order, including the standardized
+--   report and forecast completion dates, planned completion, raw and
+--   standardized actual completion, completion variance, and primary delay reason.
+-- - Determine whether UPD00395's -32.7 percentage-point variance reflects
+--   legitimate behind-plan performance or a potential data-quality anomaly
+--   by evaluating the project's completion progression over time.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(TRY_STRPTIME(report_date, '%m/%d/%Y') AS DATE)
+        ) AS standardized_report_date,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+updates_with_variance AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        raw_actual_pct_complete,
+        standardized_actual_pct_complete,
+        standardized_actual_pct_complete
+            - standardized_planned_pct_complete
+                AS completion_variance_percentage_points,
+        primary_delay_reason,
+        submitted_by
+    FROM standardized_updates
+)
+
+SELECT
+    update_id,
+    project_id,
+    standardized_report_date,
+    standardized_forecast_completion_date,
+    standardized_planned_pct_complete,
+    raw_actual_pct_complete,
+    standardized_actual_pct_complete,
+    completion_variance_percentage_points,
+    primary_delay_reason,
+    submitted_by
+FROM updates_with_variance
+WHERE project_id = 'P052'
+ORDER BY standardized_report_date;
+
+-- Findings:
+-- - Project P052 has six chronologically consistent updates from
+--   2023-11-19 through 2024-04-06.
+-- - actual_pct_complete rises steadily from 19.2 to 100.0 without
+--   decreasing or making an implausible jump.
+-- - Completion variance gradually worsens from -5.6 to -32.7 percentage
+--   points as actual progress falls behind plan, then improves to -18.3
+--   and ultimately 0.0 at completion.
+-- - The forecast completion date moves progressively from 2024-03-03
+--   to 2024-04-06, while every update identifies Labor availability
+--   as the primary delay reason and Marcus Reed as the submitter.
+-- - UPD00395's -32.7 percentage-point variance therefore represents
+--   legitimate behind-plan performance rather than a data-quality anomaly.
+--   Preserve the record without correction.
+
+
+-- Investigation 55: Validate chronological actual_pct_complete progression
+-- across all projects
+-- Purpose:
+-- - Verify that standardized actual_pct_complete is non-decreasing over
+--   chronological updates within each project.
+-- - Identify updates where actual completion is lower than the immediately
+--   preceding value for the same project.
+-- - Treat any decreases as potential data-quality anomalies or corrections
+--   requiring further investigation rather than automatically classifying
+--   them as errors.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            forecast_completion_date AS DATE
+        ) AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+updates_with_previous_actual AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        raw_actual_pct_complete,
+        standardized_actual_pct_complete,
+        LAG(standardized_actual_pct_complete) OVER (
+            PARTITION BY project_id
+            ORDER BY standardized_report_date
+        ) AS previous_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM standardized_updates
+)
+
+SELECT
+    update_id,
+    project_id,
+    standardized_report_date,
+    standardized_forecast_completion_date,
+    standardized_planned_pct_complete,
+    previous_actual_pct_complete,
+    standardized_actual_pct_complete,
+    raw_actual_pct_complete,
+    primary_delay_reason,
+    submitted_by
+FROM updates_with_previous_actual
+WHERE previous_actual_pct_complete IS NOT NULL
+  AND standardized_actual_pct_complete
+      < previous_actual_pct_complete
+ORDER BY
+    project_id,
+    standardized_report_date;
+
+-- Findings:
+-- - Fourteen updates across fourteen projects contain a standardized
+--   actual_pct_complete value lower than the immediately preceding value.
+-- - UPD00314 for P040 decreases from 105.0 to 77.2. This result is consistent
+--   with the previously identified anomaly in UPD00313, where the preceding
+--   actual_pct_complete value of 105 is likely erroneous.
+-- - The remaining thirteen decreases all occur on 2026-06-30, the reporting
+--   cutoff date, indicating a concentrated cutoff-date reporting pattern.
+-- - Eight of the cutoff-date records decrease from a preceding value of
+--   100.0: P076, P077, P083, P084, P085, P090, P091, and P092.
+-- - Raw and standardized actual-completion values match for every flagged
+--   record, so the decreases were not introduced by percentage conversion.
+-- - The flagged records span multiple submitters and primary delay reasons,
+--   so the pattern is not isolated to one person or delay category.
+-- - A decrease identifies an inconsistency but does not establish whether
+--   the current or preceding value is erroneous. The clustering on the
+--   reporting cutoff suggests a possible systematic reporting pattern that
+--   requires further investigation before any correction is applied.
+
+
+-- Investigation 55A: Inspect histories of projects with cutoff-date decreases
+-- Purpose:
+-- - Dynamically identify projects whose standardized actual_pct_complete
+--   decreased on the 2026-06-30 reporting cutoff date.
+-- - Review each affected project's complete chronological update history to
+--   determine whether the cutoff-date value represents a plausible correction,
+--   an anomalous decrease, or a reversal caused by an earlier erroneous value.
+-- - Evaluate actual and planned completion progression, forecast-date movement,
+--   delay reasons, and submitters before making any data-cleaning decision.
