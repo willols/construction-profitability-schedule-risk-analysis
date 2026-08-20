@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 19, 2026
+Last updated: August 20, 2026
 
 ## Current Phase
 
@@ -16,9 +16,10 @@ First-pass standalone profiling is complete for:
 Labor timeline profiling and the employee-date grain and overtime
 interpretability investigations are complete.
 
-Profiling of `project_updates.csv` has been executed through Investigation 54. Investigation 49B resolved the P040 follow-up, final numeric types have been selected for actual and planned completion percentages, and the update-level planned-versus-actual relationship has been summarized.
+Profiling of `project_updates.csv` has been completed through Investigation 55. Investigations 54A and 54B resolved the minimum- and maximum-variance records, and Investigation 55 identified chronological actual-completion decreases across the portfolio.
 
-Investigation 54A has been documented and its query has been prepared, but it has not yet been executed. The next task is to retrieve and assess every record tied at the minimum and maximum completion variances.
+Investigation 55A has been documented, but its query has not been written. The next task is to inspect the complete histories of the 13 projects containing actual-completion decreases on the June 30, 2026 reporting cutoff.
+
 
 `change_orders.csv` has not yet been profiled.
 
@@ -34,7 +35,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `project_budgets.csv`   | `sql/02_project_budgets_profiling.sql`        | Standalone profiling complete                                    |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
 | `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 54; Investigation 54A prepared |
+| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 55; Investigation 55A documented |
 | `change_orders.csv`     | Planned: `sql/06_change_orders_profiling.sql` | Not started                                                      |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -451,7 +452,7 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling has been executed through Investigation 54. Investigation 54A has been documented and its query has been prepared, but the query has not yet been executed.
+Profiling has been completed through Investigation 55. Investigation 55A has been documented, but its query has not yet been written or executed.
 
 #### Structure and Row-Level Identifier
 
@@ -658,20 +659,11 @@ Decision:
 
 #### Planned-Versus-Actual Completion
 
-Completion variance is defined in percentage points as:
-
-```text
-actual_pct_complete - planned_pct_complete
-```
-
 Interpretation:
-
 - Positive variance means actual progress is ahead of plan.
 - Zero variance means actual progress equals plan.
 - Negative variance means actual progress is behind plan.
-
 After exact-duplicate removal:
-
 - All 725 unique updates contain testable completion variances.
 - Actual completion is ahead of plan in 61 updates.
 - Actual completion equals plan in 105 updates.
@@ -679,14 +671,41 @@ After exact-duplicate removal:
 - The three categories reconcile to all 725 unique updates.
 - Completion variance ranges from -32.7 through 39.6 percentage points.
 - These counts describe update records, not distinct projects.
-- UPD00313 itself produces a positive variance of 39.6 percentage points, matching the observed maximum.
-- Investigation 54A must still identify every record tied at either extreme and determine whether the minimum represents plausible project performance or another data-quality anomaly.
-
 Decision:
-
 - Perform planned-versus-actual comparisons only after exact-duplicate removal.
-- Use standardized `DECIMAL(4, 1)` values for both percentage fields.
-- Do not interpret the maximum positive variance as valid performance without completing Investigation 54A.
+- Use standardized DECIMAL(4, 1) values for both percentage fields.
+- Preserve the calculated variances while evaluating anomalous source values separately.
+Completion-Variance Extremes
+Investigation 54A dynamically retrieved every record tied at the minimum or maximum completion variance.
+- UPD00313 for P040 is the only record at the maximum variance of 39.6 percentage points.
+- The variance calculation is accurate, but the extreme result is driven by the previously identified actual_pct_complete value of 105.
+- UPD00395 for P052 is the only record at the minimum variance of -32.7 percentage points.
+- P052 contains six chronological updates from November 19, 2023, through April 6, 2024.
+- Its actual completion progresses through 19.2, 34.2, 51.8, 66.4, 81.7, and 100.
+- Actual completion never decreases or makes an implausible jump.
+- Completion variance worsens from -5.6 to -32.7 before improving to -18.3 and finally 0.
+- P052's forecast completion date moves progressively from March 3 through April 6, 2024.
+- Every P052 update identifies Labor availability as the primary delay reason and Marcus Reed as the submitter.
+Decision:
+- Preserve UPD00313's value of 105 and flag it for stakeholder clarification.
+- Do not cap or replace UPD00313 without authoritative evidence.
+- Treat UPD00395's -32.7 percentage-point variance as legitimate behind-plan performance.
+- Preserve UPD00395 without correction.
+Chronological Actual-Completion Progression
+Investigation 55 used LAG() partitioned by project_id and ordered by standardized report date to compare each update with the immediately preceding update for the same project.
+- Fourteen updates across fourteen projects contain standardized actual completion lower than the preceding value.
+- UPD00314 for P040 decreases from a preceding value of 105 to 77.2.
+- The P040 decrease is consistent with the previously identified anomaly in UPD00313.
+- The remaining thirteen decreases all occur on June 30, 2026, the reporting cutoff.
+- Eight cutoff-date projects decrease from a preceding value of 100: P076, P077, P083, P084, P085, P090, P091, and P092.
+- Raw and standardized actual-completion values match for every flagged record, so percentage conversion did not create the decreases.
+- The records span multiple submitters and primary delay reasons.
+- The returned row identifies where a decrease becomes visible but does not establish whether the current or preceding value is erroneous.
+- The concentration on the reporting cutoff suggests a possible systematic reporting pattern requiring further investigation.
+Decision:
+- Treat chronological decreases as investigation flags rather than automatic errors.
+- Apply no correction to the thirteen cutoff-date decreases until their complete project histories have been reviewed.
+- Continue with Investigation 55A to determine whether each decrease represents a plausible correction, an anomalous cutoff value, or a reversal caused by an earlier erroneous value.
 
 ## Unresolved Items
 
@@ -716,12 +735,12 @@ Decision:
 
 ### Project Updates
 
+
 - Obtain stakeholder clarification for UPD00664's missing forecast date.
 - Obtain stakeholder clarification for UPD00313's preserved actual-completion value of 105.
-- Execute Investigation 54A and identify every update tied at the minimum and maximum completion variances.
-- Determine whether the minimum variance of -32.7 percentage points represents plausible behind-plan performance or another data-quality anomaly.
-- Inspect the affected projects' chronological histories if the extreme records alone do not support a conclusion.
-- Validate project-level chronological progression of planned and actual completion percentages.
+- Complete Investigation 55A by inspecting the chronological histories of the 13 projects containing cutoff-date actual-completion decreases.
+- Determine whether each cutoff-date decrease represents a plausible correction, an anomalous cutoff value, or a reversal caused by an earlier erroneous value.
+- Validate chronological `planned_pct_complete` progression across projects.
 - Compare the 40 forecast-before-report records with project status, baseline completion, and actual completion dates.
 - Profile `estimated_cost_to_complete` range, precision, and relationship with project progress.
 - Profile `primary_delay_reason` and `submitted_by`.
@@ -748,30 +767,27 @@ Decision:
 
 Open `sql/05_project_updates_profiling.sql`.
 
-Execute the prepared Investigation 54A query. Retrieve every record tied at the minimum completion variance of -32.7 percentage points or the maximum completion variance of 39.6 percentage points.
+Continue Investigation 55A using its existing purpose comment.
 
-For each extreme record, inspect:
+Reuse the established `standardized_updates` and `updates_with_previous_actual` CTEs. Create an `affected_projects` CTE that dynamically selects the distinct projects satisfying both conditions:
 
-- `update_id`
-- `project_id`
-- standardized `report_date`
-- standardized `forecast_completion_date`
-- standardized `planned_pct_complete`
-- raw and standardized `actual_pct_complete`
-- completion variance in percentage points
-- `primary_delay_reason`
+- `standardized_report_date = DATE '2026-06-30'`
+- Standardized actual completion is lower than the immediately preceding actual-completion value.
 
-Confirm whether UPD00313 is the only record tied at the maximum and identify every record tied at the minimum.
+Join the affected-project list back to the complete standardized update histories. Return every chronological update for the 13 affected projects rather than only the rows containing decreases.
 
-Determine whether the minimum represents plausible behind-plan performance or another data-quality anomaly. If the extreme records alone are insufficient, inspect the affected projects' complete chronological update histories.
+Evaluate whether preceding values of 100 are isolated jumps or repeated completion reports and whether each cutoff-date value follows or contradicts the earlier project progression.
 
-After documenting Investigation 54A, execute the complete `sql/05_project_updates_profiling.sql` file and perform the normal verification and Git closeout.
+If the update histories remain insufficient, compare the affected projects with project statuses, baseline completion dates, and actual completion dates before making any cleaning decision.
+
+After documenting Investigation 55A, execute the complete `sql/05_project_updates_profiling.sql` file and perform the normal verification and Git closeout.
+
 
 The latest committed analysis is:
 
-- Commit: [e6f028a79a9e1a4bf59cdfab2ef1880767b140cc](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/e6f028a79a9e1a4bf59cdfab2ef1880767b140cc)
-- Message: `Profile project update percentages and variance`
-- Date: August 19, 2026
+- Commit: [feaefb3b8181352c83d2e266cfa60ae93f77c86a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/feaefb3b8181352c83d2e266cfa60ae93f77c86a)
+- Message: `Validate project update variance and progression`
+- Date: August 20, 2026
 
 The latest correction commit is:
 

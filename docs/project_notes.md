@@ -3,6 +3,71 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 20, 2026
+
+### Work Completed
+
+- Completed Investigation 54A by executing the prepared dynamic query for all records tied at the minimum and maximum completion variances.
+- Confirmed that UPD00313 for P040 is the only record at the maximum variance of 39.6 percentage points.
+- Identified UPD00395 for P052 as the only record at the minimum variance of negative 32.7 percentage points.
+- Completed Investigation 54B by inspecting P052's six-update chronological history.
+- Determined that P052's minimum variance represents plausible behind-plan performance rather than a data-quality anomaly.
+- Reran the complete `sql/05_project_updates_profiling.sql` file successfully after completing Investigations 54A and 54B.
+- Completed Investigation 55 by validating chronological `actual_pct_complete` progression across all projects.
+- Used `LAG()` with `PARTITION BY project_id` and `ORDER BY standardized_report_date` to compare each update with the immediately preceding update for the same project.
+- Identified 14 updates across 14 projects where standardized actual completion decreased.
+- Began Investigation 55A by documenting the purpose of inspecting the complete histories of projects with cutoff-date decreases.
+- Ended the session before constructing the Investigation 55A query.
+
+### Decisions and Reasoning
+
+- The completion-variance calculation for UPD00313 is mathematically accurate, but its maximum result is driven by the previously identified `actual_pct_complete` value of 105, which is likely erroneous.
+- UPD00313 will remain unchanged and flagged for stakeholder clarification because the available evidence does not establish its intended replacement.
+- UPD00395's negative 32.7 percentage-point variance will remain unchanged because P052's history supports legitimate behind-plan performance.
+- P052's actual completion progresses consistently without decreases or implausible jumps, while its forecast completion date moves later in response to a consistent labor-availability delay.
+- Chronological actual completion is expected to be non-decreasing within a project. Repeated values are valid because a project may report no measurable progress between updates.
+- A chronological decrease is an investigation flag, not automatic proof that the returned record is erroneous.
+- The row returned by the decrease query is the current row where the reversal becomes visible, but either the current value or the preceding value could be erroneous or represent a legitimate correction.
+- `LAG()` must be partitioned by `project_id` to prevent updates from different projects from being compared.
+- The window must be ordered by standardized report date so the preceding value represents the immediately prior chronological update.
+- The concentration of 13 decreases on the reporting cutoff suggests a possible systematic reporting pattern, but no correction is supported without examining the affected project histories.
+- No raw CSV values were modified, and no cleaned analytical output was implemented during this session.
+
+### Key Results
+
+- Investigation 54A returned exactly two records:
+  - UPD00395 for P052 at the minimum variance of negative 32.7 percentage points.
+  - UPD00313 for P040 at the maximum variance of positive 39.6 percentage points.
+- P052 contains six updates from November 19, 2023, through April 6, 2024.
+- P052's standardized actual completion progresses through 19.2, 34.2, 51.8, 66.4, 81.7, and 100.
+- P052's completion variance progresses from negative 5.6 to negative 15.4, negative 22.5, and negative 32.7 percentage points before improving to negative 18.3 and finally 0.
+- P052's forecast completion date moves progressively from March 3 through April 6, 2024.
+- Every P052 update identifies `Labor availability` as the primary delay reason and Marcus Reed as the submitter.
+- Investigation 55 identified 14 chronological actual-completion decreases across 14 projects.
+- UPD00314 for P040 decreases from a preceding value of 105 to 77.2. This is consistent with the previously identified anomaly in UPD00313.
+- The remaining 13 decreases all occur on June 30, 2026, the established reporting cutoff.
+- Eight cutoff-date projects decrease from a preceding actual-completion value of 100: P076, P077, P083, P084, P085, P090, P091, and P092.
+- Raw and standardized actual-completion values match for every flagged record, confirming that the decreases were not introduced by percentage conversion.
+- The flagged records span multiple submitters and primary delay reasons, so the pattern is not isolated to one person or delay category.
+
+### Verification and Closeout
+
+- The complete `sql/05_project_updates_profiling.sql` file executed through Investigation 55 using the DuckDB CLI with `-bail` and returned exit code 0.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit [feaefb3b8181352c83d2e266cfa60ae93f77c86a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/feaefb3b8181352c83d2e266cfa60ae93f77c86a) was created on `main` with the message `Validate project update variance and progression`.
+- The analysis commit included `sql/05_project_updates_profiling.sql`.
+- Investigation 55A contains only its purpose comment; its query has not been written or executed.
+
+### Next Session
+
+Begin Investigation 55A by reusing the established `standardized_updates` and `updates_with_previous_actual` CTEs.
+
+Create an `affected_projects` CTE that dynamically identifies the distinct projects whose standardized actual completion decreased on the June 30, 2026 reporting cutoff.
+
+Join the affected-project list back to the complete chronological updates and inspect every history. Determine whether each cutoff-date decrease represents a plausible correction, an anomalous cutoff value, or a reversal caused by an earlier erroneous value.
+
+Pay particular attention to whether preceding values of 100 are isolated jumps or repeated completion reports. If the update histories remain insufficient, compare the affected records with project statuses and timeline dates before making any cleaning decision.
+
 ## August 19, 2026
 
 ### Work Completed
