@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 20, 2026
+Last updated: August 21, 2026
 
 ## Current Phase
 
@@ -8,18 +8,25 @@ Raw-data profiling is in progress.
 
 First-pass standalone profiling is complete for:
 
-* `projects.csv`
-* `project_budgets.csv`
-* `cost_transactions.csv`
-* `labor_entries.csv`
+- `projects.csv`
+- `project_budgets.csv`
+- `cost_transactions.csv`
+- `labor_entries.csv`
 
 Labor timeline profiling and the employee-date grain and overtime
 interpretability investigations are complete.
 
-Profiling of `project_updates.csv` has been completed through Investigation 55. Investigations 54A and 54B resolved the minimum- and maximum-variance records, and Investigation 55 identified chronological actual-completion decreases across the portfolio.
+Profiling of `project_updates.csv` has been completed through Investigation 57.
 
-Investigation 55A has been documented, but its query has not been written. The next task is to inspect the complete histories of the 13 projects containing actual-completion decreases on the June 30, 2026 reporting cutoff.
+Investigation 55A reviewed the complete histories of the 13 projects containing
+actual-completion decreases on the June 30, 2026 reporting cutoff.
+Investigation 56 confirmed that planned completion remains chronologically
+non-decreasing across every project. Investigation 57 compared the 40
+forecast-before-report updates with official project status, baseline completion,
+and actual completion dates.
 
+The next project-update task is full-file verification followed by Investigation
+58, which will profile `estimated_cost_to_complete`.
 
 `change_orders.csv` has not yet been profiled.
 
@@ -35,7 +42,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `project_budgets.csv`   | `sql/02_project_budgets_profiling.sql`        | Standalone profiling complete                                    |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
 | `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 55; Investigation 55A documented |
+| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 57; full-file rerun pending       |
 | `change_orders.csv`     | Planned: `sql/06_change_orders_profiling.sql` | Not started                                                      |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -79,7 +86,11 @@ Key results:
 Confirmed cleaning rules:
 
 * Retain one P042 row in cleaned output.
-* Normalize project statuses through explicit documented mappings.
+* Preserve the raw `project_status` value and apply these explicit mappings in
+  standardized output:
+  - `active` and ` active ` → `active`
+  - `completed` and `Complete` → `completed`
+  - `on_hold` and `On Hold` → `on_hold`
 * Normalize P066's original contract value to `672000.00`.
 * Preserve P013's raw date and exclude it from calculations requiring a
   confirmed baseline completion date.
@@ -452,7 +463,9 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling has been completed through Investigation 55. Investigation 55A has been documented, but its query has not yet been written or executed.
+Profiling has been completed through Investigation 57. Investigations 55A, 56,
+and 57 have been written and executed. The complete profiling file still
+requires a final rerun after the Investigation 57 changes.
 
 #### Structure and Row-Level Identifier
 
@@ -703,9 +716,113 @@ Investigation 55 used LAG() partitioned by project_id and ordered by standardize
 - The returned row identifies where a decrease becomes visible but does not establish whether the current or preceding value is erroneous.
 - The concentration on the reporting cutoff suggests a possible systematic reporting pattern requiring further investigation.
 Decision:
-- Treat chronological decreases as investigation flags rather than automatic errors.
-- Apply no correction to the thirteen cutoff-date decreases until their complete project histories have been reviewed.
-- Continue with Investigation 55A to determine whether each decrease represents a plausible correction, an anomalous cutoff value, or a reversal caused by an earlier erroneous value.
+Decision:
+- Treat chronological decreases as investigation flags rather than automatic
+  errors.
+- Preserve UPD00314 because its decrease is explained by the preceding,
+  preserved P040 anomaly.
+- Preserve the thirteen cutoff-date decreases pending the complete-history and
+  project-timeline findings from Investigations 55A and 57.
+#### Cutoff-Date Actual-Completion Histories
+
+Investigation 55A dynamically identified the 13 projects whose standardized
+actual completion decreased on June 30, 2026. Their complete histories contained
+120 update records.
+
+Eight projects decreased from a preceding actual-completion value of 100:
+
+- P076: 100 → 91.2, a decrease of 8.8 percentage points.
+- P077: 100 → 96.0, a decrease of 4.0 percentage points.
+- P083: 100 → 93.2, a decrease of 6.8 percentage points.
+- P084: 100 → 95.2, a decrease of 4.8 percentage points.
+- P085: 100 → 87.7, a decrease of 12.3 percentage points.
+- P090: 100 → 85.1, a decrease of 14.9 percentage points.
+- P091: 100 → 90.1, a decrease of 9.9 percentage points.
+- P092: 100 → 92.9, a decrease of 7.1 percentage points.
+
+Five projects decreased before reaching 100:
+
+- P078: 80.4 → 78.6, a decrease of 1.8 percentage points.
+- P081: 74.8 → 70.7, a decrease of 4.1 percentage points.
+- P082: 94.1 → 93.1, a decrease of 1.0 percentage point.
+- P089: 18.6 → 12.7, a decrease of 5.9 percentage points.
+- P094: 52.1 → 43.3, a decrease of 8.8 percentage points.
+
+None of the thirteen histories contains an obvious isolated preceding spike
+comparable to P040's likely erroneous 105% value.
+
+P094 provides the strongest operational support for a possible reassessment
+because its inspection / approval delay continued while its forecast completion
+date moved later. The available records still do not confirm that the decrease
+was an authorized correction.
+
+The concentration of all thirteen decreases on the reporting cutoff across
+multiple submitters and delay reasons suggests a systematic reassessment or
+reporting anomaly rather than isolated entry mistakes.
+
+Decision:
+
+- Preserve all thirteen cutoff-date values without correction.
+- Do not classify any decrease as a reversal caused by a confirmed earlier
+  error.
+- Flag the reporting-cutoff pattern for stakeholder clarification.
+- Confirm whether actual completion may decrease because of inspections,
+  punch-list items, rework, scope changes, or cutoff-period reassessments.
+
+#### Chronological Planned-Completion Progression
+
+Investigation 56 used `LAG()` partitioned by `project_id` and ordered by
+standardized report date to compare each planned-completion value with its
+immediately preceding value.
+
+- The query returned zero rows.
+- No standardized planned-completion value was below its preceding
+  chronological value.
+- Planned completion remained non-decreasing within every project, either
+  increasing or remaining unchanged.
+- The first update for each project was naturally excluded because `LAG()`
+  returns NULL when no preceding update exists.
+- No downward planned-completion revisions or unexplained chronological
+  reversals were identified.
+
+Decision:
+
+- No corrections or additional investigation are required for
+  planned-completion chronology.
+
+#### Forecast-Before-Report Project-Timeline Comparison
+
+Investigation 57 joined the 40 forecast-before-report updates to deduplicated
+and standardized project records.
+
+- The 40 updates span eight projects: P076, P077, P083, P084, P085, P090,
+  P091, and P092.
+- All 40 records contain planned completion of 100%.
+- Every affected update was submitted after both its project's baseline
+  completion date and its recorded forecast completion date.
+- All eight projects remained officially classified as active.
+- All eight projects had NULL actual completion dates.
+- The official project records therefore do not support classifying the
+  affected records as confirmed post-completion administrative updates.
+- Several projects repeatedly reported 100% actual completion despite
+  remaining active with no official actual completion date.
+- These are the same eight projects that later decreased from 100% actual
+  completion on June 30, 2026.
+- The combined evidence indicates that their forecasts became stale and that
+  100% actual completion may have been reported prematurely before a
+  systematic cutoff-date reassessment.
+- Reopened work caused by inspections, punch-list items, rework, or added scope
+  remains a plausible alternative, but the data does not confirm that the
+  projects were ever officially completed.
+
+Decision:
+
+- Preserve all source values without correction.
+- Classify the 40 forecast-before-report records as stale or inconsistent
+  forecasts rather than confirmed post-completion updates.
+- Flag the eight projects for stakeholder clarification regarding the
+  definition of 100% actual completion, official completion requirements, and
+  the June 30 reassessment process.
 
 ## Unresolved Items
 
@@ -735,14 +852,19 @@ Decision:
 
 ### Project Updates
 
-
 - Obtain stakeholder clarification for UPD00664's missing forecast date.
-- Obtain stakeholder clarification for UPD00313's preserved actual-completion value of 105.
-- Complete Investigation 55A by inspecting the chronological histories of the 13 projects containing cutoff-date actual-completion decreases.
-- Determine whether each cutoff-date decrease represents a plausible correction, an anomalous cutoff value, or a reversal caused by an earlier erroneous value.
-- Validate chronological `planned_pct_complete` progression across projects.
-- Compare the 40 forecast-before-report records with project status, baseline completion, and actual completion dates.
-- Profile `estimated_cost_to_complete` range, precision, and relationship with project progress.
+- Obtain stakeholder clarification for UPD00313's preserved
+  actual-completion value of 105.
+- Confirm the business definition of `actual_pct_complete` and whether it may
+  decrease because of inspections, punch-list items, rework, scope changes, or
+  cutoff-period reassessments.
+- Clarify why thirteen projects received actual-completion decreases on the
+  June 30 reporting cutoff.
+- Clarify why P076, P077, P083, P084, P085, P090, P091, and P092 repeatedly
+  reported 100% actual completion while remaining active with no official
+  actual completion date.
+- Profile `estimated_cost_to_complete` completeness, range, precision, and
+  relationship with project progress.
 - Profile `primary_delay_reason` and `submitted_by`.
 - Validate project-update project IDs against `projects.csv`.
 
@@ -767,27 +889,44 @@ Decision:
 
 Open `sql/05_project_updates_profiling.sql`.
 
-Continue Investigation 55A using its existing purpose comment.
+First, execute the complete profiling file through the DuckDB CLI with `-bail`.
+Confirm that the file runs through Investigation 57 with exit code 0 before
+beginning additional work.
 
-Reuse the established `standardized_updates` and `updates_with_previous_actual` CTEs. Create an `affected_projects` CTE that dynamically selects the distinct projects satisfying both conditions:
+Then begin Investigation 58 by writing its purpose comment for profiling
+`estimated_cost_to_complete`.
 
-- `standardized_report_date = DATE '2026-06-30'`
-- Standardized actual completion is lower than the immediately preceding actual-completion value.
+Use exact-duplicate removal so the investigation operates on the cleaned
+business grain of 725 unique project updates.
 
-Join the affected-project list back to the complete standardized update histories. Return every chronological update for the 13 affected projects rather than only the rows containing decreases.
+Begin by determining:
 
-Evaluate whether preceding values of 100 are isolated jumps or repeated completion reports and whether each cutoff-date value follows or contradicts the earlier project progression.
+- The total number of unique updates evaluated.
+- The number of populated and missing `estimated_cost_to_complete` values.
+- Whether the inferred numeric type is appropriate for profiling calculations.
+- The minimum and maximum values.
+- The number of zero and negative values.
+- Whether any values require record-level investigation before monetary
+  precision and chronological behavior are evaluated.
 
-If the update histories remain insufficient, compare the affected projects with project statuses, baseline completion dates, and actual completion dates before making any cleaning decision.
+After validating completeness and range, determine the minimum decimal scale
+that preserves every observed value and select an appropriate cleaned monetary
+type.
 
-After documenting Investigation 55A, execute the complete `sql/05_project_updates_profiling.sql` file and perform the normal verification and Git closeout.
+Then evaluate how `estimated_cost_to_complete` behaves as actual completion
+increases, paying particular attention to values associated with 100% actual
+completion and the June 30 cutoff-date reversals.
+
+Do not modify raw source values or infer replacement amounts without sufficient
+evidence.
 
 
 The latest committed analysis is:
 
-- Commit: [feaefb3b8181352c83d2e266cfa60ae93f77c86a](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/feaefb3b8181352c83d2e266cfa60ae93f77c86a)
-- Message: `Validate project update variance and progression`
-- Date: August 20, 2026
+- Commit:
+  [1f2164944f61dbe54613d90f96521ce2068b5ec9](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/1f2164944f61dbe54613d90f96521ce2068b5ec9)
+- Message: `Complete project update chronology and timeline validation`
+- Date: August 21, 2026
 
 The latest correction commit is:
 

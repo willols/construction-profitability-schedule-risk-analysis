@@ -3,6 +3,146 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 21, 2026
+
+### Work Completed
+
+- Completed Investigation 55A by dynamically identifying the 13 projects whose
+  standardized actual completion decreased on the June 30, 2026 reporting cutoff.
+- Created an `affected_projects` CTE with a grain of one row per distinct affected
+  project.
+- Joined the affected-project list back to the complete standardized update
+  histories, returning 120 chronological update records across the 13 projects.
+- Inspected the eight projects that decreased from a preceding actual-completion
+  value of 100 and the five projects that decreased before reaching 100.
+- Completed Investigation 56 by validating chronological
+  `planned_pct_complete` progression with `LAG()`.
+- Confirmed that no planned-completion value decreased below its preceding
+  chronological value.
+- Completed Investigation 57 by comparing the previously identified 40
+  forecast-before-report updates with official project status, baseline
+  completion date, and actual completion date.
+- Created a `standardized_projects` CTE that removes the exact P042 duplicate,
+  preserves raw project statuses, standardizes the six known status variants,
+  and safely converts project completion dates.
+- Validated that the forecast-before-report population contains 40 update
+  records across eight distinct projects.
+- Joined the 40 affected updates to the project-level records while preserving
+  the one-row-per-update grain.
+- Reviewed the complete joined output and connected the forecast-date pattern
+  to the June 30 actual-completion reversals identified in Investigation 55A.
+
+### Decisions and Reasoning
+
+- The grain of `affected_projects` is one row per affected project, while the
+  complete-history output retains one row per project update.
+- `DISTINCT` in `affected_projects` prevents repeated project IDs; chronological
+  order is established later with `ORDER BY project_id,
+  standardized_report_date`.
+- The eight decreases from 100 do not resemble P040's isolated 105% anomaly.
+  Each project had previously reported 100% completion, often across multiple
+  reporting periods.
+- The five projects that decreased before reaching 100 otherwise showed
+  generally increasing actual-completion histories.
+- P094 provides the strongest operational support for a possible progress
+  reassessment because its inspection / approval delay continued while its
+  forecast completion date moved later. The evidence remains insufficient to
+  confirm an authorized correction.
+- The concentration of all 13 decreases on the reporting cutoff across multiple
+  submitters and delay reasons suggests a systematic reassessment or reporting
+  anomaly rather than unrelated entry errors.
+- No chronological planned-completion decreases were identified. Planned
+  completion remained non-decreasing within every project.
+- A project setback normally affects actual completion relative to plan.
+  Planned completion should decrease only when the underlying schedule,
+  baseline, or scope is formally revised.
+- A Boolean comparison placed in `SELECT` labels every row as `TRUE`, `FALSE`,
+  or `NULL`; the same comparison placed in `WHERE` retains only rows where the
+  condition evaluates to `TRUE`.
+- A many-to-one join from affected updates to projects preserves each individual
+  update row while attaching the matching project-level attributes.
+- The six known raw project-status values were mapped as follows:
+  - `active` and ` active ` → `active`
+  - `completed` and `Complete` → `completed`
+  - `on_hold` and `On Hold` → `on_hold`
+- The original projects profiling identified the status variants and their
+  intended logical categories but did not test the explicit cleaning
+  expression. The existing profiling file was not revised; the mapping was
+  applied in Investigation 57 based on the documented raw-value evidence.
+- The official project records do not support treating the 40 records as
+  confirmed post-completion administrative updates because all eight projects
+  remain active and have no recorded actual completion date.
+- Reopened work caused by inspections, punch-list items, rework, or added scope
+  remains possible, but the available records do not confirm that the projects
+  were ever officially completed.
+- No raw CSV values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- Investigation 55A returned 120 chronological update records across 13
+  cutoff-date projects.
+- Eight projects decreased from a preceding actual-completion value of 100:
+  - P076: 100 → 91.2, a decrease of 8.8 percentage points.
+  - P077: 100 → 96.0, a decrease of 4.0 percentage points.
+  - P083: 100 → 93.2, a decrease of 6.8 percentage points.
+  - P084: 100 → 95.2, a decrease of 4.8 percentage points.
+  - P085: 100 → 87.7, a decrease of 12.3 percentage points.
+  - P090: 100 → 85.1, a decrease of 14.9 percentage points.
+  - P091: 100 → 90.1, a decrease of 9.9 percentage points.
+  - P092: 100 → 92.9, a decrease of 7.1 percentage points.
+- Five projects decreased from preceding values below 100:
+  - P078: 80.4 → 78.6, a decrease of 1.8 percentage points.
+  - P081: 74.8 → 70.7, a decrease of 4.1 percentage points.
+  - P082: 94.1 → 93.1, a decrease of 1.0 percentage point.
+  - P089: 18.6 → 12.7, a decrease of 5.9 percentage points.
+  - P094: 52.1 → 43.3, a decrease of 8.8 percentage points.
+- None of the 13 histories contains an obvious isolated preceding spike
+  comparable to P040's likely erroneous 105% value.
+- Investigation 56 returned zero rows, confirming that no standardized planned
+  completion value was below its preceding chronological value.
+- Investigation 57 returned 40 forecast-before-report updates across P076,
+  P077, P083, P084, P085, P090, P091, and P092.
+- All 40 records report planned completion of 100%.
+- Every affected update was submitted after both its project's baseline
+  completion date and its recorded forecast completion date.
+- All eight projects are officially classified as active and have NULL actual
+  completion dates.
+- The same eight projects later decreased from 100% actual completion on the
+  June 30 reporting cutoff.
+- The combined evidence indicates stale forecasts and a mismatch between
+  update-level completion reporting and official project status.
+- The strongest available explanation is that 100% actual completion may have
+  been reported prematurely before a systematic cutoff-date reassessment,
+  although stakeholder clarification remains necessary.
+
+### Verification and Closeout
+
+- The complete `sql/05_project_updates_profiling.sql` file executed successfully
+  through Investigation 57 using the DuckDB CLI with `-bail`.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit
+  [1f2164944f61dbe54613d90f96521ce2068b5ec9](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/1f2164944f61dbe54613d90f96521ce2068b5ec9)
+  was created on `main` with the message
+  `Complete project update chronology and timeline validation`.
+- The analysis commit included `sql/05_project_updates_profiling.sql`.
+
+### Next Session
+
+Begin Investigation 58 by writing its purpose comment.
+
+Profile `estimated_cost_to_complete` for completeness, direct numeric
+compatibility, range, zero and negative values, and minimum lossless decimal
+scale. Evaluate whether its chronological progression is reasonably consistent
+with reported project progress.
+
+Use the findings to select a cleaned numeric type and identify any records
+requiring follow-up. Do not correct unusual values without sufficient evidence.
+
+After documenting Investigation 58, execute the complete
+`sql/05_project_updates_profiling.sql` file and perform the normal verification
+and Git closeout.
+
 ## August 20, 2026
 
 ### Work Completed
