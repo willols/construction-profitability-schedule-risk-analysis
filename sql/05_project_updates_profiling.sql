@@ -1439,3 +1439,325 @@ ORDER BY
 --   an anomalous decrease, or a reversal caused by an earlier erroneous value.
 -- - Evaluate actual and planned completion progression, forecast-date movement,
 --   delay reasons, and submitters before making any data-cleaning decision.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            forecast_completion_date AS DATE
+        ) AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+updates_with_previous_actual AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        raw_actual_pct_complete,
+        standardized_actual_pct_complete,
+        LAG(standardized_actual_pct_complete) OVER (
+            PARTITION BY project_id
+            ORDER BY standardized_report_date
+        ) AS previous_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM standardized_updates
+),
+
+affected_projects AS (
+    SELECT DISTINCT
+        project_id
+    FROM updates_with_previous_actual
+    WHERE standardized_report_date = DATE '2026-06-30'
+        AND standardized_actual_pct_complete
+        < previous_actual_pct_complete
+)
+
+SELECT
+    su.update_id,
+    su.project_id,
+    su.standardized_report_date,
+    su.standardized_planned_pct_complete,
+    su.standardized_actual_pct_complete,
+    su.standardized_forecast_completion_date,
+    su.primary_delay_reason,
+    su.submitted_by
+FROM standardized_updates AS su
+INNER JOIN affected_projects AS ap
+    ON su.project_id = ap.project_id
+ORDER BY
+    su.project_id,
+    su.standardized_report_date;
+
+-- Findings:
+-- - Reviewed 120 chronological update records across the 13 projects with an
+--   actual-completion decrease on the 2026-06-30 reporting cutoff date.
+-- - Eight projects decreased from a preceding actual completion of 100%:
+--   P076, P077, P083, P084, P085, P090, P091, and P092.
+-- - These eight decreases ranged from 4.0 to 14.9 percentage points. Each
+--   project had previously reported 100% completion, often across multiple
+--   reporting periods, while planned completion remained at 100%.
+-- - Their forecast completion dates remained before the cutoff date, and the
+--   histories do not contain isolated preceding spikes comparable to P040's
+--   likely erroneous 105% value.
+-- - The other five projects decreased before reaching 100%:
+--   P078 decreased from 80.4% to 78.6%;
+--   P081 decreased from 74.8% to 70.7%;
+--   P082 decreased from 94.1% to 93.1%;
+--   P089 decreased from 18.6% to 12.7%; and
+--   P094 decreased from 52.1% to 43.3%.
+-- - These five projects otherwise showed generally increasing actual-completion
+--   histories. Their forecast completion dates moved later by one to four days
+--   on the cutoff update, which may indicate progress reassessment, but does
+--   not conclusively validate the decreases.
+-- - P094 has the strongest operational support for a possible reassessment
+--   because its inspection / approval delay continued while its forecast date
+--   moved later. The available records still do not prove that the decrease
+--   was an authorized correction.
+-- - All 13 decreases occur on the same reporting cutoff date across five
+--   submitters and multiple delay reasons. This suggests a systematic cutoff
+--   reassessment or reporting anomaly rather than isolated entry mistakes.
+-- - None of the histories clearly supports classification as a reversal caused
+--   by an earlier erroneous actual-completion value.
+--
+-- Decision:
+-- - Preserve all source values without correction.
+-- - Flag the 13 cutoff-date decreases for stakeholder clarification.
+-- - Confirm whether actual_pct_complete may decrease because of inspections,
+--   rework, punch-list items, scope changes, or cutoff-period reassessments.
+
+
+-- Investigation 56: Validate chronological planned-completion progression
+-- Purpose:
+-- - Evaluate whether standardized planned completion remains non-decreasing
+--   across consecutive updates within each project.
+-- - Identify updates where the current planned completion is below the
+--   preceding chronological value.
+-- - Review affected project histories to distinguish plausible schedule
+--   rebaselines or scope revisions from unexplained data inconsistencies
+--   before making any data-cleaning decision.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            forecast_completion_date AS DATE
+        ) AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+updates_with_previous_planned AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        raw_actual_pct_complete,
+        standardized_actual_pct_complete,
+        LAG(standardized_planned_pct_complete) OVER (
+            PARTITION BY project_id
+            ORDER BY standardized_report_date
+        ) AS previous_planned_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM standardized_updates
+)
+
+SELECT
+    update_id,
+    project_id,
+    standardized_report_date,
+    previous_planned_pct_complete,
+    standardized_planned_pct_complete,
+    standardized_actual_pct_complete,
+    standardized_forecast_completion_date,
+    primary_delay_reason,
+    submitted_by
+FROM updates_with_previous_planned
+WHERE standardized_planned_pct_complete
+    < previous_planned_pct_complete
+ORDER BY
+    project_id,
+    standardized_report_date;
+
+-- Findings:
+-- - The query returned zero rows; no standardized planned-completion value
+--   was below its preceding chronological value.
+-- - Planned completion remained non-decreasing within every project,
+--   either increasing or remaining unchanged across consecutive updates.
+-- - No downward planned-completion revisions or unexplained chronological
+--   reversals were identified.
+-- - The first update for each project is naturally excluded because LAG()
+--   returns NULL when no preceding update exists.
+--
+-- Decision:
+-- - No corrections or additional investigation are required for
+--   planned-completion chronology.
+
+
+-- Investigation 57: Compare forecast-before-report updates with project timelines
+-- Purpose:
+-- - Identify the 40 unique updates where the standardized forecast completion
+--   date precedes the standardized report date.
+-- - Join the affected updates to standardized project records and compare
+--   project status, baseline completion date, and actual completion date.
+-- - Determine whether the records represent reasonable post-completion
+--   reporting, stale forecasts, or unexplained timeline inconsistencies
+--   before making any data-cleaning decision.
+WITH standardized_updates AS (
+    SELECT DISTINCT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            forecast_completion_date AS DATE
+        ) AS standardized_forecast_completion_date,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        actual_pct_complete AS raw_actual_pct_complete,
+        TRY_CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+forecast_before_report_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        standardized_report_date,
+        standardized_forecast_completion_date,
+        standardized_planned_pct_complete,
+        standardized_actual_pct_complete,
+        primary_delay_reason,
+        submitted_by
+    FROM standardized_updates
+    WHERE standardized_forecast_completion_date
+        < standardized_report_date
+),
+
+standardized_projects AS (
+    SELECT DISTINCT
+        project_id,
+        project_status AS raw_project_status,
+        CASE
+            WHEN project_status IN ('active', ' active ')
+                THEN 'active'
+            WHEN project_status IN ('completed', 'Complete')
+                THEN 'completed'
+            WHEN project_status IN ('on_hold', 'On Hold')
+                THEN 'on_hold'
+        END AS standardized_project_status,
+        baseline_completion_date AS raw_baseline_completion_date,
+        TRY_CAST(
+            baseline_completion_date AS DATE
+        ) AS standardized_baseline_completion_date,
+        CAST(
+            actual_completion_date AS DATE
+        ) AS standardized_actual_completion_date
+    FROM read_csv_auto('data/raw/projects.csv')
+)
+
+SELECT
+    u.update_id,
+    u.project_id,
+    u.standardized_report_date,
+    u.standardized_forecast_completion_date,
+    u.standardized_planned_pct_complete,
+    u.standardized_actual_pct_complete,
+    u.primary_delay_reason,
+    u.submitted_by,
+    p.raw_project_status,
+    p.standardized_project_status,
+    p.raw_baseline_completion_date,
+    p.standardized_baseline_completion_date,
+    p.standardized_actual_completion_date
+FROM forecast_before_report_updates AS u
+INNER JOIN standardized_projects AS p
+    ON u.project_id = p.project_id
+ORDER BY
+    u.project_id,
+    u.standardized_report_date;
+
+-- Findings:
+-- - The query returned 40 forecast-before-report updates across eight projects:
+--   P076, P077, P083, P084, P085, P090, P091, and P092.
+-- - All 40 updates reported planned completion of 100%, and every update was
+--   submitted after both the project's baseline completion date and its
+--   forecast completion date.
+-- - All eight projects remained officially classified as active and had no
+--   recorded actual completion date.
+-- - Therefore, the project records do not support classifying the affected
+--   updates as reasonable post-completion administrative reporting.
+-- - Several projects repeatedly reported 100% actual completion despite
+--   remaining active with no actual completion date, indicating a mismatch
+--   between update-level completion reporting and official project status.
+-- - The same eight projects later decreased from 100% actual completion on the
+--   2026-06-30 reporting cutoff, matching the pattern identified in
+--   Investigation 55A.
+-- - The combined evidence suggests that the past-due forecasts became stale
+--   and that 100% actual completion may have been reported prematurely before
+--   a systematic cutoff-date reassessment.
+-- - Reopened work caused by inspections, punch-list items, rework, or added
+--   scope remains a plausible alternative, but the available records do not
+--   confirm that these projects were ever officially completed.
+--
+-- Decision:
+-- - Preserve all source values without correction.
+-- - Classify the 40 forecast-before-report records as stale or inconsistent
+--   forecasts rather than confirmed post-completion updates.
+-- - Flag the eight projects for stakeholder clarification regarding the
+--   definition of 100% actual completion, official completion requirements,
+--   and the June 30 reassessment process.
+
+
+-- Next step
+-- Investigation 58: Profile estimated_cost_to_complete
