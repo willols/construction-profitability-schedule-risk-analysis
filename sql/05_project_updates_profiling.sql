@@ -1759,5 +1759,441 @@ ORDER BY
 --   and the June 30 reassessment process.
 
 
--- Next step
 -- Investigation 58: Profile estimated_cost_to_complete
+-- Purpose:
+-- - Confirm the inferred source type and quantify NULL values.
+-- - Profile the minimum and maximum values and count zero and negative values.
+-- - Determine the minimum lossless decimal scale and the precision required
+--   to represent all values accurately in the cleaned output.
+-- - Evaluate chronological changes within each project relative to planned and
+--   actual completion, recognizing that increases may reflect revised forecasts,
+--   added scope, or cost overruns rather than data errors.
+-- - Use the findings to select an appropriate DECIMAL type and identify unusual
+--   records requiring follow-up while preserving the raw source values.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS total_unique_updates,
+    COUNT(estimated_cost_to_complete)
+        AS populated_estimated_cost_to_complete,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete IS NULL
+    ) AS null_estimated_cost_to_complete
+FROM unique_updates;
+
+-- Findings:
+-- - DuckDB inferred estimated_cost_to_complete as DOUBLE, confirming that the
+--   source values are already numeric.
+-- - All 725 unique update records contain a populated value; zero NULLs were found.
+-- - No missing-value cleaning is required.
+
+
+-- Investigation 59: Profile estimated_cost_to_complete value boundaries
+-- Purpose:
+-- - Profile the minimum and maximum values and count zero and negative values.
+-- - Determine whether any amounts are implausible or require contextual follow-up
+--   before the column is used in analysis.
+WITH unique_updates AS (
+SELECT DISTINCT *
+FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    MIN(estimated_cost_to_complete) AS minimum_estimated_cost_to_complete,
+    MAX(estimated_cost_to_complete) AS maximum_estimated_cost_to_complete,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete = 0
+    ) AS zero_value_count,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete < 0
+    ) AS negative_value_count
+FROM unique_updates;
+
+-- Findings:
+-- - estimated_cost_to_complete ranges from 0 to 2,695,267.50.
+-- - Seventy-five unique updates contain a zero value; no negative values were found.
+-- - No inherently invalid negative costs require cleaning.
+-- - The zero values require contextual review before they can be accepted as valid.
+-- - The maximum value is not inherently invalid based on range alone.
+
+
+-- Investigation 59A: Investigate zero estimated_cost_to_complete values
+-- Purpose:
+-- - Inspect the 75 unique updates where estimated_cost_to_complete equals zero.
+-- - Compare those records with planned and normalized actual completion percentages
+--   to determine whether zero remaining cost is consistent with completed work.
+-- - Identify zero-value records that occur while work remains and therefore require
+--   additional context or stakeholder clarification.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+SELECT *
+FROM unique_updates
+WHERE estimated_cost_to_complete = 0;
+
+-- Findings:
+-- - All 75 zero-value updates represent distinct projects and report
+--   actual_pct_complete at 100%.
+-- - Zero estimated_cost_to_complete is internally consistent with the reported
+--   completion status of these updates.
+-- - No data correction or additional cleaning is supported; preserve the zero values.
+
+
+-- Investigation 60: Determine the minimum lossless decimal scale
+-- Purpose:
+-- - Compare estimated_cost_to_complete with its rounded value at zero, one,
+--   two, and three decimal places.
+-- - Count the values altered at each scale to identify the smallest scale that
+--   preserves every source value without loss.
+-- - Combine the required scale with the observed value range to select an
+--   appropriate DECIMAL type for the cleaned output.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(estimated_cost_to_complete) AS testable_values,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            <> CAST(estimated_cost_to_complete AS DECIMAL(10,0))
+        ) AS values_changed_at_0_decimal,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            <> CAST(estimated_cost_to_complete AS DECIMAL(10,1))
+        ) AS values_changed_at_1_decimal,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            <> CAST(estimated_cost_to_complete AS DECIMAL(10,2))
+        ) AS values_changed_at_2_decimal,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            <> CAST(estimated_cost_to_complete AS DECIMAL(10,3))
+        ) AS values_changed_at_3_decimal
+FROM unique_updates;
+
+-- Findings:
+-- - All 725 unique values were populated and included in the scale test.
+-- - Casting to zero decimal places changed 645 values.
+-- - Casting to one decimal place changed 590 values.
+-- - Casting to two or three decimal places changed zero values.
+-- - Two decimal places are therefore the minimum lossless scale.
+-- - The observed maximum requires seven integer digits, making DECIMAL(9,2)
+--   the smallest lossless type.
+-- - Select DECIMAL(10,2) for the cleaned output to preserve all values, maintain
+--   consistency with other monetary fields, and provide additional headroom.
+
+
+-- Investigation 61: Evaluate estimated_cost_to_complete chronolgy
+-- Purpose:
+-- - Compare each estimated_cost_to_complete value with the preceding update
+--   for the same project in chronological order.
+-- - Classify consecutive estimates as increased, decreased, or unchanged,
+--   excluding each project's first update because no prior comparison exists.
+-- - Determine the overall movement pattern and identify increases requiring
+--   follow-up alongside planned and actual completion progress.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+normalized_updates AS (
+    SELECT
+        *,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date
+    FROM unique_updates
+),
+
+updates_with_previous_etc AS (
+    SELECT
+        *,
+        LAG(estimated_cost_to_complete) OVER (
+            PARTITION BY project_id
+            ORDER BY standardized_report_date
+        ) AS previous_estimated_cost_to_complete
+    FROM normalized_updates
+)
+
+SELECT
+    COUNT(*) AS total_comparisons,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            > previous_estimated_cost_to_complete
+    ) AS increased_etc_count,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            < previous_estimated_cost_to_complete
+    ) AS decreased_etc_count,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_to_complete
+            = previous_estimated_cost_to_complete
+    ) AS unchanged_etc_count
+FROM updates_with_previous_etc
+WHERE previous_estimated_cost_to_complete IS NOT NULL;
+
+-- Findings:
+-- - The 725 unique updates produced 628 consecutive comparisons across
+--   97 distinct project-ID partitions.
+-- - All 628 comparable updates showed a decrease in estimated_cost_to_complete;
+--   zero increases and zero unchanged values were found.
+-- - estimated_cost_to_complete therefore follows a strictly decreasing
+--   progression within every project-ID partition.
+-- - No ETC-specific chronology anomalies require follow-up or correction.
+-- - The 97 project-ID partitions exceed the 96 projects in projects.csv and
+--   require cross-table validation in Investigation 61A.
+
+
+-- Investigation 61A: Validate project-update partitions against projects.csv
+-- Purpose:
+-- - Compare distinct project IDs in project_updates.csv with the authoritative
+--   project IDs in projects.csv.
+-- - Identify update records whose project IDs have no matching project and
+--   projects that have no corresponding updates.
+-- - Determine whether the 97 project partitions reflect an invalid identifier
+--   or a legitimate difference in table coverage.
+WITH update_project_ids AS (
+    SELECT DISTINCT project_id
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+master_project_ids AS (
+    SELECT DISTINCT project_id
+    FROM read_csv_auto('data/raw/projects.csv')
+)
+
+SELECT
+    up.project_id AS update_project_id_without_master_record
+FROM update_project_ids AS up
+LEFT JOIN master_project_ids AS p
+    ON up.project_id = p.project_id
+WHERE p.project_id IS NULL;
+
+
+-- Reverse coverage check:
+-- - Identify authoritative projects with no corresponding update records.
+-- - Determine whether the orphan update ID P995 aligns with a missing expected
+--   project ID.
+WITH update_project_ids AS (
+    SELECT DISTINCT project_id
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+master_project_ids AS (
+    SELECT DISTINCT project_id
+    FROM read_csv_auto('data/raw/projects.csv')
+)
+
+SELECT
+    p.project_id AS master_project_id_without_updates
+FROM master_project_ids AS p
+LEFT JOIN update_project_ids AS up
+    ON p.project_id = up.project_id
+WHERE up.project_id IS NULL;
+
+-- Findings:
+-- - project_updates.csv contains one unmatched project ID: P995.
+-- - The reverse anti-join returned zero projects without updates; all 96
+--   authoritative project IDs are represented in project_updates.csv.
+-- - P995 is therefore an additional orphan identifier rather than an obvious
+--   replacement for a missing project ID.
+-- - No correction is supported without further record-level and cross-table evidence.
+
+
+-- Investigation 61B: Inspect P995 within project_updates.csv
+-- Purpose:
+-- - Inspect all unique P995 update records in chronological order.
+-- - Determine whether P995 forms a coherent project-update history or shows
+--   evidence of duplication or misidentification within project_updates.csv.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+standardized_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        CAST(
+            estimated_cost_to_complete AS DECIMAL(10,2)
+        ) AS standardized_estimated_cost_to_complete,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date,
+        primary_delay_reason,
+        submitted_by
+    FROM unique_updates
+)
+
+SELECT *
+FROM standardized_updates
+WHERE project_id = 'P995'
+ORDER BY standardized_report_date;
+
+-- Findings:
+-- - One unique update record references P995: UPD99999, dated June 30, 2026.
+-- - The record reports 70% planned completion, 51% actual completion,
+--   $180,000 ETC, and submitted_by = 'Unknown'.
+-- - Because P995 has only one update, no chronological pattern or internal
+--   duplicate relationship can be evaluated.
+-- - No correction or valid-project mapping is supported by
+--   project_updates.csv alone.
+
+
+-- Investigation 61C: Search for P995 across other project-level raw tables
+-- Purpose:
+-- - Count records referencing P995 in projects.csv, project_budgets.csv,
+--   cost_transactions.csv, labor_entries.csv, and change_orders.csv.
+-- - Determine whether P995 has a cross-table operational footprint or is
+--   isolated to project_updates.csv.
+SELECT
+    'projects.csv' AS source_table,
+    COUNT(*) AS p995_row_count
+FROM read_csv_auto('data/raw/projects.csv')
+WHERE project_id = 'P995'
+
+UNION ALL
+
+SELECT
+    'project_budgets' AS source_table,
+    COUNT(*) AS p995_row_count
+FROM read_csv_auto('data/raw/project_budgets.csv')
+WHERE project_id = 'P995'
+
+UNION ALL
+
+SELECT
+    'cost_transactions' AS source_table,
+    COUNT(*) AS p995_row_count
+FROM read_csv_auto('data/raw/cost_transactions.csv')
+WHERE project_id = 'P995'
+
+UNION ALL
+
+SELECT
+    'labor_entries' AS source_table,
+    COUNT(*) AS p995_row_count
+FROM read_csv_auto('data/raw/labor_entries.csv')
+WHERE project_id = 'P995'
+
+UNION ALL
+
+SELECT
+    'change_orders' AS source_table,
+    COUNT(*) AS p995_row_count
+FROM read_csv_auto('data/raw/change_orders.csv')
+WHERE project_id = 'P995';
+
+-- Findings:
+-- - All five comparison tables returned zero records referencing P995.
+-- - Combined with the single UPD99999 record, this supports classifying P995
+--   as an update-only orphan.
+-- - No cross-table evidence supports P995 as a valid project or provides a
+--   defensible mapping to an authoritative project ID.
+-- - No correction is currently supported.
+
+
+-- Investigation 61D: Search for an exact match to UPD99999
+-- Purpose:
+-- - Compare UPD99999's non-identifier fields with all other unique project
+--   updates while excluding P995 itself.
+-- - Determine whether an exact match exists under a valid project ID that could
+--   identify UPD99999 as a duplicated or misidentified update record.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+standardized_updates AS (
+    SELECT
+        update_id,
+        project_id,
+        COALESCE(
+            TRY_CAST(report_date AS DATE),
+            CAST(
+                TRY_STRPTIME(report_date, '%m/%d/%Y')
+                AS DATE
+            )
+        ) AS standardized_report_date,
+        CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        CAST(
+            REPLACE(actual_pct_complete, '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete,
+        CAST(
+            estimated_cost_to_complete AS DECIMAL(10,2)
+        ) AS standardized_estimated_cost_to_complete,
+        CAST(forecast_completion_date AS DATE)
+            AS standardized_forecast_completion_date,
+        primary_delay_reason,
+        submitted_by
+    FROM unique_updates
+),
+
+target_update AS (
+    SELECT *
+    FROM standardized_updates
+    WHERE update_id = 'UPD99999'
+)
+
+SELECT
+    candidate.update_id AS candidate_update_id,
+    candidate.project_id AS candidate_project_id,
+    candidate.standardized_report_date,
+    candidate.standardized_planned_pct_complete,
+    candidate.standardized_actual_pct_complete,
+    candidate.standardized_estimated_cost_to_complete,
+    candidate.standardized_forecast_completion_date,
+    candidate.primary_delay_reason,
+    candidate.submitted_by
+FROM standardized_updates AS candidate
+INNER JOIN target_update AS target
+    ON candidate.standardized_report_date
+        = target.standardized_report_date
+    AND candidate.standardized_planned_pct_complete
+        = target.standardized_planned_pct_complete
+    AND candidate.standardized_actual_pct_complete
+        = target.standardized_actual_pct_complete
+    AND candidate.standardized_estimated_cost_to_complete
+        = target.standardized_estimated_cost_to_complete
+    AND candidate.standardized_forecast_completion_date
+        = target.standardized_forecast_completion_date
+    AND candidate.primary_delay_reason
+        = target.primary_delay_reason
+    AND candidate.submitted_by
+        = target.submitted_by
+WHERE candidate.update_id <> target.update_id
+  AND candidate.project_id <> target.project_id
+ORDER BY candidate.project_id, candidate.standardized_report_date;
+
+-- Findings:
+-- - UPD99999 has no exact business-field match among the other 724 unique updates.
+-- - Combined with its absence from all other project-level tables, no
+--   data-supported mapping to an authoritative project ID exists.
+-- - Preserve the raw P995 value unchanged and flag UPD99999 as an orphan update
+--   requiring stakeholder clarification.
+-- - No replacement project ID will be assigned in cleaned outputs unless new
+--   evidence identifies the intended project.
