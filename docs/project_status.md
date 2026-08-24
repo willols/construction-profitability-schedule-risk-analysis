@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 21, 2026
+Last updated: August 24, 2026
 
 ## Current Phase
 
@@ -16,17 +16,20 @@ First-pass standalone profiling is complete for:
 Labor timeline profiling and the employee-date grain and overtime
 interpretability investigations are complete.
 
-Profiling of `project_updates.csv` has been completed through Investigation 57.
+Profiling of `project_updates.csv` has been completed and the full profiling file
+has been verified through Investigation 61D.
 
-Investigation 55A reviewed the complete histories of the 13 projects containing
-actual-completion decreases on the June 30, 2026 reporting cutoff.
-Investigation 56 confirmed that planned completion remains chronologically
-non-decreasing across every project. Investigation 57 compared the 40
-forecast-before-report updates with official project status, baseline completion,
-and actual completion dates.
+Investigations 58–60 completed the completeness, value-boundary, zero-value, and
+decimal-precision profiling of `estimated_cost_to_complete`. Investigation 61
+validated its chronological behavior. Investigations 61A–61D validated project
+IDs and investigated the orphan P995 record across the supplied project-level
+tables.
 
-The next project-update task is full-file verification followed by Investigation
-58, which will profile `estimated_cost_to_complete`.
+The remaining standalone `project_updates.csv` fields are
+`primary_delay_reason` and `submitted_by`.
+
+The complete project-updates profiling file requires a closeout rerun through
+Investigation 61D.
 
 `change_orders.csv` has not yet been profiled.
 
@@ -42,7 +45,7 @@ Profiling SQL is organized into separate dataset-specific files:
 | `project_budgets.csv`   | `sql/02_project_budgets_profiling.sql`        | Standalone profiling complete                                    |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
 | `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| `project_updates.csv`   | `sql/05_project_updates_profiling.sql`        | In progress through Investigation 57; full-file rerun pending       |
+| `project_updates.csv` | `sql/05_project_updates_profiling.sql` | In progress; full file verified through Investigation 61D |
 | `change_orders.csv`     | Planned: `sql/06_change_orders_profiling.sql` | Not started                                                      |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -463,9 +466,14 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling has been completed through Investigation 57. Investigations 55A, 56,
-and 57 have been written and executed. The complete profiling file still
-requires a final rerun after the Investigation 57 changes.
+Profiling has been completed and the full profiling file has been verified
+through Investigation 61D.
+
+Investigations 58–60 profiled `estimated_cost_to_complete`. Investigation 61
+validated its chronological behavior, and Investigations 61A–61D investigated
+the unexpected 97th project-ID partition and orphan P995 update.
+
+The remaining standalone fields are `primary_delay_reason` and `submitted_by`.
 
 #### Structure and Row-Level Identifier
 
@@ -716,7 +724,6 @@ Investigation 55 used LAG() partitioned by project_id and ordered by standardize
 - The returned row identifies where a decrease becomes visible but does not establish whether the current or preceding value is erroneous.
 - The concentration on the reporting cutoff suggests a possible systematic reporting pattern requiring further investigation.
 Decision:
-Decision:
 - Treat chronological decreases as investigation flags rather than automatic
   errors.
 - Preserve UPD00314 because its decrease is explained by the preceding,
@@ -824,6 +831,90 @@ Decision:
   definition of 100% actual completion, official completion requirements, and
   the June 30 reassessment process.
 
+#### Estimated Cost to Complete
+
+Investigations 58–60 profiled `estimated_cost_to_complete` across the 725 unique
+project updates.
+
+- DuckDB infers `estimated_cost_to_complete` as `DOUBLE`.
+- All 725 unique updates contain a populated value.
+- Zero NULL values were identified.
+- Values range from 0 through 2,695,267.50.
+- Seventy-five values equal zero.
+- Zero negative values were identified.
+- All 75 zero-value updates represent distinct projects and report
+  `actual_pct_complete` of 100%.
+- The zero values are therefore internally consistent with completed work.
+- Casting to zero decimal places changes 645 values.
+- Casting to one decimal place changes 590 values.
+- Casting to two or three decimal places changes zero values.
+- Two decimal places are therefore the minimum lossless scale.
+- `DECIMAL(9,2)` is the minimum type supporting the observed range and scale.
+
+Decision:
+
+- Use `DECIMAL(10,2)` for cleaned `estimated_cost_to_complete` to preserve all
+  observed values, match the existing project monetary convention, and provide
+  additional headroom.
+- Preserve all 75 zero values without correction.
+- No missing-value, negative-value, or range correction is required.
+- Preserve the raw source values unchanged.
+
+#### Chronological Estimated-Cost-to-Complete Progression
+
+Investigation 61 used `LAG()` partitioned by `project_id` and ordered by
+standardized report date to compare each ETC value with its immediately
+preceding value.
+
+- The 725 unique updates produced 628 consecutive comparisons across 97
+  project-ID partitions.
+- All 628 comparable ETC values decreased from their preceding values.
+- Zero ETC increases were identified.
+- Zero unchanged ETC values were identified.
+- Each project partition's first update was excluded because no preceding ETC
+  value exists.
+- The 628 comparisons reconcile mathematically to 725 unique updates minus 97
+  first-in-partition records.
+- The unexpected 97th partition triggered project-ID relationship validation.
+
+Decision:
+
+- Treat ETC as strictly decreasing across every comparable project-update
+  sequence.
+- No ETC-specific chronological anomaly requires correction or follow-up.
+- Investigate the unexpected project-ID partition separately rather than
+  treating the comparison count as a query error.
+
+#### Project-Update Project-ID Validation
+
+Investigations 61A–61D validated the 97 distinct project-update IDs against the
+96 authoritative IDs in `projects.csv`.
+
+- P995 is the only project ID in `project_updates.csv` without a matching
+  project record.
+- The reverse anti-join returned zero authoritative projects without updates.
+- All 96 authoritative project IDs are represented in `project_updates.csv`.
+- P995 contains one update record: UPD99999.
+- UPD99999 was reported on June 30, 2026.
+- It records planned completion of 70.0%, actual completion of 51.0%, ETC of
+  180,000.00, and forecast completion of October 15, 2026.
+- Its primary delay reason is `Material lead time`, and `submitted_by` is
+  `Unknown`.
+- Because P995 has only one update, it provides no chronological history.
+- P995 appears zero times in `projects.csv`, `project_budgets.csv`,
+  `cost_transactions.csv`, `labor_entries.csv`, and `change_orders.csv`.
+- UPD99999 has no exact business-field match among the other 724 unique project
+  updates.
+- No data-supported mapping to an authoritative project ID exists.
+
+Decision:
+
+- Classify P995 as an update-only orphan.
+- Preserve the raw P995 value unchanged.
+- Flag UPD99999 for stakeholder clarification.
+- Do not assign a replacement project ID in cleaned outputs without new
+  authoritative evidence.
+
 ## Unresolved Items
 
 ### Projects
@@ -863,10 +954,12 @@ Decision:
 - Clarify why P076, P077, P083, P084, P085, P090, P091, and P092 repeatedly
   reported 100% actual completion while remaining active with no official
   actual completion date.
-- Profile `estimated_cost_to_complete` completeness, range, precision, and
-  relationship with project progress.
-- Profile `primary_delay_reason` and `submitted_by`.
-- Validate project-update project IDs against `projects.csv`.
+- Profile the distinct values and frequencies in `primary_delay_reason`.
+- Determine the business meaning and analytical treatment of the `None`
+  delay-reason category.
+- Profile `submitted_by`, including the isolated `Unknown` value on UPD99999.
+- Obtain stakeholder clarification for orphan update UPD99999 and its unmatched
+  project ID P995.
 
 ### Remaining Datasets and Relationships
 
@@ -875,7 +968,7 @@ Decision:
 
 ## Remaining Project Work
 
-1. Complete standalone profiling of `project_updates.csv`.
+1. Complete `primary_delay_reason` and `submitted_by` profiling for `project_updates.csv`.
 2. Profile `change_orders.csv`.
 3. Compare project IDs in `project_budgets.csv` with `projects.csv`.
 4. Validate remaining cross-file relationships.
@@ -889,44 +982,35 @@ Decision:
 
 Open `sql/05_project_updates_profiling.sql`.
 
-First, execute the complete profiling file through the DuckDB CLI with `-bail`.
-Confirm that the file runs through Investigation 57 with exit code 0 before
-beginning additional work.
+Begin Investigation 62 by writing its purpose comment for profiling
+`primary_delay_reason` across the 725 unique project updates.
 
-Then begin Investigation 58 by writing its purpose comment for profiling
-`estimated_cost_to_complete`.
+Investigations 44B and 44C already confirmed that the text fields contain no
+blank, whitespace-only, leading-whitespace, or trailing-whitespace values. Do
+not repeat those completed checks.
 
-Use exact-duplicate removal so the investigation operates on the cleaned
-business grain of 725 unique project updates.
+Profile:
 
-Begin by determining:
+- The distinct raw delay-reason values.
+- The frequency of each value after exact-duplicate removal.
+- Whether capitalization or labeling variants represent the same category.
+- The frequency and business meaning of the `None` category.
+- Whether any value requires standardization, preservation, or stakeholder
+  clarification.
 
-- The total number of unique updates evaluated.
-- The number of populated and missing `estimated_cost_to_complete` values.
-- Whether the inferred numeric type is appropriate for profiling calculations.
-- The minimum and maximum values.
-- The number of zero and negative values.
-- Whether any values require record-level investigation before monetary
-  precision and chronological behavior are evaluated.
+After completing `primary_delay_reason`, begin the standalone profiling of
+`submitted_by`, paying particular attention to UPD99999's isolated `Unknown`
+value.
 
-After validating completeness and range, determine the minimum decimal scale
-that preserves every observed value and select an appropriate cleaned monetary
-type.
-
-Then evaluate how `estimated_cost_to_complete` behaves as actual completion
-increases, paying particular attention to values associated with 100% actual
-completion and the June 30 cutoff-date reversals.
-
-Do not modify raw source values or infer replacement amounts without sufficient
+Do not modify raw source values or map categorical values without sufficient
 evidence.
-
 
 The latest committed analysis is:
 
 - Commit:
-  [1f2164944f61dbe54613d90f96521ce2068b5ec9](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/1f2164944f61dbe54613d90f96521ce2068b5ec9)
-- Message: `Complete project update chronology and timeline validation`
-- Date: August 21, 2026
+  [ad4eee23cfffb25856cf80c7b615286495d6b181](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/ad4eee23cfffb25856cf80c7b615286495d6b181)
+- Message: `Profile estimated costs and validate project update IDs`
+- Date: August 24, 2026
 
 The latest correction commit is:
 

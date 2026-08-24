@@ -3,6 +3,170 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 24, 2026
+
+### Work Completed
+
+- Completed Investigation 61 by evaluating the chronological progression of
+  `estimated_cost_to_complete`.
+- Deduplicated the project updates, standardized `report_date`, and used
+  `LAG()` partitioned by `project_id` to compare each ETC value with the
+  preceding value for the same project.
+- Identified 628 consecutive comparisons across 725 unique updates and 97
+  project-ID partitions.
+- Completed Investigation 61A by comparing distinct project IDs in
+  `project_updates.csv` with the authoritative IDs in `projects.csv`.
+- Performed anti-joins in both directions to identify update IDs without master
+  projects and master projects without update coverage.
+- Identified P995 as the only project-update ID without a matching project.
+- Confirmed that all 96 authoritative projects have at least one update.
+- Completed Investigation 61B by inspecting the complete P995 history after
+  applying the previously validated date, percentage, forecast-date, and
+  monetary transformations.
+- Completed Investigation 61C by searching for P995 across `projects.csv`,
+  `project_budgets.csv`, `cost_transactions.csv`, `labor_entries.csv`, and
+  `change_orders.csv`.
+- Completed Investigation 61D by comparing UPD99999’s standardized
+  non-identifier fields with the other 724 unique project updates.
+
+### Decisions and Reasoning
+
+- Every comparable ETC value decreased from its preceding value. No increases
+  or unchanged values require ETC-specific follow-up.
+- The 628 comparisons are mathematically consistent with 725 unique updates
+  partitioned across 97 project IDs because each partition’s first update has
+  no preceding value.
+- P995 is an update-only orphan rather than an obvious replacement for a
+  missing authoritative project ID.
+- UPD99999 does not form a chronological history because it is P995’s only
+  update.
+- P995’s absence from every other project-level table provides no support for
+  treating it as a real project omitted from `projects.csv`.
+- UPD99999 has no exact business-field match under another project ID, so it
+  cannot be classified as a duplicated or misidentified copy of a valid update.
+- Preserve the raw P995 value unchanged and flag UPD99999 as an orphan update
+  requiring stakeholder clarification.
+- No replacement project ID will be assigned in cleaned outputs unless new
+  evidence identifies the intended project.
+- No raw CSV values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- Investigation 61 returned:
+  - 628 total consecutive comparisons
+  - 0 ETC increases
+  - 628 ETC decreases
+  - 0 unchanged ETC values
+- `project_updates.csv` contains 97 distinct project IDs, while `projects.csv`
+  contains 96 authoritative IDs.
+- The update-to-project anti-join returned P995 as the only unmatched update ID.
+- The reverse anti-join returned zero authoritative projects without updates.
+- P995 contains one record:
+  - Update ID: UPD99999
+  - Report date: June 30, 2026
+  - Planned completion: 70.0%
+  - Actual completion: 51.0%
+  - Estimated cost to complete: $180,000.00
+  - Forecast completion date: October 15, 2026
+  - Primary delay reason: Material lead time
+  - Submitted by: Unknown
+- P995 returned zero matching records in `projects.csv`,
+  `project_budgets.csv`, `cost_transactions.csv`, `labor_entries.csv`, and
+  `change_orders.csv`.
+- UPD99999 returned zero exact matches among the other 724 unique project
+  updates.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 58–61D executed successfully, and
+  their results were reviewed.
+- The complete `sql/05_project_updates_profiling.sql` file executed successfully
+  through Investigation 61D using the DuckDB CLI with `-bail`.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit
+  [ad4eee23cfffb25856cf80c7b615286495d6b181](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/ad4eee23cfffb25856cf80c7b615286495d6b181)
+  was created on `main` with the message
+  `Profile estimated costs and validate project update IDs`.
+- The analysis commit included `sql/05_project_updates_profiling.sql` and was
+  pushed successfully to `origin/main`.
+
+### Next Session
+
+Begin Investigation 62 by writing its purpose comment.
+
+Profile `primary_delay_reason` across the 725 unique project updates. Review its
+distinct values and frequencies, determine whether any categorical variants
+require standardization, and evaluate the meaning and treatment of the `None`
+category.
+
+After completing `primary_delay_reason`, profile `submitted_by` before
+finalizing the standalone profiling of `project_updates.csv`.
+
+## August 23, 2026
+
+### Work Completed
+
+- Completed Investigation 58 by confirming the source type and completeness of
+  `estimated_cost_to_complete` across the deduplicated project updates.
+- Completed Investigation 59 by profiling the ETC range and counts of zero and
+  negative values.
+- Completed Investigation 59A by inspecting all 75 zero-value ETC records.
+- Completed Investigation 60 by testing the minimum lossless decimal scale
+  required for ETC.
+- Began Investigation 61 by documenting its purpose and constructing a
+  chronological `LAG()` query for ETC movement.
+
+### Decisions and Reasoning
+
+- DuckDB infers `estimated_cost_to_complete` as `DOUBLE`, so text-to-number
+  compatibility testing is unnecessary.
+- The cleaned analytical type should use an exact `DECIMAL` rather than an
+  approximate floating-point type.
+- All zero ETC values are internally consistent with reported project
+  completion and require no correction.
+- ETC increases would represent investigation flags rather than automatic
+  errors because revised forecasts, added scope, rework, or cost overruns can
+  legitimately increase remaining cost.
+- Two decimal places are the minimum lossless scale.
+- `DECIMAL(9,2)` is the smallest type that supports the observed values, but
+  `DECIMAL(10,2)` was selected to remain consistent with other project monetary
+  fields and provide additional headroom.
+- No raw CSV values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- All 725 unique project updates contain a populated
+  `estimated_cost_to_complete`; zero NULL values were found.
+- ETC values range from $0.00 through $2,695,267.50.
+- Seventy-five ETC values equal zero, while zero values are negative.
+- All 75 zero-value updates represent distinct projects and report
+  `actual_pct_complete` of 100%.
+- The zero ETC values are therefore internally consistent with completed work.
+- The decimal-scale test returned:
+  - 645 values changed at zero decimal places
+  - 590 values changed at one decimal place
+  - 0 values changed at two decimal places
+  - 0 values changed at three decimal places
+- Two decimal places are therefore the minimum lossless scale for ETC.
+
+### Verification and Closeout
+
+- Individual queries through Investigation 60 executed successfully.
+- Investigation 61 was prepared but not executed.
+- Full-file verification and Git closeout were deferred to the next portfolio
+  session.
+
+### Next Session
+
+Execute Investigation 61 and summarize ETC increases, decreases, and unchanged
+values across consecutive project updates.
+
+Validate that the movement categories reconcile to the expected number of
+chronological comparisons and investigate any unexpected progression or
+project-partition count.
+
 ## August 21, 2026
 
 ### Work Completed
