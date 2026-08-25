@@ -2197,3 +2197,153 @@ ORDER BY candidate.project_id, candidate.standardized_report_date;
 --   requiring stakeholder clarification.
 -- - No replacement project ID will be assigned in cleaned outputs unless new
 --   evidence identifies the intended project.
+
+
+-- Investigation 62: Profile primary_delay_reason
+-- Purpose:
+-- - Profile each distinct raw value and its frequency across the 725 unique updates.
+-- - Identify possible capitalization or labeling variants.
+-- - Determine how often the literal value 'None' appears and interpret its
+--   operational meaning.
+-- - Decide whether each value should be preserved, standardized, or flagged.
+-- - Do not repeat blank or whitespace-only checks because Investigations 44B
+--   and 44C already covered them.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    primary_delay_reason,
+    COUNT(*) AS total_count
+FROM unique_updates
+GROUP BY primary_delay_reason
+ORDER BY total_count DESC;
+
+-- Findings:
+-- - Eight distinct raw labels appear across the 725 unique updates, and
+--   their frequencies sum to the complete unique-update population.
+-- - All eight labels use consistent sentence case, with no apparent
+--   capitalization or labeling variants.
+-- - 'Labor availability' is the most frequent label with 211 updates,
+--   while 'Weather' is the least frequent with 23 updates.
+-- - The literal label 'None' appears in 79 updates. This frequency result
+--   alone does not establish whether 'None' means no active delay, not
+--   applicable, or that no primary reason was documented.
+-- - Further validation is required before 'None' can be interpreted or
+--   assigned a cleaning treatment.
+
+
+-- Investigation 62A: Validate the business meaning of 'None'
+-- Purpose:
+-- - Examine the 79 unique updates labeled 'None'.
+-- - Classify these updates as ahead, on schedule, or behind by comparing
+--   actual_pct_complete with planned_pct_complete.
+-- - Test whether 'None' consistently represents no active delay, which
+--   would require actual completion to be equal to or greater than planned
+--   completion.
+-- - If behind-schedule updates are present, consider whether 'None' may
+--   instead represent an undocumented or unselected delay reason.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+    FROM read_csv_auto('data/raw/project_updates.csv')
+),
+
+standardized_updates AS (
+    SELECT
+        primary_delay_reason,
+        TRY_CAST(
+            planned_pct_complete AS DECIMAL(4,1)
+        ) AS standardized_planned_pct_complete,
+        TRY_CAST(
+            REPLACE(TRIM(actual_pct_complete), '%', '')
+            AS DECIMAL(4,1)
+        ) AS standardized_actual_pct_complete
+    FROM unique_updates
+)
+
+SELECT
+    COUNT(*) AS total_none_updates,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete >
+              standardized_planned_pct_complete
+    ) AS ahead_schedule,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete =
+              standardized_planned_pct_complete
+    ) AS on_schedule,
+    COUNT(*) FILTER (
+        WHERE standardized_actual_pct_complete <
+              standardized_planned_pct_complete
+    ) AS behind_schedule
+FROM standardized_updates
+WHERE primary_delay_reason = 'None';
+
+-- Findings:
+-- - All 79 unique updates labeled 'None' were classified successfully,
+--   and the schedule-status counts reconcile to the full population.
+-- - Of these updates, 38 were ahead of schedule, 7 were on schedule,
+--   and 34 were behind schedule.
+-- - The 34 behind-schedule updates disprove the hypothesis that 'None'
+--   consistently means no active delay.
+-- - The available data does not establish whether 'None' means that no
+--   primary reason was identified, selected, or documented.
+-- - Do not reinterpret 'None' as either "no delay" or a NULL value without
+--   authoritative business guidance.
+-- - Preserve 'None' unchanged and flag its business meaning for stakeholder
+--   clarification.
+
+
+-- Investigation 63: Profile submitted_by
+-- Purpose:
+-- - Profile each distinct raw value and its frequency across the 725 unique
+--   updates.
+-- - Identify possible capitalization, spelling, or labeling variants.
+-- - Examine unexpected placeholder values, with particular attention to the
+--   isolated 'Unknown' value associated with UPD99999 and orphan project P995.
+-- - Determine whether each value should be preserved, standardized, or flagged.
+-- - Do not repeat blank or whitespace-only checks because Investigations 44B
+--   and 44C already covered them.
+WITH unique_updates AS (
+    SELECT DISTINCT *
+FROM read_csv_auto('data/raw/project_updates.csv')
+)
+
+SELECT
+    submitted_by,
+    COUNT(*) AS total_count
+FROM unique_updates
+GROUP BY submitted_by
+ORDER BY total_count DESC;
+
+-- Findings:
+-- - Six distinct raw values appear across the 725 unique updates, and their
+--   frequencies sum to the complete unique-update population.
+-- - Five values are consistently formatted employee names.
+-- - No visible capitalization, spelling, or labeling variants appear.
+-- - The literal value 'Unknown' occurs exactly once and requires focused
+--   inspection before its treatment can be determined.
+
+
+-- Investigation 63A: Inspect the isolated 'Unknown' submitted_by value
+-- Purpose:
+-- - Identify the update and project associated with the isolated 'Unknown'
+--   submitter value.
+-- - Test whether it belongs to update UPD99999 and orphan project P995.
+-- - Use that relationship to determine whether the value should be preserved,
+--   standardized, or flagged.
+SELECT *
+FROM read_csv_auto('data/raw/project_updates.csv')
+WHERE submitted_by = 'Unknown';
+
+-- Findings:
+-- - The only update with the submitted_by value 'Unknown' is UPD99999,
+--   associated with project P995 and dated 2026-06-30.
+-- - This is the same record previously classified as an update-only orphan,
+--   reinforcing that the submitter issue is isolated to the anomalous record.
+-- - The available data provides no authoritative evidence identifying the
+--   actual submitter or supporting assignment to one of the five named employees.
+-- - Preserve the five consistently formatted employee names unchanged.
+-- - Preserve 'Unknown' unchanged and flag it with UPD99999 and P995 for
+--   stakeholder clarification.
+-- - Do not infer or assign a replacement submitter without authoritative evidence.
