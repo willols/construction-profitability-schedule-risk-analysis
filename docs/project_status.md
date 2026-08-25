@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: August 24, 2026
+Last updated: August 25, 2026
 
 ## Current Phase
 
@@ -12,24 +12,22 @@ First-pass standalone profiling is complete for:
 - `project_budgets.csv`
 - `cost_transactions.csv`
 - `labor_entries.csv`
+- `project_updates.csv`
 
 Labor timeline profiling and the employee-date grain and overtime
 interpretability investigations are complete.
 
-Profiling of `project_updates.csv` has been completed and the full profiling file
-has been verified through Investigation 61D.
+Standalone profiling of `project_updates.csv` is complete through Investigation
+63A. Investigations 62 and 62A completed the profiling and semantic validation
+of `primary_delay_reason`. Investigations 63 and 63A completed the profiling of
+`submitted_by` and connected its isolated `Unknown` value to orphan update
+UPD99999 and project P995.
 
-Investigations 58–60 completed the completeness, value-boundary, zero-value, and
-decimal-precision profiling of `estimated_cost_to_complete`. Investigation 61
-validated its chronological behavior. Investigations 61A–61D validated project
-IDs and investigated the orphan P995 record across the supplied project-level
-tables.
+The complete project-updates profiling file has been executed successfully
+through Investigation 63A.
 
-The remaining standalone `project_updates.csv` fields are
-`primary_delay_reason` and `submitted_by`.
-
-The complete project-updates profiling file requires a closeout rerun through
-Investigation 61D.
+Project-ID relationship validation remains outstanding for
+`project_budgets.csv`.
 
 `change_orders.csv` has not yet been profiled.
 
@@ -42,10 +40,10 @@ Profiling SQL is organized into separate dataset-specific files:
 | Dataset                 | SQL file                                      | Status                                                           |
 | ----------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
 | `projects.csv`          | `sql/01_projects_profiling.sql`               | Standalone profiling complete                                    |
-| `project_budgets.csv`   | `sql/02_project_budgets_profiling.sql`        | Standalone profiling complete                                    |
+| project_budgets.csv   | sql/02_project_budgets_profiling.sql        | Standalone profiling complete; project-ID validation outstanding |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
 | `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| `project_updates.csv` | `sql/05_project_updates_profiling.sql` | In progress; full file verified through Investigation 61D |
+| project_updates.csv   | sql/05_project_updates_profiling.sql        | Standalone profiling complete and verified through Investigation 63A |
 | `change_orders.csv`     | Planned: `sql/06_change_orders_profiling.sql` | Not started                                                      |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
@@ -466,14 +464,19 @@ Confirmed cleaning rules:
 
 ### Project Updates
 
-Profiling has been completed and the full profiling file has been verified
-through Investigation 61D.
+Standalone profiling is complete through Investigation 63A.
 
 Investigations 58–60 profiled `estimated_cost_to_complete`. Investigation 61
 validated its chronological behavior, and Investigations 61A–61D investigated
 the unexpected 97th project-ID partition and orphan P995 update.
 
-The remaining standalone fields are `primary_delay_reason` and `submitted_by`.
+Investigations 62 and 62A profiled `primary_delay_reason` and tested the
+operational meaning of its `None` category. Investigations 63 and 63A profiled
+`submitted_by` and confirmed that its isolated `Unknown` value belongs to
+UPD99999 and P995.
+
+No standalone `project_updates.csv` fields remain unprofiled. The complete
+profiling file has been executed successfully through Investigation 63A.
 
 #### Structure and Row-Level Identifier
 
@@ -915,6 +918,71 @@ Decision:
 - Do not assign a replacement project ID in cleaned outputs without new
   authoritative evidence.
 
+#### Primary Delay Reason
+
+Investigation 62 profiled `primary_delay_reason` across the 725 unique project
+updates.
+
+- Eight distinct raw labels were identified:
+  - `Labor availability`: 211
+  - `Material lead time`: 106
+  - `Subcontractor availability`: 90
+  - `Inspection / approval delay`: 80
+  - `None`: 79
+  - `Owner decision / change order`: 73
+  - `Unforeseen site condition`: 63
+  - `Weather`: 23
+- The frequencies reconcile to all 725 unique updates.
+- All eight labels use consistent sentence case.
+- No apparent capitalization, spelling, or labeling variants require
+  standardization.
+- Investigation 62A classified the 79 updates labeled `None` by comparing
+  standardized actual and planned completion:
+  - 38 were ahead of schedule.
+  - 7 were on schedule.
+  - 34 were behind schedule.
+- The three schedule categories reconcile to all 79 `None` updates.
+- The 34 behind-schedule records disprove the hypothesis that `None`
+  consistently means no active delay.
+- The available data does not establish whether `None` means that no primary
+  reason was identified, selected, or documented.
+
+Decision:
+
+- Preserve all eight raw delay-reason labels unchanged.
+- Do not convert `None` to NULL or reinterpret it as “no delay.”
+- Flag the business meaning of `None` for stakeholder clarification.
+
+#### Submitted By
+
+Investigations 63 and 63A profiled `submitted_by` across the 725 unique project
+updates.
+
+- Six distinct raw values were identified:
+  - Elena Martinez: 181
+  - Priya Shah: 174
+  - Daniel Kim: 159
+  - Marcus Reed: 115
+  - Olivia Bennett: 95
+  - `Unknown`: 1
+- The frequencies reconcile to all 725 unique updates.
+- The five employee names are consistently formatted.
+- No apparent capitalization, spelling, or labeling variants require
+  standardization.
+- The only `Unknown` value belongs to UPD99999 for orphan project P995.
+- UPD99999 was reported on June 30, 2026.
+- The available data provides no authoritative evidence identifying the actual
+  submitter or supporting assignment to one of the five named employees.
+
+Decision:
+
+- Preserve the five named submitter values unchanged.
+- Preserve `Unknown` unchanged.
+- Flag the submitter value with UPD99999 and P995 for stakeholder
+  clarification.
+- Do not infer or assign a replacement submitter without authoritative
+  evidence.
+
 ## Unresolved Items
 
 ### Projects
@@ -954,12 +1022,10 @@ Decision:
 - Clarify why P076, P077, P083, P084, P085, P090, P091, and P092 repeatedly
   reported 100% actual completion while remaining active with no official
   actual completion date.
-- Profile the distinct values and frequencies in `primary_delay_reason`.
-- Determine the business meaning and analytical treatment of the `None`
-  delay-reason category.
-- Profile `submitted_by`, including the isolated `Unknown` value on UPD99999.
-- Obtain stakeholder clarification for orphan update UPD99999 and its unmatched
-  project ID P995.
+- Clarify the operational meaning and intended use of the `None`
+  `primary_delay_reason` category.
+- Obtain stakeholder clarification for orphan update UPD99999, unmatched
+  project ID P995, and the associated `Unknown` submitter value.
 
 ### Remaining Datasets and Relationships
 
@@ -968,49 +1034,47 @@ Decision:
 
 ## Remaining Project Work
 
-1. Complete `primary_delay_reason` and `submitted_by` profiling for `project_updates.csv`.
+1. Compare project IDs in `project_budgets.csv` with `projects.csv`.
 2. Profile `change_orders.csv`.
-3. Compare project IDs in `project_budgets.csv` with `projects.csv`.
-4. Validate remaining cross-file relationships.
-5. Implement documented cleaning rules in cleaned analytical outputs.
-6. Build project profitability and budget-variance metrics.
-7. Build schedule-risk metrics.
-8. Create final analytical tables and stakeholder-facing outputs.
-9. Validate and document the completed analysis.
+3. Validate the remaining required cross-file relationships.
+4. Implement documented cleaning rules in cleaned analytical outputs.
+5. Build project profitability and budget-variance metrics.
+6. Build schedule-risk metrics.
+7. Create final analytical tables and stakeholder-facing outputs.
+8. Validate and document the completed analysis.
 
 ## Exact Next Task
 
-Open `sql/05_project_updates_profiling.sql`.
+Open `sql/02_project_budgets_profiling.sql`.
 
-Begin Investigation 62 by writing its purpose comment for profiling
-`primary_delay_reason` across the 725 unique project updates.
+Begin Investigation 64 by writing its purpose comment for validating
+`project_budgets.csv` project IDs against the authoritative project IDs in
+`projects.csv`.
 
-Investigations 44B and 44C already confirmed that the text fields contain no
-blank, whitespace-only, leading-whitespace, or trailing-whitespace values. Do
-not repeat those completed checks.
+Use the established deduplicated project and budget populations to:
 
-Profile:
+- Compare the number of distinct project IDs in both files.
+- Perform an anti-join from project budgets to projects.
+- Perform the reverse anti-join from projects to project budgets.
+- Identify any budget project IDs without authoritative project records.
+- Identify any authoritative projects without budget coverage.
+- Inspect unmatched IDs before determining whether they should be preserved,
+  corrected, or flagged.
 
-- The distinct raw delay-reason values.
-- The frequency of each value after exact-duplicate removal.
-- Whether capitalization or labeling variants represent the same category.
-- The frequency and business meaning of the `None` category.
-- Whether any value requires standardization, preservation, or stakeholder
-  clarification.
-
-After completing `primary_delay_reason`, begin the standalone profiling of
-`submitted_by`, paying particular attention to UPD99999's isolated `Unknown`
-value.
-
-Do not modify raw source values or map categorical values without sufficient
+Do not assign a replacement project ID without sufficient authoritative
 evidence.
+
+After completing the project-budget relationship validation, begin standalone
+profiling of `change_orders.csv`.
+
+Do not modify raw source values.
 
 The latest committed analysis is:
 
 - Commit:
-  [ad4eee23cfffb25856cf80c7b615286495d6b181](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/ad4eee23cfffb25856cf80c7b615286495d6b181)
-- Message: `Profile estimated costs and validate project update IDs`
-- Date: August 24, 2026
+  [0eec32f737fff48ff4d415da969fceec72746850](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/0eec32f737fff48ff4d415da969fceec72746850)
+- Message: `Complete project updates profiling`
+- Date: August 25, 2026
 
 The latest correction commit is:
 

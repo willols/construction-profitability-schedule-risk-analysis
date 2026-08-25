@@ -3,6 +3,111 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 25, 2026
+
+### Work Completed
+
+- Completed Investigation 62 by profiling distinct
+  `primary_delay_reason` values and frequencies across the 725 unique project
+  updates.
+- Completed Investigation 62A by testing whether the literal value `None`
+  consistently represents no active delay.
+- Reused the previously established `DECIMAL(4,1)` standardization for
+  `planned_pct_complete` and `actual_pct_complete` before comparing schedule
+  performance.
+- Classified all 79 updates labeled `None` as ahead of schedule, on schedule,
+  or behind schedule.
+- Completed Investigation 63 by profiling distinct `submitted_by` values and
+  frequencies across the 725 unique updates.
+- Completed Investigation 63A by inspecting the isolated `Unknown` submitter
+  value and connecting it to the previously identified orphan update.
+- Finished the standalone profiling of `project_updates.csv`.
+
+### Decisions and Reasoning
+
+- The eight observed `primary_delay_reason` labels use consistent sentence
+  case, with no apparent capitalization or labeling variants requiring
+  standardization.
+- The presence of 34 behind-schedule updates labeled `None` disproves the
+  hypothesis that `None` consistently means no active delay.
+- The available data does not establish whether `None` means that no primary
+  reason was identified, selected, or documented.
+- All eight raw delay-reason labels will be preserved unchanged.
+- The literal value `None` will not be converted to NULL or reinterpreted as
+  “no delay” without authoritative business guidance.
+- `None` will remain flagged for stakeholder clarification because its business
+  meaning is ambiguous.
+- The five named `submitted_by` values are consistently formatted and require
+  no standardization.
+- The isolated `Unknown` submitter belongs to UPD99999 and P995, the same
+  update-only orphan identified during project-ID validation.
+- The relationship between `Unknown` and the orphan record does not identify
+  the actual submitter or support assigning one of the five named employees.
+- Preserve `Unknown` unchanged and flag it with UPD99999 and P995 for
+  stakeholder clarification.
+- No raw CSV values were modified, and no cleaned analytical output was
+  implemented during this session.
+
+### Key Results
+
+- Investigation 62 returned eight distinct delay-reason labels whose
+  frequencies reconcile to all 725 unique updates:
+  - `Labor availability`: 211
+  - `Material lead time`: 106
+  - `Subcontractor availability`: 90
+  - `Inspection / approval delay`: 80
+  - `None`: 79
+  - `Owner decision / change order`: 73
+  - `Unforeseen site condition`: 63
+  - `Weather`: 23
+- Among the 79 updates labeled `None`:
+  - 38 were ahead of schedule.
+  - 7 were on schedule.
+  - 34 were behind schedule.
+- The three schedule categories reconcile to all 79 `None` updates.
+- Investigation 63 returned six distinct submitter values whose frequencies
+  reconcile to all 725 unique updates:
+  - Elena Martinez: 181
+  - Priya Shah: 174
+  - Daniel Kim: 159
+  - Marcus Reed: 115
+  - Olivia Bennett: 95
+  - `Unknown`: 1
+- The only `Unknown` submitter belongs to UPD99999 for orphan project P995,
+  reported on June 30, 2026.
+- No available evidence identifies an authoritative replacement submitter for
+  UPD99999.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 62 through 63A executed
+  successfully, and their results were reviewed.
+- The complete `sql/05_project_updates_profiling.sql` file executed
+  successfully through Investigation 63A.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit
+  [0eec32f737fff48ff4d415da969fceec72746850](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/0eec32f737fff48ff4d415da969fceec72746850)
+  was created on `main` with the message
+  `Complete project updates profiling`.
+- The analysis commit included `sql/05_project_updates_profiling.sql`.
+
+### Next Session
+
+Begin Investigation 64 in `sql/02_project_budgets_profiling.sql` by writing its
+purpose comment.
+
+Validate the distinct project IDs in `project_budgets.csv` against the
+authoritative project IDs in `projects.csv`. Perform anti-joins in both
+directions to identify budget project IDs without master-project records and
+master projects without budget coverage.
+
+Inspect any unmatched IDs before deciding whether they should be corrected,
+preserved, or flagged. Do not assign a replacement project ID without
+authoritative evidence.
+
+After completing the outstanding project-budget relationship validation, begin
+standalone profiling of `change_orders.csv`.
+
 ## August 24, 2026
 
 ### Work Completed
