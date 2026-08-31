@@ -3,6 +3,445 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## August 31, 2026
+
+### Work Completed
+
+- Completed Investigation 72A by profiling `reason` completeness across all 146
+  raw change-order rows.
+- Completed Investigation 72B by retrieving every distinct raw `reason`, its
+  frequency, and its raw and trimmed lengths.
+- Confirmed that all six reason categories are complete, consistently
+  formatted, and meaningful within the change-order workflow.
+- Completed Investigation 73A by profiling `status` completeness across all 146
+  raw change-order rows.
+- Completed Investigation 73B by retrieving every distinct raw `status`, its
+  frequency, and its raw and trimmed lengths.
+- Identified two inconsistent raw status labels:
+  - `Approved`, a capitalization variant of `approved`.
+  - `PENDING `, a capitalization and trailing-whitespace variant of `pending`.
+- Distinguished six profiling categories used throughout the project:
+  structure, identity, completeness, validity, relationships, and decisions.
+- Practiced separating column-level completeness and validity tests from later
+  cross-field relationship tests.
+
+### Decisions and Reasoning
+
+- `reason` passes completeness testing because all 146 rows contain populated,
+  nonblank values.
+- The six raw reason categories contain no spelling, capitalization, or
+  surrounding-whitespace inconsistencies.
+- All six reason categories will be preserved unchanged in the cleaned layer;
+  no reason-standardization rule is required.
+- `status` passes completeness testing because all 146 rows contain populated,
+  nonblank values.
+- `status` does not yet pass category-consistency testing because two raw labels
+  are formatting variants of established lowercase categories.
+- `LOWER(TRIM(status))` is the proposed cleaned-layer transformation because it
+  would address both capitalization and surrounding whitespace without
+  requiring individual `CASE` mappings.
+- The proposed status transformation remains provisional until its resulting
+  categories and frequencies are validated in Investigation 73C.
+- A valid populated status paired with missing or contradictory approval or
+  billing information will be treated primarily as a relationship issue.
+  Profiling may identify the contradiction but cannot determine which source
+  field is incorrect without additional evidence.
+- Raw source values remain unchanged, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 72A returned:
+  - 146 total rows
+  - 0 NULL `reason` values
+  - 0 blank or whitespace-only `reason` values
+  - 146 populated `reason` values
+  - 6 distinct raw reason categories
+- Investigation 72B returned six raw reason categories whose frequencies
+  reconcile to all 146 rows:
+  - `Owner scope change`: 44
+  - `Unforeseen site condition`: 32
+  - `Design revision`: 31
+  - `Code requirement`: 22
+  - `Material substitution`: 10
+  - `Schedule acceleration`: 7
+- Every reason category's raw length equals its trimmed length, confirming that
+  no leading or trailing whitespace is present.
+- Investigation 73A returned:
+  - 146 total rows
+  - 0 NULL `status` values
+  - 0 blank or whitespace-only `status` values
+  - 146 populated `status` values
+  - 6 distinct raw status labels
+- Investigation 73B returned six raw status labels whose frequencies reconcile
+  to all 146 rows:
+  - `approved`: 102
+  - `withdrawn`: 16
+  - `pending`: 13
+  - `rejected`: 13
+  - `Approved`: 1
+  - `PENDING `: 1
+- Five status labels have matching raw and trimmed lengths.
+- `PENDING ` has a raw length of 8 and a trimmed length of 7, confirming one
+  trailing space.
+- The six raw status labels appear to represent four intended business
+  statuses: `approved`, `withdrawn`, `pending`, and `rejected`.
+- If validated, `LOWER(TRIM(status))` is expected to produce:
+  - `approved`: 103
+  - `withdrawn`: 16
+  - `pending`: 14
+  - `rejected`: 13
+
+### Verification and Closeout
+
+- The individual queries for Investigations 72A through 73B executed
+  successfully, and their results were reviewed.
+- The completeness partitions and categorical frequencies each reconcile to
+  all 146 raw change-order rows.
+- The complete `sql/06_change_orders_profiling.sql` file executed successfully
+  through Investigation 73B using the DuckDB CLI with `-bail` and returned exit
+  code 0.
+- `git diff --cached --check` returned no output.
+- Analysis commit
+  [bcc4a5a3753a62686b37db680fc4a83fef4231f9](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/bcc4a5a3753a62686b37db680fc4a83fef4231f9)
+  was created on `main` with the message
+  `Profile change order structure and categorical quality`.
+- The analysis commit included `sql/06_change_orders_profiling.sql` and was
+  pushed successfully to `origin/main`.
+- Investigation 73C was not written or executed.
+
+### Next Session
+
+Begin Investigation 73C by writing its purpose comment.
+
+Apply `LOWER(TRIM(status))` during query-only profiling and retrieve each
+proposed standardized status with its frequency. Confirm that the transformation
+produces exactly four categories—`approved`, `withdrawn`, `pending`, and
+`rejected`—whose frequencies reconcile to all 146 rows.
+
+After validating the transformation, document the final status-cleaning
+decision. Preserve the raw values unchanged and apply the validated
+standardization only in the future cleaned analytical layer.
+
+Then begin profiling `estimated_cost_change` for completeness, range, zero and
+negative values, and minimum lossless fractional scale before selecting a
+candidate exact `DECIMAL` type.
+
+## August 28, 2026
+
+### Work Completed
+
+- Completed Investigation 68 by applying the validated query-only normalization
+  to `requested_revenue_change`.
+- Created a `standardized_change_orders` CTE that removes dollar signs and
+  thousands separators before safely converting the normalized values to
+  `DOUBLE` for diagnostic profiling.
+- Profiled completeness, minimum and maximum values, zero values, and negative
+  values across all 146 raw change-order rows.
+- Completed Investigation 69 by comparing every standardized value with the
+  same value rounded to zero, one, two, and three decimal places.
+- Established the minimum lossless fractional scale and the minimum supported
+  `DECIMAL` precision for `requested_revenue_change`.
+- Completed Investigation 70 by profiling the raw `change_order_type`
+  categories and their frequencies.
+- Completed Investigation 71 by converting normalized
+  `requested_revenue_change` values to `DECIMAL(8,2)` and comparing their signs
+  with `change_order_type`.
+- Used filtered aggregate counts grouped by `change_order_type` to validate the
+  relationship at the row level.
+
+### Decisions and Reasoning
+
+- All observed `requested_revenue_change` values are complete and compatible
+  with the validated query-only normalization.
+- The observed range requires capacity for six integer digits.
+- Two decimal places are the minimum lossless fractional scale.
+- `DECIMAL(8,2)` is the minimum exact datatype supported by the observed
+  `requested_revenue_change` values.
+- The final cleaned schema may use a wider common monetary type for consistency
+  and future capacity after the remaining change-order monetary fields have
+  been profiled.
+- `DOUBLE` was appropriate during diagnostic profiling while the required range
+  and scale were unknown.
+- After validating conversion, range, and fractional precision, `CAST(... AS
+  DECIMAL(8,2))` was appropriate for the sign-and-type consistency test.
+- The raw `change_order_type` categories are complete and consistently
+  formatted, so no standardization rule is currently required.
+- Matching aggregate counts alone were not treated as proof that the 12
+  deductive orders corresponded to the 12 negative revenue changes. A grouped
+  row-level sign comparison was performed for confirmation.
+- Negative `requested_revenue_change` values are legitimate when associated
+  with deductive change orders.
+- No raw values were modified, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 68 returned:
+  - 146 total rows
+  - 146 populated standardized values
+  - 0 NULL standardized values
+  - 0 zero values
+  - 12 negative values
+  - Minimum value: -180,146.05
+  - Maximum value: 201,500.62
+- The observed range requires six digits before the decimal point.
+- Investigation 69 returned:
+  - 144 values changed when rounded to zero decimal places
+  - 128 values changed when rounded to one decimal place
+  - 0 values changed when rounded to two decimal places
+  - 0 values changed when rounded to three decimal places
+- Two decimal places are therefore the minimum lossless scale.
+- Investigation 70 returned two raw `change_order_type` categories whose counts
+  reconcile to all 146 rows:
+  - `additive`: 134
+  - `deductive`: 12
+- No NULL or unexpected `change_order_type` categories were returned.
+- Investigation 71 confirmed:
+  - All 134 additive change orders have positive
+    `requested_revenue_change` values.
+  - All 12 deductive change orders have negative
+    `requested_revenue_change` values.
+  - Neither category contains zero values.
+  - No row-level sign-and-type mismatches were found.
+- The 12 negative `requested_revenue_change` values are valid deductive change
+  orders and require no correction.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 68 through 71 executed
+  successfully, and their results were reviewed.
+- Full-file execution was deferred because standalone profiling of
+  `change_orders.csv` remains in progress.
+- Only the project documentation was updated during closeout.
+- No Git commit or push was performed during this session.
+
+### Next Session
+
+Begin Investigation 72 by writing its purpose comment.
+
+Profile `estimated_cost_change` for total rows, populated and NULL values,
+minimum and maximum values, zero values, and negative values. Because DuckDB
+already infers the column as `DOUBLE`, text-normalization compatibility testing
+is not required.
+
+After reviewing completeness and range, test the minimum lossless fractional
+scale before selecting a candidate exact `DECIMAL` type. Then validate the sign
+of `estimated_cost_change` against `change_order_type`.
+
+Do not finalize a shared datatype for all change-order monetary fields or
+implement the cleaned analytical layer until `estimated_cost_change`,
+`approved_revenue_change`, and `billed_amount` have been profiled.
+
+## August 27, 2026
+
+### Work Completed
+
+- Completed Investigation 66B by searching for project ID P994 across
+  `projects.csv`, `project_budgets.csv`, `cost_transactions.csv`,
+  `labor_entries.csv`, and `project_updates.csv`.
+- Used `UNION ALL` to return one labeled match count for each searched dataset.
+- Confirmed that P994 has no supporting records outside `change_orders.csv`
+  among the supplied datasets.
+- Completed Investigation 67 by identifying populated
+  `requested_revenue_change` values that fail direct numeric conversion.
+- Used `TRY_CAST(... AS DOUBLE)` to isolate conversion failures without stopping
+  the query.
+- Completed Investigation 67A by testing a query-only normalization of the
+  failed value associated with CO0064.
+- Removed the dollar sign and thousands separator with nested `REPLACE()`
+  expressions and successfully converted the normalized result to `DOUBLE`.
+- Completed Investigation 67B by applying the proposed normalization test
+  across every populated `requested_revenue_change` value.
+- Distinguished row-level filtering with `WHERE` from aggregate-specific
+  filtering with `FILTER`.
+
+### Decisions and Reasoning
+
+- P994 remains classified as an orphan project reference because it appears in
+  `change_orders.csv`, has no matching authoritative project record, and has no
+  supporting records in the other five supplied datasets.
+- The absence of cross-file support strengthens the orphan classification but
+  does not prove that P994 is a typo or identify an authoritative replacement
+  project ID.
+- CO9999 and P994 will remain unchanged and be flagged for stakeholder
+  clarification in the future cleaned analytical layer.
+- A normal `CAST` was not used for initial compatibility testing because one
+  invalid value would stop the query. `TRY_CAST` allowed the failed record to
+  be identified directly.
+- `DOUBLE` was used only as a diagnostic conversion type. It is not the final
+  cleaned type for `requested_revenue_change`.
+- The dollar sign and thousands separator in CO0064 explain why DuckDB inferred
+  `requested_revenue_change` as `VARCHAR`.
+- Removing `$` and `,` is sufficient to make every populated
+  `requested_revenue_change` value numerically compatible.
+- The final exact `DECIMAL` precision and scale will not be selected until the
+  normalized column's completeness, range, and fractional precision have been
+  profiled.
+- All raw CSV values will remain unchanged. Monetary normalization will occur
+  only in profiling queries and the future cleaned analytical layer.
+- No cleaned analytical output was implemented during this session.
+
+### Key Results
+
+- P994 returned zero matching records in each of the five searched datasets:
+  - `projects.csv`
+  - `project_budgets.csv`
+  - `cost_transactions.csv`
+  - `labor_entries.csv`
+  - `project_updates.csv`
+- Exactly one populated `requested_revenue_change` value failed direct
+  conversion to `DOUBLE`.
+- The failed value belongs to:
+  - Change-order ID: CO0064
+  - Project ID: P039
+  - Raw requested revenue change: `$43,428.72`
+- Removing the currency symbol and thousands separator produced the normalized
+  text value `43428.72`.
+- `TRY_CAST` successfully converted the normalized text to the numeric value
+  43428.72.
+- The column-wide normalized compatibility test returned zero failed
+  conversions among populated `requested_revenue_change` values.
+- Completeness, range, zero and negative values, fractional precision, and the
+  final exact monetary type remain unresolved.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 66B through 67B executed
+  successfully, and their results were reviewed.
+- Full-file execution was deferred because standalone profiling of
+  `change_orders.csv` remains in progress.
+- No Git commit or push was performed during this session.
+
+### Next Session
+
+Begin Investigation 68 by writing its purpose comment.
+
+Create a `standardized_change_orders` CTE that retains the raw
+`requested_revenue_change` value and creates a query-only numeric version using
+the validated nested `REPLACE()` expression and `TRY_CAST(... AS DOUBLE)`.
+
+Use an outer aggregate query to profile total rows, populated raw values, NULL
+raw values, minimum and maximum normalized values, zero values, and negative
+values.
+
+After reviewing completeness and range, profile fractional precision before
+selecting the final lossless `DECIMAL` precision and scale. Do not implement the
+cleaned analytical transformation until the profiling evidence has been
+reviewed.
+
+## August 26, 2026
+
+### Work Completed
+
+- Created `sql/06_change_orders_profiling.sql` and began standalone profiling of
+  `change_orders.csv`.
+- Completed Investigation 64 by inspecting the inferred schema, sample records,
+  total row count, expected business grain, and candidate row-level identifier.
+- Completed Investigation 65 by testing `change_order_id` completeness and
+  uniqueness.
+- Completed Investigation 65A by identifying the repeated
+  `change_order_id` and comparing both associated records.
+- Confirmed that CO0013 is duplicated exactly across all 12 columns.
+- Completed Investigation 66 by profiling `project_id` completeness and
+  coverage and validating change-order project IDs against `projects.csv`.
+- Learned and applied DuckDB's `ANTI JOIN` syntax to identify project IDs in
+  `change_orders.csv` without matching authoritative project records.
+- Completed Investigation 66A by inspecting the change-order record associated
+  with the unmatched project ID P994.
+
+### Decisions and Reasoning
+
+- The initial business-grain hypothesis is one row per change-order request
+  associated with one project.
+- `change_order_id` is the intended row-level identifier, but it fails
+  uniqueness in the raw file because CO0013 occurs twice.
+- Because both CO0013 records match across all 12 columns, one occurrence will
+  be preserved and the additional exact copy excluded only when constructing
+  the cleaned analytical output.
+- The raw `change_orders.csv` file will remain unchanged.
+- Repeated `project_id` values are expected because one project can have
+  multiple change orders.
+- P994 is an orphan project reference because it appears in
+  `change_orders.csv` but has no matching record in `projects.csv`.
+- CO9999 and P994 are unusually high identifiers relative to the observed ID
+  patterns, but this does not prove a specific error or identify a valid
+  replacement project.
+- No project-ID correction is supported for CO9999/P994 based on the
+  change-order record alone.
+- The raw CO9999/P994 record will remain unchanged while additional source
+  files are searched for supporting evidence.
+- `requested_revenue_change` requires numeric-conversion testing because DuckDB
+  inferred it as `VARCHAR` even though the sampled values appeared numeric.
+- `estimated_cost_change`, `approved_revenue_change`, and `billed_amount`
+  require precision and scale testing because DuckDB inferred them as
+  `DOUBLE`, while cleaned financial fields should use an exact decimal type.
+- No cleaned analytical output was implemented during this session.
+
+### Key Results
+
+- `change_orders.csv` contains 12 inferred columns and 146 raw rows.
+- DuckDB inferred:
+  - `change_order_id`, `project_id`, `change_order_type`, `reason`, and
+    `status` as `VARCHAR`.
+  - `requested_date`, `approval_date`, and `billed_date` as `DATE`.
+  - `requested_revenue_change` as `VARCHAR`.
+  - `estimated_cost_change`, `approved_revenue_change`, and `billed_amount`
+    as `DOUBLE`.
+- All 146 rows contain a populated `change_order_id`, with zero null
+  identifiers.
+- The 146 populated identifiers contain 145 distinct values.
+- CO0013 is the only repeated identifier and occurs in two exact duplicate
+  rows.
+- After excluding one exact CO0013 copy, the expected cleaned row count and
+  distinct `change_order_id` count are both 145.
+- All 146 raw rows contain a populated `project_id`, with zero null project
+  identifiers.
+- `change_orders.csv` contains 69 distinct `project_id` values.
+- The change-order-to-project anti-join returned one unmatched project ID:
+  P994.
+- P994 is associated with one change-order record:
+  - Change-order ID: CO9999
+  - Requested date: April 18, 2026
+  - Type: Additive
+  - Reason: Owner scope change
+  - Status: Pending
+  - Requested revenue change: $48,000
+  - Estimated cost change: $33,000
+  - Approved revenue change: NULL
+  - Approval date: NULL
+  - Billed amount: NULL
+  - Billed date: NULL
+- The null approval and billing fields appear consistent with the pending
+  status, although status-field relationships still require formal testing.
+- The CO9999 record contains no internal evidence identifying an authoritative
+  replacement for P994.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 64 through 66A executed
+  successfully, and their results were reviewed.
+- Full-file execution and Git closeout were deferred because
+  `change_orders.csv` profiling remains in progress.
+- No Git commit or push was performed during this session.
+
+### Next Session
+
+Begin Investigation 66B by writing its purpose comment.
+
+Search for P994 across the other project-related raw datasets to determine
+whether any cross-file evidence supports the orphan project reference. Inspect
+any matching records before deciding how CO9999/P994 should be treated.
+
+If no supporting evidence exists, preserve the raw identifiers and flag the
+record for stakeholder clarification rather than assigning an unsupported
+replacement project ID.
+
+After resolving or documenting P994, continue standalone profiling of
+`change_orders.csv`, including completeness, dates, categorical values,
+workflow-field relationships, monetary conversion compatibility, ranges, and
+minimum lossless decimal precision.
+
 ## August 25, 2026
 
 ### Work Completed
