@@ -97,12 +97,21 @@ and lessons. Add each new dated entry directly below this introduction.
 
 - The individual queries for Investigations 82 through 84 executed
   successfully, and their results were reviewed.
+- The complete `sql/06_change_orders_profiling.sql` file executed successfully
+  through Investigation 84 using the DuckDB CLI with `-bail`.
 - The date-comparison populations and violation counts reconciled with the
   previously profiled date completeness.
 - The approved and non-approved status groups reconcile to all 146 raw rows.
 - The additive and deductive groups reconcile to all 146 raw rows.
-- Full-file execution, Git diff validation, and Git closeout remain to be
-  completed after this documentation update.
+- `git diff --check` and `git diff --cached --check` returned no output.
+- Analysis commit
+  [0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4)
+  was created on `main` with the message
+  `Profile change order monetary fields and workflow relationships`.
+- The analysis commit included:
+  - `sql/06_change_orders_profiling.sql`
+  - `docs/project_notes.md`
+  - `docs/project_status.md`
 
 ### Next Session
 

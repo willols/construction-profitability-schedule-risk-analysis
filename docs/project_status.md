@@ -1367,9 +1367,9 @@ profiling.
 The latest committed analysis is:
 
 - Commit:
-  [bcc4a5a3753a62686b37db680fc4a83fef4231f9](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/bcc4a5a3753a62686b37db680fc4a83fef4231f9)
-- Message: `Profile change order structure and categorical quality`
-- Date: August 31, 2026
+  [0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4)
+- Message: `Profile change order monetary fields and workflow relationships`
+- Date: September 3, 2026
 
 The latest correction commit is:
 
