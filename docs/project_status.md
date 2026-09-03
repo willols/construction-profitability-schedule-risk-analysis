@@ -1,56 +1,47 @@
 # Project Status
 
-Last updated: August 31, 2026
+Last updated: September 3, 2026
 
 ## Current Phase
 
-The complete `sql/06_change_orders_profiling.sql` file executed successfully
-through Investigation 73B. Standalone change-order profiling remains in
-progress.
+Individual queries in `sql/06_change_orders_profiling.sql` have executed
+successfully through Investigation 84. Standalone column-level profiling of
+`change_orders.csv` is complete.
+
+Date chronology, standardized status-to-approval alignment, non-approved billing
+evidence, and the sign relationship between `change_order_type` and
+`estimated_cost_change` have now been validated at the row level. Remaining
+change-order profiling is limited to billed-date and billed-amount alignment,
+approved and billed monetary signs, requested-versus-approved revenue, and
+approved-versus-billed reconciliation.
+
+The complete profiling file was last verified end to end through Investigation
+73B. Full-file verification through Investigation 84 remains a closeout task.
 
 ### Change Orders
 
-Standalone profiling is in progress through Investigation 73B. Reason profiling
-is complete. Status completeness and raw-category profiling are complete, while
-the proposed status-standardization rule remains unvalidated.
+All 12 change-order fields have completed standalone profiling. Monetary
+completeness, range, fractional scale, cleaned datatypes, date completeness,
+date ranges, and reporting-cutoff behavior are documented.
 
-Standalone profiling of `change_orders.csv` is in progress through Investigation
-73B. Initial structure, business grain, row-level identifier, duplicate,
-project-ID relationship, orphan-ID follow-up, `requested_revenue_change`,
-`change_order_type`, `reason`, and initial `status` profiling are complete.
+Investigation 82 found no chronological violations among testable request,
+approval, and billing dates. CO0001 is the only billed record with a missing
+`approval_date`.
 
-CO0013 is an exact duplicate. P994 is isolated to `change_orders.csv` among the
-supplied datasets and remains classified as an orphan project reference
-requiring stakeholder clarification.
+Investigation 83 confirmed that all 103 standardized approved records contain
+`approved_revenue_change`, while none of the 43 non-approved records contains
+approval fields or evidence of billing. CO0001's missing approval date is the
+only identified status-to-approval inconsistency.
 
-CO0064 contains the formatted `requested_revenue_change` value `$43,428.72`,
-which explains the column's `VARCHAR` inference. Removing dollar signs and
-thousands separators allows all 146 values to convert successfully.
+Investigation 84 confirmed that all 134 additive change orders have positive
+`estimated_cost_change` values and all 12 deductive change orders have negative
+values. No sign mismatches or zero estimated-cost changes were identified.
 
-Normalized `requested_revenue_change` values range from -180,146.05 through
-201,500.62. Two decimal places are the minimum lossless scale, and
-`DECIMAL(8,2)` is the minimum exact type supported by the observed values.
+All four change-order monetary fields will use `DECIMAL(10,2)` in the cleaned
+analytical layer.
 
-The two `change_order_type` categories are complete and consistently formatted.
-All 134 additive orders have positive requested revenue changes, while all 12
-deductive orders have negative requested revenue changes. No sign-and-type
-mismatches were found.
-
-All 146 `reason` values are populated and consistently formatted. Six valid
-business-reason categories account for all rows, and no reason-standardization
-rule is required.
-
-All 146 `status` values are populated, but six raw labels represent four
-intended business statuses. `Approved` is a capitalization variant of
-`approved`, while `PENDING ` is a capitalization and trailing-whitespace
-variant of `pending`.
-
-`LOWER(TRIM(status))` is the proposed status-standardization rule, but it has
-not yet been validated through query-only profiling. Investigation 73C remains
-outstanding before a final status-cleaning decision is adopted.
-
-The complete change-orders profiling file has not yet been executed end to end
-because profiling remains in progress.
+CO0119's July 9, 2026 billing activity will remain in the raw data but be
+excluded from billed totals calculated as of June 30, 2026.
 
 Project-ID relationship validation remains outstanding for
 `project_budgets.csv`.
@@ -61,14 +52,14 @@ No cleaned analytical outputs have been implemented.
 
 Profiling SQL is organized into separate dataset-specific files:
 
-| Dataset                 | SQL file                                      | Status                                                           |
-| ----------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
-| `projects.csv`          | `sql/01_projects_profiling.sql`               | Standalone profiling complete                                    |
-| project_budgets.csv   | sql/02_project_budgets_profiling.sql        | Standalone profiling complete; project-ID validation outstanding |
-| `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql`      | Standalone and required relationship profiling complete          |
-| `labor_entries.csv`     | `sql/04_labor_entries_profiling.sql`          | Standalone profiling complete through Investigation 40A          |
-| project_updates.csv   | sql/05_project_updates_profiling.sql        | Standalone profiling complete and verified through Investigation 63A |
-| `change_orders.csv` | `sql/06_change_orders_profiling.sql` | In progress through Investigation 73B |
+| Dataset | SQL file | Status |
+| --- | --- | --- |
+| `projects.csv` | `sql/01_projects_profiling.sql` | Standalone profiling complete |
+| `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Standalone profiling complete; project-ID validation outstanding |
+| `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql` | Standalone and required transaction-relationship profiling complete |
+| `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Standalone profiling complete through Investigation 40A |
+| `project_updates.csv` | `sql/05_project_updates_profiling.sql` | Standalone profiling complete through Investigation 63A |
+| `change_orders.csv` | `sql/06_change_orders_profiling.sql` | Column profiling and relationship validation complete through Investigation 84; final billing and monetary relationships outstanding; full-file verification through Investigation 73B |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
 Existing investigation numbers and documentation references were preserved
@@ -1009,199 +1000,245 @@ Decision:
 
 ### Change Orders
 
-Standalone profiling is in progress through Investigation 71.
+Standalone column profiling and relationship validation are complete through
+Investigation 84. Individual queries have executed successfully through
+Investigation 84, while the complete profiling file was last verified end to
+end through Investigation 73B.
+
+Date chronology, status-to-approval alignment, non-approved billing evidence,
+and estimated-cost sign consistency are complete. Final billed-date,
+billed-amount, approved-revenue, and requested-revenue relationships remain
+outstanding.
 
 #### Structure and Row-Level Identifier
 
 - `change_orders.csv` contains 146 raw rows and 12 columns.
-- The initial business-grain hypothesis is one change-order request associated
-  with one project per row.
+- The observed business grain is one change-order request associated with one
+  project per row.
 - `change_order_id` is the intended row-level identifier.
-- All 146 rows contain a populated `change_order_id`.
-- The file contains 145 distinct `change_order_id` values.
+- All 146 rows contain a populated identifier, with 145 distinct values.
 - CO0013 occurs twice, and both records match across all 12 columns.
-- After excluding one exact CO0013 copy, the expected cleaned row count and
+- After removing one exact CO0013 duplicate, the expected cleaned row count and
   distinct identifier count are both 145.
 
 Decision:
 
-- Retain one CO0013 row and exclude the additional exact copy only when
-  constructing the cleaned analytical output.
+- Retain one CO0013 record and remove the repeated occurrence only in the
+  cleaned analytical layer.
+- Use `change_order_id` as the cleaned row-level identifier.
 - Preserve the raw CSV unchanged.
-- Use `change_order_id` as the cleaned row-level identifier after exact
-  duplicate removal.
-
-#### Inferred Types
-
-- `change_order_id`, `project_id`, `change_order_type`, `reason`, and `status`
-  were inferred as `VARCHAR`.
-- `requested_date`, `approval_date`, and `billed_date` were inferred as `DATE`.
-- `requested_revenue_change` was inferred as `VARCHAR`.
-- `estimated_cost_change`, `approved_revenue_change`, and `billed_amount` were
-  inferred as `DOUBLE`.
-- CO0064's formatted value of `$43,428.72` explains why
-  `requested_revenue_change` was inferred as `VARCHAR`.
-- The observed `requested_revenue_change` range requires six integer digits.
-- Two decimal places are the minimum lossless scale.
-- `DECIMAL(8,2)` is the minimum exact type supported by the observed
-  `requested_revenue_change` values.
-- The three source-`DOUBLE` monetary fields still require completeness, range,
-  minimum-lossless-scale, and total-precision testing.
-
-Decision:
-
-- Remove dollar signs and thousands separators from
-  `requested_revenue_change` before exact numeric conversion.
-- Treat `DECIMAL(8,2)` as the minimum supported type for the observed
-  `requested_revenue_change` values.
-- Defer selection of a potentially wider shared monetary type until the other
-  change-order monetary fields have been profiled.
-- Preserve all raw monetary values unchanged.
 
 #### Change-Order-to-Project Relationship
 
-- All 146 raw rows contain a populated `project_id`.
-- `change_orders.csv` contains 69 distinct project IDs.
-- Repeated project IDs are expected because one project can have multiple
-  change orders.
-- The anti-join against `projects.csv` returned one unmatched project ID: P994.
-- P994 is associated with one change-order record: CO9999.
-- CO9999 was requested on April 18, 2026.
-- It is a pending additive change order attributed to an owner scope change.
-- It records requested revenue of 48,000 and estimated cost of 33,000.
-- Its approved revenue, approval date, billed amount, and billed date are NULL.
-- Investigation 66B searched for P994 in `projects.csv`,
-  `project_budgets.csv`, `cost_transactions.csv`, `labor_entries.csv`, and
-  `project_updates.csv`.
-- All five searched datasets returned zero matching records.
-- P994 is therefore isolated to `change_orders.csv` among the supplied
-  datasets.
-- No available evidence identifies an authoritative replacement project ID.
+- All 146 rows contain a populated `project_id`.
+- The file contains 69 distinct project IDs.
+- P994 is the only project ID without a matching record in `projects.csv`.
+- P994 belongs to CO9999, a pending additive change order requested on
+  April 18, 2026.
+- P994 appears zero times in `projects.csv`, `project_budgets.csv`,
+  `cost_transactions.csv`, `labor_entries.csv`, and `project_updates.csv`.
+- No evidence identifies an authoritative replacement project ID.
 
 Decision:
 
-- Classify P994 as an orphan project reference requiring stakeholder
-  clarification.
-- Preserve CO9999 and P994 unchanged.
-- Do not assign a replacement project ID without new authoritative evidence.
+- Classify CO9999 and P994 as an orphan change order and project reference.
+- Preserve both identifiers unchanged.
+- Flag the record for stakeholder clarification.
+- Do not assign a replacement project ID without authoritative evidence.
 
-#### Requested Revenue Change
+#### Categorical Fields
 
-- Exactly one populated `requested_revenue_change` value failed direct
-  conversion to `DOUBLE`.
-- The failed value belongs to CO0064 for project P039 and is stored as
-  `$43,428.72`.
-- Removing the dollar sign and thousands separator produces the normalized text
-  value `43428.72`.
-- Applying the normalization across the complete column leaves zero failed
-  conversions.
-- All 146 raw rows contain populated and testable normalized values.
-- Zero NULL values and zero zero-value amounts were found.
-- Twelve values are negative.
-- Normalized values range from -180,146.05 through 201,500.62.
-- The observed range requires six digits before the decimal point.
-- Rounding to zero decimal places changes 144 values.
-- Rounding to one decimal place changes 128 values.
-- Rounding to two or three decimal places changes zero values.
-- Two decimal places are therefore the minimum lossless scale.
-- `DECIMAL(8,2)` is the minimum exact type supported by the observed range and
-  scale.
-
-Decision:
-
-- Remove dollar signs and thousands separators only in profiling calculations
-  and the future cleaned analytical layer.
-- Preserve every raw value unchanged.
-- Treat `DECIMAL(8,2)` as the minimum supported exact type.
-- Defer the final shared monetary-type decision until the remaining
-  change-order monetary fields have been profiled.
-
-#### Change-Order Type and Revenue-Sign Validation
-
-- Two raw `change_order_type` categories account for all 146 rows:
+- `change_order_type` contains two consistently formatted categories:
   - `additive`: 134
   - `deductive`: 12
-- No NULL or unexpected `change_order_type` values were found.
-- Both categories are consistently formatted, so no standardization is
-  required.
 - All 134 additive orders have positive `requested_revenue_change` values.
 - All 12 deductive orders have negative `requested_revenue_change` values.
-- Neither category contains zero values.
-- No row-level sign-and-type mismatches were found.
-
-Decision:
-
-- Preserve both `change_order_type` categories unchanged.
-- Classify the 12 negative `requested_revenue_change` values as valid deductive
-  change orders.
-- No correction or stakeholder clarification is required for these negative
-  values.
-
-#### Reason
-
-Investigations 72A and 72B profiled the completeness and category consistency
-of `reason`.
-
-- All 146 rows contain populated `reason` values.
-- Zero NULL, blank, or whitespace-only values were identified.
-- Six distinct raw reason categories account for all 146 rows:
+- No requested-revenue sign-and-type mismatches were identified.
+- All 146 `reason` values are populated and consistently formatted.
+- Six valid reason categories account for all rows:
   - `Owner scope change`: 44
   - `Unforeseen site condition`: 32
   - `Design revision`: 31
   - `Code requirement`: 22
   - `Material substitution`: 10
   - `Schedule acceleration`: 7
-- The six frequencies reconcile to all 146 raw rows.
-- Every category's raw length equals its trimmed length.
-- No leading or trailing whitespace was identified.
-- No spelling or capitalization inconsistencies were identified.
-- All six categories appear to represent valid business reasons for change
-  orders.
-
-Decision:
-
-- Preserve all six reason categories unchanged.
-- No `reason` standardization rule is required.
-- Preserve the raw source values unchanged.
-
-#### Status
-
-Investigations 73A and 73B profiled the completeness and raw category
-consistency of `status`.
-
-- All 146 rows contain populated `status` values.
-- Zero NULL, blank, or whitespace-only values were identified.
-- Six distinct raw status labels account for all 146 rows:
-  - `approved`: 102
-  - `withdrawn`: 16
-  - `pending`: 13
-  - `rejected`: 13
-  - `Approved`: 1
-  - `PENDING `: 1
-- The six frequencies reconcile to all 146 raw rows.
-- Five raw labels have matching raw and trimmed lengths.
-- `PENDING ` has a raw length of 8 and a trimmed length of 7, confirming one
-  trailing space.
-- `Approved` differs from `approved` only by capitalization.
-- `PENDING ` differs from `pending` by capitalization and trailing whitespace.
-- The six raw labels appear to represent four intended business statuses:
-  `approved`, `withdrawn`, `pending`, and `rejected`.
-- `LOWER(TRIM(status))` is expected to consolidate the six raw labels into:
+- Six raw status labels represent four standardized categories.
+- Applying `LOWER(TRIM(status))` produces:
   - `approved`: 103
   - `withdrawn`: 16
   - `pending`: 14
   - `rejected`: 13
-- The expected standardized distribution has not yet been executed and
-  validated.
+- The standardized frequencies reconcile to all 146 source rows.
 
-Provisional treatment:
+Decision:
 
-- Preserve all raw status values unchanged.
-- Validate `LOWER(TRIM(status))` in Investigation 73C before adopting it as the
-  cleaned-layer transformation.
-- Do not record a final status-standardization decision until the proposed
-  transformation produces four expected categories whose frequencies
-  reconcile to all 146 rows.
+- Preserve `change_order_type` and `reason` values unchanged.
+- Apply `LOWER(TRIM(status))` only in the cleaned analytical layer.
+- Preserve all raw categorical values unchanged.
+
+#### Monetary Fields
+
+CO0064 contains the formatted `requested_revenue_change` value `$43,428.72`.
+Removing dollar signs and thousands separators allows every populated value to
+convert successfully.
+
+| Monetary field | Populated | NULL | Zero | Negative | Minimum | Maximum | Minimum candidate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| `requested_revenue_change` | 146 | 0 | 0 | 12 | -180,146.05 | 201,500.62 | `DECIMAL(8,2)` |
+| `estimated_cost_change` | 146 | 0 | 0 | 12 | -122,322.75 | 124,992.57 | `DECIMAL(8,2)` |
+| `approved_revenue_change` | 103 | 43 | 0 | 10 | -177,978.63 | 158,368.20 | `DECIMAL(8,2)` |
+| `billed_amount` | 103 | 43 | 24 | 8 | -133,652.67 | 158,368.20 | `DECIMAL(8,2)` |
+
+- Two decimal places preserve every populated value across all four monetary
+  fields.
+- `requested_revenue_change` contains the largest observed absolute value at
+  201,500.62.
+- Six integer digits and two fractional digits establish `DECIMAL(8,2)` as the
+  minimum shared exact type supported by the observed data.
+- Row-level validation confirmed that all 103 standardized approved records
+  contain `approved_revenue_change`.
+- None of the 43 non-approved records contains `approval_date` or
+  `approved_revenue_change`.
+- CO0001 is the only approved record with a missing `approval_date`.
+- No non-approved record contains a populated `billed_date` or nonzero
+  `billed_amount`.
+- The 79 nonzero `billed_amount` values and 79 populated `billed_date` values
+  still require direct row-level pairing.
+- Approved and billed monetary signs and magnitudes remain to be validated
+  against `change_order_type` and each other.
+
+Decision:
+
+- Normalize `requested_revenue_change` by removing dollar signs and thousands
+  separators before exact numeric conversion.
+- Use `DECIMAL(10,2)` for `requested_revenue_change`,
+  `estimated_cost_change`, `approved_revenue_change`, and `billed_amount` in
+  the cleaned analytical layer.
+- `DECIMAL(10,2)` preserves every observed value, aligns with the established
+  project monetary convention, and provides additional integer capacity.
+- Preserve legitimate negative `estimated_cost_change` values because their
+  signs align completely with `change_order_type`.
+- Preserve CO0001's NULL `approval_date` and flag it in the cleaned layer.
+- Preserve billed NULL and zero values pending final billed-date, billed-amount,
+  and approved-revenue relationship validation.
+- Preserve all raw monetary values unchanged.
+
+#### Change-Order Dates
+
+Investigations 81 and 81A profiled the three workflow dates and inspected the
+single post-cutoff billing record.
+
+| Date field | Populated | NULL | Earliest | Latest | After cutoff |
+| --- | ---: | ---: | --- | --- | ---: |
+| `requested_date` | 146 | 0 | 2023-04-06 | 2026-06-25 | 0 |
+| `approval_date` | 102 | 44 | 2023-05-09 | 2026-06-21 | 0 |
+| `billed_date` | 79 | 67 | 2023-05-19 | 2026-07-09 | 1 |
+
+- The 102 populated `approval_date` values are one fewer than both the 103
+  standardized approved statuses and the 103 populated
+  `approved_revenue_change` values.
+- The 79 populated `billed_date` values match the 79 nonzero `billed_amount`
+  values at the aggregate level.
+- These aggregate relationships require row-level confirmation.
+- CO0119 for P077 is the only record with a `billed_date` later than the
+  June 30, 2026 reporting cutoff.
+- CO0119 is an approved deductive change order:
+  - Requested date: 2026-05-11
+  - Approval date: 2026-06-21
+  - Billed date: 2026-07-09
+  - Requested revenue change: -37,075.27
+  - Estimated cost change: -26,587.53
+  - Approved revenue change: -36,633.22
+  - Billed amount: -36,633.22
+- CO0119's chronology is internally logical.
+- Its monetary signs are consistent with its deductive type.
+- Its billed amount exactly equals its approved revenue change.
+
+Decision:
+
+- Treat CO0119 as valid post-cutoff billing activity rather than a malformed
+  source record.
+- Include its approved change in the June 30 portfolio analysis.
+- Exclude its billed amount from billed totals calculated as of June 30.
+- Implement the cutoff treatment through a derived cleaned-layer calculation.
+- Do not modify the raw `billed_amount` or `billed_date`.
+- Preserve CO0001's NULL `approval_date` and flag the record in the cleaned
+  layer; do not infer or store an unsupported date.
+- No date-order correction is required because all testable workflow dates
+  follow the expected chronological sequence.
+- Final row-level pairing of `billed_date` with zero, nonzero, and NULL
+  `billed_amount` values remains part of monetary-relationship validation.
+
+#### Date Chronology and Approval Workflow
+
+Investigation 82 evaluated each date relationship independently.
+
+- Request-to-approval chronology was testable for 102 rows, with 0 approvals
+  before requests.
+- Request-to-billing chronology was testable for 79 rows, with 0 billings
+  before requests.
+- Approval-to-billing chronology was testable for 78 rows, with 0 billings
+  before approvals.
+- CO0001 is the only billed record with a NULL `approval_date`.
+- CO0001 has an approved status, populated approved revenue, populated billed
+  amount, and populated billed date.
+- The available evidence indicates that approval occurred but does not identify
+  the exact approval date.
+
+Investigation 83 validated standardized status against approval fields and
+non-approved billing evidence.
+
+- The 103 approved and 43 non-approved records reconcile to all 146 raw rows.
+- One approved record, CO0001, is missing `approval_date`.
+- Zero approved records are missing `approved_revenue_change`.
+- Zero non-approved records contain either approval field.
+- Zero non-approved records contain a populated `billed_date`.
+- Zero non-approved records contain a nonzero `billed_amount`.
+
+Decision:
+
+- Preserve CO0001's NULL `approval_date`.
+- Flag CO0001 for stakeholder clarification in the cleaned layer.
+- Do not infer an approval date or store `Unknown` in a date field.
+- No other status-to-approval or non-approved billing exception requires
+  correction.
+
+#### Estimated-Cost Sign Validation
+
+Investigation 84 validated `estimated_cost_change` against
+`change_order_type`.
+
+- All 134 additive change orders have positive estimated-cost changes.
+- All 12 deductive change orders have negative estimated-cost changes.
+- Zero additive records contain nonpositive estimated-cost changes.
+- Zero deductive records contain nonnegative estimated-cost changes.
+- Zero estimated-cost changes equal zero.
+- The two type groups reconcile to all 146 raw rows.
+
+Decision:
+
+- Preserve all existing `estimated_cost_change` signs.
+- No sign correction or additional estimated-cost exception handling is
+  required.
+
+#### Remaining Change-Order Profiling
+
+Remaining work is limited to final monetary and billing relationships:
+
+- Confirm that every nonzero `billed_amount` has a corresponding `billed_date`.
+- Identify any populated `billed_date` paired with a NULL or zero
+  `billed_amount`.
+- Validate populated `approved_revenue_change` signs against
+  `change_order_type`.
+- Validate nonzero `billed_amount` signs against `change_order_type`.
+- Classify requested-versus-approved revenue as equal or adjusted.
+- Classify approved-versus-billed amounts as unbilled, fully billed, partially
+  billed, or exceeding the approved magnitude.
+- Inspect only material sign, date-amount, or overbilling exceptions.
+- Document final cleaning rules and close standalone change-order profiling.
+
+Revenue-to-cost differences will become profitability metrics in the analytical
+output rather than additional data-quality violations.
 
 ## Unresolved Items
 
@@ -1251,71 +1288,81 @@ Provisional treatment:
 
 - Obtain stakeholder clarification for orphan change order CO9999 and unmatched
   project ID P994.
-- Profile completeness, range, zero values, negative values, and minimum
-  lossless precision for `estimated_cost_change`,
-  `approved_revenue_change`, and `billed_amount`.
-- Decide whether the change-order monetary fields should share a wider common
-  `DECIMAL` type after all four monetary fields have been profiled.
-- Validate `LOWER(TRIM(status))` and confirm that it produces four standardized
-  categories whose frequencies reconcile to all 146 rows.
-- Finalize the cleaned-layer status-standardization decision after completing
-  Investigation 73C.
-- Complete requested, approval, and billing date validation.
-- Validate internal relationships among status, approval fields, and billing
-  fields.
-- Complete the remaining required change-order relationships.
+- Obtain stakeholder clarification for CO0001's missing `approval_date`.
+- Preserve CO0001's NULL approval date and flag it in the cleaned layer.
+- Confirm row-level alignment between nonzero `billed_amount` values and
+  populated `billed_date` values.
+- Identify billed dates paired with NULL or zero billed amounts.
+- Validate populated `approved_revenue_change` and nonzero `billed_amount`
+  signs against `change_order_type`.
+- Determine whether any billed amount exceeds the magnitude of its corresponding
+  approved revenue change.
+- Inspect only material monetary or billing exceptions before making final
+  cleaning decisions.
+- Implement CO0119's reporting-cutoff treatment when the cleaned analytical
+  layer is constructed.
+- Complete final monetary-relationship validation and close change-order
+  profiling.
 
 ### Remaining Datasets and Relationships
 
-- Complete standalone profiling of `change_orders.csv`.
 - Complete the outstanding project-ID relationship validation for
   `project_budgets.csv`.
-- Validate the remaining required relationships between supplied files.
+- Complete the remaining required cross-file relationship validation.
+- Implement all documented transformations and exception treatments in cleaned
+  analytical outputs.
 
 ## Remaining Project Work
 
-1. Complete Investigation 73C and the remaining standalone profiling of
-   `change_orders.csv`.
-2. Compare project IDs in `project_budgets.csv` with `projects.csv`.
-3. Validate the remaining required cross-file relationships.
-4. Implement documented cleaning rules in cleaned analytical outputs.
-5. Build project-profitability and budget-variance metrics.
-6. Build schedule-risk metrics.
-7. Create final analytical tables and stakeholder-facing outputs.
-8. Validate and document the completed analysis.
+1. Complete final change-order monetary and billing-relationship validation.
+2. Inspect only material exceptions and close change-order profiling.
+3. Complete the outstanding `project_budgets.csv` project-ID relationship
+   validation.
+4. Freeze profiling and implement documented cleaning rules in
+   dataset-specific cleaned outputs.
+5. Validate cleaned row counts, identifiers, datatypes, relationships, and
+   monetary reconciliations.
+6. Build a one-row-per-project analysis table as of June 30, 2026.
+7. Build project-profitability, budget-variance, change-order-exposure, and
+   schedule-risk metrics.
+8. Create ranked project-risk outputs, Excel and Power BI deliverables,
+   visualizations, and an executive summary.
+9. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
 Open `sql/06_change_orders_profiling.sql`.
 
-Begin Investigation 73C by writing its purpose comment.
+Begin Investigation 85 by writing its purpose comment only.
 
-Apply `LOWER(TRIM(status))` during query-only profiling. Retrieve each proposed
-standardized status and its frequency, then confirm that the transformation
-produces exactly four categories:
+Perform final row-level monetary and billing-relationship validation. Reuse the
+validated query-only normalization for `requested_revenue_change` and compare
+all populated monetary values as `DECIMAL(10,2)`.
 
-- `approved`: expected frequency 103
-- `withdrawn`: expected frequency 16
-- `pending`: expected frequency 14
-- `rejected`: expected frequency 13
+First return aggregate counts for:
 
-Confirm that the standardized frequencies reconcile to all 146 raw change-order
-rows. Investigate any unexpected category or count before adopting the
-transformation.
+- Populated `approved_revenue_change` values whose signs conflict with
+  `change_order_type`.
+- Nonzero `billed_amount` values whose signs conflict with
+  `change_order_type`.
+- Nonzero billed amounts with a NULL `billed_date`.
+- Populated billed dates paired with NULL or zero billed amounts.
+- Requested and approved revenue values that are equal or adjusted.
+- Approved and billed values classified as unbilled, fully billed, partially
+  billed, or exceeding the approved magnitude.
 
-After validating the result, document the final status findings and cleaning
-decision. Preserve the raw status values unchanged and apply the validated
-standardization only in the future cleaned analytical layer.
+Use absolute magnitudes when comparing additive and deductive approved and
+billed amounts. Retrieve individual records only for sign mismatches,
+date-amount mismatches, or billed magnitudes exceeding approved revenue.
 
-Then begin profiling `estimated_cost_change` for total rows, populated and NULL
-values, minimum and maximum values, zero values, and negative values. Because
-DuckDB already infers the field as `DOUBLE`, text-normalization compatibility
-testing is not required.
+Treat requested-versus-approved differences and partial billing as business
+observations rather than automatic errors. Do not impose a required
+revenue-to-cost inequality; revenue-versus-cost differences belong in the later
+profitability analysis.
 
-Do not finalize a shared type for all change-order monetary fields until
-`estimated_cost_change`, `approved_revenue_change`, and `billed_amount` have
-been profiled. Do not modify raw source values or implement cleaned analytical
-outputs.
+After Investigation 85, document the final change-order cleaning rules, execute
+the complete profiling file, and close standalone `change_orders.csv`
+profiling.
 
 The latest committed analysis is:
 

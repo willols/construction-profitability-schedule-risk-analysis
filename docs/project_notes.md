@@ -3,6 +3,402 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 3, 2026
+
+### Work Completed
+
+- Completed Investigation 82 by validating the chronological relationships
+  among `requested_date`, `approval_date`, and `billed_date`.
+- Evaluated each date relationship independently so rows remained testable when
+  only the unrelated third date was missing.
+- Counted the testable population and chronological violations for:
+  - Request to approval
+  - Request to billing
+  - Approval to billing
+- Isolated and inspected the only billed change order with a missing
+  `approval_date`.
+- Completed Investigation 83 by validating standardized status against the
+  approval and billing fields.
+- Used `LOWER(TRIM(status))` to evaluate the four intended status categories.
+- Tested approved records for missing approval fields and non-approved records
+  for unexpected approval or billing evidence.
+- Completed Investigation 84 by validating the relationship between
+  `change_order_type` and the sign of `estimated_cost_change`.
+- Confirmed that all additive and deductive change orders follow the expected
+  estimated-cost sign convention.
+
+### Decisions and Reasoning
+
+- Date chronology was evaluated pairwise rather than requiring all three dates
+  to be populated. A row was excluded only from comparisons requiring its
+  missing date.
+- Testable-row counts were reported with violation counts to show how much data
+  supported each chronological result.
+- Dates occurring on the same day were treated as valid because only a
+  later-stage date occurring strictly before an earlier-stage date constitutes
+  a violation.
+- CO0001 contains an approved status, populated approved revenue, populated
+  billed amount, and populated billed date, providing strong evidence that
+  approval occurred.
+- CO0001's exact approval date cannot be inferred from the available fields.
+  Its `approval_date` will remain NULL and be flagged in the cleaned layer.
+- The text value `Unknown` will not be inserted into `approval_date` because a
+  date field should contain valid dates or NULLs.
+- A populated `billed_date` or populated nonzero `billed_amount` was treated as
+  evidence of billing. A zero billed amount alone was not treated as proof that
+  billing occurred.
+- Direct `change_order_type` comparisons remained appropriate because earlier
+  profiling confirmed that `additive` and `deductive` are complete and
+  consistently formatted.
+- Additive estimated-cost changes were expected to be positive, while
+  deductive estimated-cost changes were expected to be negative.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 82 returned:
+  - 102 request-to-approval comparisons, with 0 approvals before requests
+  - 79 request-to-billing comparisons, with 0 billings before requests
+  - 78 approval-to-billing comparisons, with 0 billings before approvals
+- CO0001 was the only billed change order with a NULL `approval_date`:
+  - Project ID: P001
+  - Requested date: 2023-04-28
+  - Status: `approved`
+  - Requested revenue change: 24,599.72
+  - Estimated cost change: 18,030.57
+  - Approved revenue change: 23,877.11
+  - Approval date: NULL
+  - Billed amount: 23,877.11
+  - Billed date: 2023-06-02
+- Investigation 83 accounted for all 146 change orders:
+  - 103 standardized approved records
+  - 43 standardized non-approved records
+- Among the 103 approved records:
+  - 1 is missing `approval_date`
+  - 0 are missing `approved_revenue_change`
+  - CO0001 is the only record missing either approval field
+- Among the 43 non-approved records:
+  - 0 have a populated `approval_date`
+  - 0 have a populated `approved_revenue_change`
+  - 0 have a populated `billed_date`
+  - 0 have a nonzero `billed_amount`
+- CO0001 is the only approval-workflow inconsistency identified.
+- Investigation 84 returned:
+  - 134 testable additive change orders, with 0 nonpositive estimated-cost
+    changes
+  - 12 testable deductive change orders, with 0 nonnegative estimated-cost
+    changes
+  - 0 zero `estimated_cost_change` values
+- All 146 change orders follow the expected relationship between
+  `change_order_type` and the sign of `estimated_cost_change`.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 82 through 84 executed
+  successfully, and their results were reviewed.
+- The date-comparison populations and violation counts reconciled with the
+  previously profiled date completeness.
+- The approved and non-approved status groups reconcile to all 146 raw rows.
+- The additive and deductive groups reconcile to all 146 raw rows.
+- Full-file execution, Git diff validation, and Git closeout remain to be
+  completed after this documentation update.
+
+### Next Session
+
+Begin Investigation 85 by writing its purpose comment.
+
+Validate the row-level relationships among `requested_revenue_change`,
+`estimated_cost_change`, `approved_revenue_change`, and `billed_amount`. Reuse
+the validated query-only normalization for `requested_revenue_change` and
+compare monetary values as `DECIMAL(10,2)`.
+
+Establish the testable population for each comparison before evaluating
+requested-versus-approved revenue and approved-versus-billed amounts. Treat
+differences as investigation observations rather than automatic errors because
+approval adjustments and partial billing may be legitimate.
+
+Inspect any sign inconsistencies or billed amounts whose magnitude exceeds the
+corresponding approved revenue before making a cleaning decision. Do not modify
+or infer monetary values without sufficient evidence.
+
+## September 2, 2026
+
+### Work Completed
+
+- Completed Investigation 76 by profiling `approved_revenue_change`
+  completeness, zero and negative values, and its observed numeric range.
+- Completed Investigation 77 by testing `approved_revenue_change` at zero, one,
+  two, and three decimal places and identifying its minimum lossless fractional
+  scale.
+- Completed Investigation 78 by profiling `billed_amount` completeness, zero
+  and negative values, and its observed numeric range.
+- Completed Investigation 79 by determining the minimum lossless fractional
+  scale and candidate exact type for `billed_amount`.
+- Completed Investigation 80 by consolidating the range and fractional-scale
+  evidence for all four change-order monetary fields:
+  - `requested_revenue_change`
+  - `estimated_cost_change`
+  - `approved_revenue_change`
+  - `billed_amount`
+- Created a query-only `prepared_change_orders` CTE to normalize
+  `requested_revenue_change` and a `monetary_values` CTE to reshape the four
+  monetary columns into a common analytical structure.
+- Used the consolidated results to distinguish the minimum datatype supported
+  by the observed change-order values from the wider shared datatype selected
+  for the cleaned analytical layer.
+- Completed Investigation 81 by profiling `requested_date`, `approval_date`,
+  and `billed_date` together for completeness, observed range, and dates after
+  the reporting cutoff.
+- Reshaped the three date fields into a common `date_field` and `date_value`
+  structure so the same profiling logic could be applied consistently.
+- Completed Investigation 81A by isolating and inspecting the single
+  `billed_date` later than the June 30, 2026 reporting cutoff.
+- Determined the appropriate cutoff treatment for the post-cutoff billing
+  record without modifying or deleting the raw source record.
+
+### Decisions and Reasoning
+
+- NULL and negative `approved_revenue_change` values were treated as profiling
+  observations rather than automatic errors because their validity depends on
+  `status`, `change_order_type`, and the approval workflow.
+- The aggregate completeness of `approved_revenue_change` aligns with the
+  standardized status distribution:
+  - 103 populated values match 103 standardized approved statuses.
+  - 43 NULL values match the combined 43 withdrawn, pending, and rejected
+    statuses.
+- Matching aggregate counts do not establish that the same records align, so
+  row-level workflow validation remains necessary.
+- NULL, zero, and negative `billed_amount` values were also treated as
+  observations pending row-level validation against status, change-order type,
+  approved revenue, billed date, and the billing workflow.
+- The 79 populated `billed_date` values match the 79 nonzero `billed_amount`
+  values at the aggregate level, but this does not prove row-level alignment.
+- All four change-order monetary fields require two decimal places to preserve
+  every observed populated value without rounding loss.
+- The greatest observed monetary value is 201,500.62 in
+  `requested_revenue_change`, establishing a six-digit integer requirement.
+- `DECIMAL(8,2)` is therefore the minimum shared exact datatype supported by
+  the observed change-order values.
+- `DECIMAL(10,2)` was selected for all four cleaned change-order monetary fields
+  because it preserves every observed value, aligns with the established
+  project-wide monetary standard, and provides additional integer capacity.
+- Diagnostic uses of `DECIMAL(10,4)` in `project_updates.csv` do not establish a
+  competing monetary standard. That type was used during percentage-conversion
+  testing, while cleaned monetary fields elsewhere in the project use
+  `DECIMAL(10,2)`.
+- Missing approval and billing dates were not classified as errors based on
+  standalone date profiling because their validity depends on workflow status
+  and related monetary fields.
+- CO0119's July 9, 2026 billing date represents valid later billing activity
+  rather than an internally malformed record.
+- CO0119 existed and was approved before the reporting cutoff, so its approved
+  change remains relevant to the June 30 analysis.
+- CO0119's billed amount must be excluded from billed totals calculated as of
+  June 30 because the billing event occurred after the reporting cutoff.
+- The cutoff treatment will be implemented through a derived cleaned-layer
+  calculation rather than by modifying the raw `billed_amount` or
+  `billed_date`.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 76 returned:
+  - 146 total rows
+  - 103 populated `approved_revenue_change` values
+  - 43 NULL values
+  - 0 zero values
+  - 10 negative values
+  - Minimum value: -177,978.63
+  - Maximum value: 158,368.20
+- Investigation 77 tested all 103 populated `approved_revenue_change` values:
+  - 103 values changed when rounded to zero decimal places
+  - 97 values changed when rounded to one decimal place
+  - 0 values changed when rounded to two decimal places
+  - 0 values changed when rounded to three decimal places
+- Two decimal places are the minimum lossless scale for
+  `approved_revenue_change`, and `DECIMAL(8,2)` is its minimum candidate exact
+  type.
+- Investigation 78 returned:
+  - 146 total rows
+  - 103 populated `billed_amount` values
+  - 43 NULL values
+  - 24 zero values
+  - 8 negative values
+  - Minimum value: -133,652.67
+  - Maximum value: 158,368.20
+- Investigation 79 tested all 103 populated `billed_amount` values:
+  - 79 values changed when rounded to zero decimal places
+  - 74 values changed when rounded to one decimal place
+  - 0 values changed when rounded to two decimal places
+  - 0 values changed when rounded to three decimal places
+- Two decimal places are the minimum lossless scale for `billed_amount`, and
+  `DECIMAL(8,2)` is its minimum candidate exact type.
+- Investigation 80 reproduced the previously established range and scale
+  results for all four monetary fields:
+  - `requested_revenue_change`: 146 populated values, range -180,146.05 to
+    201,500.62, minimum lossless scale of two
+  - `estimated_cost_change`: 146 populated values, range -122,322.75 to
+    124,992.57, minimum lossless scale of two
+  - `approved_revenue_change`: 103 populated values, range -177,978.63 to
+    158,368.20, minimum lossless scale of two
+  - `billed_amount`: 103 populated values, range -133,652.67 to 158,368.20,
+    minimum lossless scale of two
+- Investigation 81 returned:
+  - `requested_date`: 146 populated values, 0 NULL values, range 2023-04-06 to
+    2026-06-25, and 0 dates after the reporting cutoff
+  - `approval_date`: 102 populated values, 44 NULL values, range 2023-05-09 to
+    2026-06-21, and 0 dates after the reporting cutoff
+  - `billed_date`: 79 populated values, 67 NULL values, range 2023-05-19 to
+    2026-07-09, and 1 date after the reporting cutoff
+- The 102 populated `approval_date` values are one fewer than both the 103
+  standardized approved statuses and the 103 populated
+  `approved_revenue_change` values.
+- Investigation 81A identified CO0119 for project P077 as the only record with a
+  post-cutoff `billed_date`:
+  - Requested date: 2026-05-11
+  - Change-order type: `deductive`
+  - Reason: `Owner scope change`
+  - Status: `approved`
+  - Requested revenue change: -37,075.27
+  - Estimated cost change: -26,587.53
+  - Approved revenue change: -36,633.22
+  - Approval date: 2026-06-21
+  - Billed amount: -36,633.22
+  - Billed date: 2026-07-09
+- CO0119's chronology is internally logical:
+  `requested_date` precedes `approval_date`, and `approval_date` precedes
+  `billed_date`.
+- All four monetary values for CO0119 are negative, consistent with its
+  deductive type.
+- CO0119's `billed_amount` exactly equals its `approved_revenue_change`.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 76 through 81A executed
+  successfully, and their results were reviewed.
+- Investigation 80 returned one reconciled 146-row summary group for each of
+  the four monetary fields.
+- Investigation 81 returned one reconciled 146-row summary group for each of
+  the three date fields.
+- The identified post-cutoff date count reconciles to the single record returned
+  by Investigation 81A.
+- Full-file execution, Git diff validation, and Git closeout remain to be
+  completed after the documentation update.
+
+### Next Session
+
+Begin Investigation 82 by writing its purpose comment.
+
+Perform consolidated row-level validation of the change-order date, status,
+approval, and billing workflow. Test whether:
+
+- Populated `approval_date` and `approved_revenue_change` values align with
+  standardized approved statuses.
+- Non-approved statuses appropriately retain NULL approval fields.
+- `requested_date` does not occur after a populated `approval_date`.
+- `approval_date` does not occur after a populated `billed_date`.
+
+## September 1, 2026
+
+### Work Completed
+
+- Completed Investigation 73C by applying `LOWER(TRIM(status))` during
+  query-only profiling.
+- Used grouped frequencies and window functions to confirm the number of
+  standardized categories and reconcile their frequencies to the source-row
+  count without collapsing the category-level output.
+- Validated the proposed status-standardization rule across all 146 raw
+  change-order rows.
+- Completed Investigation 74 by profiling `estimated_cost_change` completeness,
+  zero and negative values, and its observed numeric range.
+- Completed Investigation 75 by comparing every populated
+  `estimated_cost_change` value with the same value rounded to zero, one, two,
+  and three decimal places.
+- Established the minimum lossless fractional scale and candidate exact
+  `DECIMAL` type for `estimated_cost_change`.
+- Reinforced the distinction between column-level profiling and later
+  cross-field relationship validation.
+
+### Decisions and Reasoning
+
+- `LOWER(TRIM(status))` is validated as the cleaned-layer status transformation
+  because it consolidates the six raw representations into the four intended
+  business categories without losing or isolating any rows.
+- Raw `status` values will remain unchanged. The validated transformation will
+  be applied only in the future cleaned analytical layer.
+- `estimated_cost_change` is complete across all 146 raw rows and requires no
+  missing-value treatment.
+- The 12 negative `estimated_cost_change` values will not be classified as
+  errors because deductive change orders may legitimately reduce estimated
+  cost.
+- The negative-value count matches the previously observed count of 12
+  deductive change orders, suggesting possible sign-and-type consistency.
+  Matching aggregate counts do not prove row-level alignment, so the
+  relationship must be validated separately.
+- Two decimal places are the minimum lossless fractional scale for
+  `estimated_cost_change`.
+- The observed range requires six integer digits. Combined with the required
+  two fractional digits, `DECIMAL(8,2)` is the candidate exact type for
+  `estimated_cost_change`.
+- A final shared monetary type will not be selected until
+  `approved_revenue_change` and `billed_amount` have also been profiled.
+- No raw values were modified, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 73C produced exactly four standardized status categories whose
+  frequencies reconcile to all 146 rows:
+  - `approved`: 103
+  - `withdrawn`: 16
+  - `pending`: 14
+  - `rejected`: 13
+- Investigation 74 returned:
+  - 146 total rows
+  - 146 populated `estimated_cost_change` values
+  - 0 NULL values
+  - 0 zero values
+  - 12 negative values
+  - Minimum value: -122,322.75
+  - Maximum value: 124,992.57
+- Investigation 75 tested all 146 populated values and returned:
+  - 145 values changed when rounded to zero decimal places
+  - 135 values changed when rounded to one decimal place
+  - 0 values changed when rounded to two decimal places
+  - 0 values changed when rounded to three decimal places
+- Two decimal places are therefore the minimum lossless fractional scale.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 73C through 75 executed
+  successfully, and their results were reviewed.
+- The standardized status category count and frequencies reconcile to all 146
+  raw change-order rows.
+- The `estimated_cost_change` completeness counts reconcile to all 146 raw
+  rows, and all 146 populated values were included in the precision test.
+- Full-file verification and Git closeout were deferred to the next portfolio
+  session.
+
+### Next Session
+
+Begin Investigation 76 by writing its purpose comment.
+
+Profile `approved_revenue_change` for total rows, populated and NULL values,
+zero and negative values, and minimum and maximum values. Because DuckDB already
+infers the column as `DOUBLE`, text-normalization compatibility testing is not
+required.
+
+Treat missing and negative values as profiling observations rather than
+automatic errors. Their validity depends on later relationships with `status`,
+`change_order_type`, and the approval workflow.
+
+After reviewing completeness and range, determine the minimum lossless
+fractional scale before selecting a candidate exact `DECIMAL` type. Defer final
+shared monetary-type selection and broader row-level relationship validation
+until the remaining change-order monetary fields have been profiled.
+
 ## August 31, 2026
 
 ### Work Completed

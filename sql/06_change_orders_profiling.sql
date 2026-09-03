@@ -576,3 +576,746 @@ ORDER BY status_frequency DESC, status;
 --   trailing whitespace.
 -- - The six raw labels represent four intended business statuses: approved,
 --   pending, rejected, and withdrawn.
+
+
+-- Investigation 73C: Validate query-only status standardization
+-- Purpose:
+-- - Apply LOWER(TRIM(status)) during query-only profiling to remove
+--   capitalization and trailing-whitespace inconsistencies from the raw values.
+-- - Confirm that the proposed transformation produces exactly four standardized
+--   categories: approved, withdrawn, pending, and rejected.
+-- - Verify that the standardized category frequencies reconcile to all 146 rows.
+-- - Validate the transformation for use in the future cleaned analytical layer
+--   without modifying the raw source values.
+
+WITH standardized_statuses AS (
+    SELECT
+        LOWER(TRIM(status)) AS standardized_status
+    FROM read_csv_auto('data/raw/change_orders.csv')
+),
+
+status_frequencies AS (
+    SELECT
+        standardized_status,
+        COUNT(*) AS status_frequency
+    FROM standardized_statuses
+    GROUP BY standardized_status
+)
+
+SELECT
+    standardized_status,
+    status_frequency,
+    COUNT(*) OVER () AS standardized_category_count,
+    SUM(status_frequency) OVER () AS reconciled_row_count
+FROM status_frequencies
+ORDER BY
+    status_frequency DESC,
+    standardized_status;
+
+-- Findings and cleaning decision:
+-- - LOWER(TRIM(status)) reduced the six raw status representations to four
+--   standardized categories: approved, withdrawn, pending, and rejected.
+-- - The standardized category frequencies reconcile to all 146 source rows,
+--   confirming that the transformation did not lose or isolate any values.
+-- - Preserve the raw status values unchanged and apply LOWER(TRIM(status))
+--   only when creating the future cleaned analytical layer.
+
+
+-- Investigation 74: Profile estimated_cost_change completeness, special values,
+-- and range
+-- Purpose:
+-- - Measure total, populated, and NULL counts to determine whether every change
+--   order contains an estimated cost change.
+-- - Count zero and negative values to identify amounts that may require later
+--   business-context validation.
+-- - Calculate the minimum and maximum values to establish the observed numeric
+--   range and identify potentially unexpected extremes.
+-- - Use the results to prepare for minimum lossless fractional-scale testing
+--   before selecting a candidate exact DECIMAL type.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(estimated_cost_change) AS populated_values,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change IS NULL
+    ) AS null_count,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change = 0
+    ) AS zero_count,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change < 0
+    ) AS negative_count,
+    MIN(estimated_cost_change) AS minimum_estimated_cost_change,
+    MAX(estimated_cost_change) AS maximum_estimated_cost_change
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - estimated_cost_change is populated in all 146 rows, with no NULL or zero
+--   values.
+-- - Values range from -122,322.75 to 124,992.57.
+-- - Twelve values are negative, matching the previously observed count of 12
+--   deductive change orders.
+-- - The matching counts suggest that negative estimated cost changes may
+--   correspond to deductive change orders, but row-level sign alignment has
+--   not yet been validated.
+-- - Do not classify the negative values as errors based on this profile alone.
+
+
+-- Investigation 75: Determine the minimum lossless fractional scale for
+-- estimated_cost_change
+-- Purpose:
+-- - Compare each populated estimated_cost_change value with the result of
+--   rounding it to zero, one, two, and three decimal places.
+-- - Count the values changed at each scale and identify the smallest scale that
+--   preserves every populated value without rounding loss, extending the test
+--   if three decimal places are insufficient.
+-- - Combine the minimum lossless scale with the six-digit integer requirement
+--   established by the observed range to select a candidate exact DECIMAL type.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(estimated_cost_change) AS testable_values,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change <> ROUND(estimated_cost_change, 0)
+        ) AS changed_at_0_decimals,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change <> ROUND(estimated_cost_change, 1)
+        ) AS changed_at_1_decimals,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change <> ROUND(estimated_cost_change, 2)
+        ) AS changed_at_2_decimals,
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change <> ROUND(estimated_cost_change, 3)
+        ) AS changed_at_3_decimals
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - All 146 estimated_cost_change values were tested.
+-- - Rounding to zero decimal places changed 145 values.
+-- - Rounding to one decimal place changed 135 values.
+-- - Rounding to two or three decimal places changed zero values.
+-- - Two decimal places is therefore the minimum lossless fractional scale.
+-- - The observed range requires six integer digits, and the data requires two
+--   fractional digits.
+-- - Select DECIMAL(8,2) as the candidate exact type for estimated_cost_change.
+
+
+-- Investigation 76: Profile approved_revenue_change completeness, zero and
+-- negative values, and observed numeric range
+-- Purpose:
+-- - Quantify total, populated, and NULL counts to assess completeness without
+--   assuming that every workflow status requires an approved revenue change.
+-- - Count zero and negative values as profiling observations for later validation
+--   against status, change_order_type, and the approval workflow.
+-- - Calculate the minimum and maximum values to establish the observed numeric
+--   range and identify values that may warrant further investigation.
+-- - Because DuckDB infers the column as DOUBLE, focus on numeric profiling rather
+--   than text-to-numeric compatibility testing.
+-- - Use the results to prepare for minimum lossless fractional-scale testing and
+--   selection of a candidate exact DECIMAL type.
+-- - Defer final shared monetary-type selection and broader relationship validation
+--   until the remaining change-order monetary fields have been profiled.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(approved_revenue_change) AS populated_count,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change IS NULL
+    ) AS null_count,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change = 0
+    ) AS zero_count,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change < 0
+    ) AS negative_count,
+    MIN(approved_revenue_change) AS minimum_approved_revenue_change,
+    MAX(approved_revenue_change) AS maximum_approved_revenue_change
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - approved_revenue_change is populated in 103 of 146 rows, with 43 NULL values,
+--   10 negative values, and no zero values.
+-- - The 103 populated values match the aggregate count of standardized approved
+--   statuses, while the 43 NULLs match the combined count of withdrawn, pending,
+--   and rejected statuses.
+-- - This aggregate reconciliation does not confirm that the same rows align;
+--   row-level workflow validation is deferred until the remaining monetary fields
+--   have been profiled.
+-- - Populated values range from -177978.63 to 158368.20.
+-- - NULL and negative values are profiling observations rather than confirmed
+--   errors; their validity depends on later validation against status,
+--   change_order_type, and the approval workflow.
+
+
+-- Investigation 77: Determine the minimum lossless fractional scale for
+-- approved_revenue_change
+-- Purpose:
+-- - Compare each populated approved_revenue_change value with the result of
+--   rounding it to zero, one, two, and three decimal places.
+-- - Count the values changed at each scale and identify the smallest scale that
+--   preserves every populated value without rounding loss, extending the test
+--   if three decimal places are insufficient.
+-- - Combine the minimum lossless scale with the six-digit integer requirement
+--   established by the observed range to select a candidate exact DECIMAL type.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(approved_revenue_change) AS testable_values,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change <> ROUND(approved_revenue_change, 0)
+        ) AS changed_at_0_decimals,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change <> ROUND(approved_revenue_change, 1)
+        ) AS changed_at_1_decimals,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change <> ROUND(approved_revenue_change, 2)
+        ) AS changed_at_2_decimals,
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change <> ROUND(approved_revenue_change, 3)
+        ) AS changed_at_3_decimals
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - All 103 populated approved_revenue_change values were tested.
+-- - Rounding to zero decimal places changed all 103 populated values.
+-- - Rounding to one decimal place changed 97 values.
+-- - Rounding to two or three decimal places changed no values.
+-- - Two decimal places is therefore the minimum lossless fractional scale
+--   supported by the observed data.
+-- - The observed range requires six integer digits, while the minimum lossless
+--   scale requires two fractional digits.
+-- - DECIMAL(8,2) is the minimum candidate exact type supported by the observed
+--   approved_revenue_change values.
+
+
+-- Investigation 78: Profile billed_amount completeness, zero and negative
+-- values, and observed numeric range
+-- Purpose:
+-- - Quantify total, populated, and NULL counts to assess completeness without
+--   assuming that every change order or workflow status requires a billed amount.
+-- - Count zero and negative values as profiling observations for later validation
+--   against status, change_order_type, approved_revenue_change, billed_date, and
+--   the billing workflow.
+-- - Calculate the minimum and maximum populated values to establish the observed
+--   numeric range and identify amounts that may warrant further investigation.
+-- - Because DuckDB infers the column as DOUBLE, focus on numeric profiling rather
+--   than text-to-numeric compatibility testing.
+-- - Use the results to prepare for minimum lossless fractional-scale testing and
+--   selection of a candidate exact DECIMAL type.
+-- - Defer final shared monetary-type selection and broader relationship validation
+--   until all change-order monetary fields have been profiled.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(billed_amount) AS populated_count,
+    COUNT(*) FILTER (
+        WHERE billed_amount IS NULL
+    ) AS null_count,
+    COUNT(*) FILTER (
+        WHERE billed_amount = 0
+    ) AS zero_count,
+    COUNT(*) FILTER (
+        WHERE billed_amount < 0
+    ) AS negative_count,
+    MIN(billed_amount) AS minimum_billed_amount,
+    MAX(billed_amount) AS maximum_billed_amount
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - billed_amount is populated in 103 of 146 rows, with 43 NULL values,
+--   24 zero values, and 8 negative values.
+-- - The 103 populated values and 43 NULLs match both the aggregate completeness
+--   counts for approved_revenue_change and the aggregate split between approved
+--   and non-approved statuses.
+-- - This aggregate reconciliation does not confirm that the same rows align;
+--   row-level relationship and workflow validation is deferred to a later
+--   investigation.
+-- - Populated values range from -133652.67 to 158368.20.
+-- - NULL, zero, and negative values are profiling observations rather than
+--   confirmed errors; their validity depends on later validation against status,
+--   change_order_type, approved_revenue_change, billed_date, and the billing
+--   workflow.
+
+
+-- Investigation 79: Determine the minimum lossless fractional scale for
+-- billed_amount
+-- Purpose:
+-- - Compare each populated billed_amount value with the result of
+--   rounding it to zero, one, two, and three decimal places.
+-- - Count the values changed at each scale and identify the smallest scale that
+--   preserves every populated value without rounding loss, extending the test
+--   if three decimal places are insufficient.
+-- - Combine the minimum lossless scale with the six-digit integer requirement
+--   established by the observed range to select a candidate exact DECIMAL type.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(billed_amount) AS testable_values,
+    COUNT(*) FILTER (
+        WHERE billed_amount <> ROUND(billed_amount, 0)
+        ) AS changed_at_0_decimals,
+    COUNT(*) FILTER (
+        WHERE billed_amount <> ROUND(billed_amount, 1)
+        ) AS changed_at_1_decimals,
+    COUNT(*) FILTER (
+        WHERE billed_amount <> ROUND(billed_amount, 2)
+        ) AS changed_at_2_decimals,
+    COUNT(*) FILTER (
+        WHERE billed_amount <> ROUND(billed_amount, 3)
+        ) AS changed_at_3_decimals
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - All 103 populated billed_amount values were tested.
+-- - Rounding to zero decimal places changed 79 values.
+-- - Rounding to one decimal place changed 74 values.
+-- - Rounding to two or three decimal places changed no values.
+-- - Two decimal places is therefore the minimum lossless fractional scale
+--   supported by the observed data.
+-- - The observed range requires six integer digits, while the minimum lossless
+--   scale requires two fractional digits.
+-- - DECIMAL(8,2) is the minimum candidate exact type supported by the observed
+--   billed_amount values.
+
+
+-- Investigation 80: Select a shared exact datatype for change-order monetary fields
+-- Purpose:
+-- - Consolidate the observed integer-width and minimum lossless fractional-scale
+--   requirements for requested_revenue_change, estimated_cost_change,
+--   approved_revenue_change, and billed_amount.
+-- - Identify the greatest integer-width and fractional-scale requirements across
+--   the four fields and determine the minimum shared DECIMAL(p,s) type that
+--   preserves every observed value exactly.
+-- - Compare the minimum observed requirement with existing project monetary
+--   datatypes and consider whether additional capacity is appropriate for schema
+--   consistency and reasonable future headroom.
+-- - Select and document one shared exact datatype for these fields in the future
+--   cleaned analytical layer while preserving the raw source values unchanged.
+WITH prepared_change_orders AS (
+    SELECT
+        TRY_CAST(
+            REPLACE(
+                REPLACE(requested_revenue_change, '$', ''),
+                ',',
+                ''
+            ) AS DOUBLE
+        ) AS requested_revenue_change_numeric,
+        estimated_cost_change,
+        approved_revenue_change,
+        billed_amount
+    FROM read_csv_auto('data/raw/change_orders.csv')
+),
+
+monetary_values AS (
+    SELECT
+        1 AS field_order,
+        'requested_revenue_change' AS monetary_field,
+        requested_revenue_change_numeric AS amount
+    FROM prepared_change_orders
+
+    UNION ALL
+
+    SELECT
+        2 AS field_order,
+        'estimated_cost_change' AS monetary_field,
+        estimated_cost_change AS amount
+    FROM prepared_change_orders
+
+    UNION ALL
+
+    SELECT
+        3 AS field_order,
+        'approved_revenue_change' AS monetary_field,
+        approved_revenue_change AS amount
+    FROM prepared_change_orders
+
+    UNION ALL
+
+    SELECT
+        4 AS field_order,
+        'billed_amount' AS monetary_field,
+        billed_amount AS amount
+    FROM prepared_change_orders
+)
+
+SELECT
+    monetary_field,
+    COUNT(*) AS total_rows,
+    COUNT(amount) AS testable_values,
+    MIN(amount) AS minimum_value,
+    MAX(amount) AS maximum_value,
+    COUNT(*) FILTER (
+        WHERE amount <> ROUND(amount, 0)
+    ) AS changed_at_0_decimals,
+    COUNT(*) FILTER (
+        WHERE amount <> ROUND(amount, 1)
+    ) AS changed_at_1_decimals,
+    COUNT(*) FILTER (
+        WHERE amount <> ROUND(amount, 2)
+    ) AS changed_at_2_decimals,
+    COUNT(*) FILTER (
+        WHERE amount <> ROUND(amount, 3)
+    ) AS changed_at_3_decimals
+FROM monetary_values
+GROUP BY
+    field_order,
+    monetary_field
+ORDER BY
+    field_order;
+
+-- Findings:
+-- - All four change-order monetary fields require a minimum lossless fractional
+--   scale of two decimal places.
+-- - requested_revenue_change contains the largest absolute observed value,
+--   201500.62, establishing a six-digit integer requirement.
+-- - Six integer digits and two fractional digits make DECIMAL(8,2) the minimum
+--   shared exact type supported by the observed change-order values.
+-- - DECIMAL(10,4) fields used elsewhere in project_updates represent
+--   precision-sensitive percentages or ratios and do not establish the standard
+--   for monetary fields.
+-- - Existing project-budget, cost-transaction, and estimated-cost-to-complete
+--   monetary fields use DECIMAL(10,2).
+-- - Select DECIMAL(10,2) for requested_revenue_change, estimated_cost_change,
+--   approved_revenue_change, and billed_amount in the cleaned analytical layer.
+-- - This selection preserves all observed values, aligns monetary datatypes
+--   across the project, and provides greater integer capacity than the minimum
+--   observed requirement.
+-- - Preserve the original source values unchanged in the raw layer.
+
+
+-- Investigation 81: Profile change-order date completeness, ranges, and
+-- reporting-cutoff compliance
+-- Purpose:
+-- - Quantify total, populated, and NULL counts for request_date, approval_date,
+--   and billed_date to assess completeness across the change-order lifecycle.
+-- - Calculate the earliest and latest populated value for each date field to
+--   establish its observed range.
+-- - Count dates later than the inclusive June 30, 2026 reporting cutoff to
+--   identify records that may fall outside the analysis period.
+-- - Because DuckDB infers all three fields as DATE, focus on date profiling
+--   rather than text-to-date conversion testing.
+-- - Treat missing approval_date and billed_date values as profiling observations
+--   rather than confirmed errors.
+-- - Defer validation against status and cross-column chronological relationships
+--   to the subsequent workflow investigation.
+WITH change_orders AS (
+    SELECT
+        requested_date,
+        approval_date,
+        billed_date
+    FROM read_csv_auto('data/raw/change_orders.csv')
+),
+
+date_values AS (
+    SELECT
+        1 AS field_order,
+        'requested_date' AS date_field,
+        requested_date AS date_value
+    FROM change_orders
+
+    UNION ALL
+
+    SELECT
+        2 AS field_order,
+        'approval_date' AS date_field,
+        approval_date AS date_value
+    FROM change_orders
+
+    UNION ALL
+
+    SELECT
+        3 AS field_order,
+        'billed_date' AS date_field,
+        billed_date AS date_value
+    FROM change_orders
+)
+
+SELECT
+    date_field,
+    COUNT(*) AS total_rows,
+    COUNT(date_value) AS populated_count,
+    COUNT(*) FILTER (
+        WHERE date_value IS NULL
+    ) AS null_count,
+    MIN(date_value) AS earliest_date,
+    MAX(date_value) AS latest_date,
+    COUNT(*) FILTER (
+        WHERE date_value > DATE '2026-06-30'
+    ) AS after_cutoff_count
+FROM date_values
+GROUP BY
+    field_order,
+    date_field
+ORDER BY
+    field_order;
+
+-- Findings:
+-- - requested_date is populated in all 146 rows, with no NULL values. Populated
+--   dates range from 2023-04-06 to 2026-06-25, with no dates after the reporting
+--   cutoff.
+-- - approval_date is populated in 102 rows, with 44 NULL values. Populated dates
+--   range from 2023-05-09 to 2026-06-21, with no dates after the reporting cutoff.
+-- - billed_date is populated in 79 rows, with 67 NULL values. Populated dates
+--   range from 2023-05-19 to 2026-07-09.
+-- - The approval_date populated count is one fewer than the aggregate count of
+--   103 standardized approved statuses, while the billed_date populated count
+--   matches the 79 nonzero billed_amount values.
+-- - These aggregate relationships do not confirm that the same rows align.
+-- - One billed_date occurs after the inclusive June 30, 2026 reporting cutoff.
+--   Missing dates, aggregate relationships, and the post-cutoff value require
+--   row-level workflow investigation before they can be classified as valid or
+--   erroneous.
+
+
+-- Investigation 81A: Inspect the single post-cutoff billed_date record
+-- Purpose:
+-- - Isolate records with a billed_date later than the inclusive June 30, 2026
+--   reporting cutoff.
+-- - Inspect the complete change-order context, including identifiers, status,
+--   type, workflow dates, and monetary values.
+-- - Determine whether the post-cutoff date represents valid later billing
+--   activity, reporting-cutoff leakage, or a possible source-data issue.
+-- - Avoid modifying or excluding the record until the available evidence
+--   supports a documented treatment decision.
+SELECT
+    *
+FROM read_csv_auto('data/raw/change_orders.csv')
+WHERE billed_date > DATE '2026-06-30';
+
+-- Findings:
+-- - CO0119 for project P077 is the only record with a billed_date later than the
+--   inclusive June 30, 2026 reporting cutoff.
+-- - The deductive change order was requested on 2026-05-11, approved on
+--   2026-06-21, and billed on 2026-07-09.
+-- - The workflow chronology is logical: requested_date precedes approval_date,
+--   and approval_date precedes billed_date.
+-- - requested_revenue_change, estimated_cost_change, approved_revenue_change,
+--   and billed_amount are all negative, consistent with the deductive
+--   change_order_type.
+-- - billed_amount equals approved_revenue_change at -36633.22.
+-- - The record appears to represent valid post-cutoff billing activity rather
+--   than a malformed source value.
+-- - Preserve the complete raw record and include the approved change order in
+--   the June 30 analysis, but exclude its billed_amount from billed totals
+--   calculated as of the reporting cutoff.
+-- - Implement the cutoff treatment through a derived cleaned-layer calculation
+--   rather than modifying the source billed_amount or billed_date.
+
+
+-- Investigation 82: Chronological relationships among change-order date fields
+-- Purpose:
+-- - Verify that requested_date, approval_date, and billed_date follow the
+--   expected business sequence: request, approval, then billing.
+-- - Count the testable rows for each date comparison and identify three
+--   possible violations: approval before request, billing before request,
+--   and billing before approval.
+SELECT
+    COUNT(*) FILTER (
+        WHERE requested_date IS NOT NULL
+          AND approval_date IS NOT NULL
+    ) AS request_approval_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE requested_date IS NOT NULL
+          AND approval_date IS NOT NULL
+          AND approval_date < requested_date
+    ) AS approval_before_request_count,
+
+    COUNT(*) FILTER (
+        WHERE requested_date IS NOT NULL
+          AND billed_date IS NOT NULL
+    ) AS request_billing_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE requested_date IS NOT NULL
+          AND billed_date IS NOT NULL
+          AND billed_date < requested_date
+    ) AS billed_before_request_count,
+
+    COUNT(*) FILTER (
+        WHERE approval_date IS NOT NULL
+          AND billed_date IS NOT NULL
+    ) AS approval_billing_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE approval_date IS NOT NULL
+          AND billed_date IS NOT NULL
+          AND billed_date < approval_date
+    ) AS billed_before_approval_count
+
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - Request → approval: 102 testable rows, 0 chronological violations.
+-- - Request → billing: 79 testable rows, 0 chronological violations.
+-- - Approval → billing: 78 testable rows, 0 chronological violations.
+-- - No chronological violations were identified among the testable rows.
+-- - The difference between the 79 request-to-billing comparisons and the
+--   78 approval-to-billing comparisons indicates that one billed record
+--   is missing approval_date.
+
+
+-- Investigation 82A: Identify the billed change order with a missing approval_date
+-- Purpose:
+-- - Find the missing approval_date.
+SELECT *
+FROM read_csv_auto('data/raw/change_orders.csv')
+WHERE
+    billed_date IS NOT NULL
+    AND approval_date IS NULL;
+
+-- Findings:
+-- - All 102 rows testable for request-to-approval chronology followed the
+--   expected sequence; no approvals occurred before their request dates.
+-- - All 79 rows testable for request-to-billing chronology followed the
+--   expected sequence; no billings occurred before their request dates.
+-- - All 78 rows testable for approval-to-billing chronology followed the
+--   expected sequence; no billings occurred before their approval dates.
+-- - CO0001 was the only billed change order with a NULL approval_date. Its
+--   approved status, approved revenue amount, billed amount, and billed date
+--   indicate that approval likely occurred, but its exact date is unknown.
+-- - CO0001 cannot be tested for approval-to-billing chronology.
+
+-- Decision:
+-- - Preserve CO0001's approval_date as NULL rather than inferring an unsupported
+--   date or storing text in a date field.
+-- - Flag the missing approval date in the cleaned layer for downstream
+--   reporting and data-quality review.
+
+
+-- Investigation 83: Approval workflow consistency
+-- Purpose:
+-- - Identify inconsistencies between standardized change-order status and the
+--   approval and billing fields.
+-- - Check for approved statuses where either approval_date or
+--   approved_revenue_change is missing.
+-- - Check for non-approved statuses where either approval field is populated.
+-- - Check for non-approved statuses with billing evidence, defined as a
+--   populated billed_date or a populated, nonzero billed_amount.
+SELECT
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) = 'approved'
+    ) AS approved_status_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) = 'approved'
+          AND approval_date IS NULL
+    ) AS approved_missing_approval_date_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) = 'approved'
+          AND approved_revenue_change IS NULL
+    ) AS approved_missing_revenue_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) = 'approved'
+          AND (
+              approval_date IS NULL
+              OR approved_revenue_change IS NULL
+          )
+    ) AS approved_missing_either_field_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+    ) AS nonapproved_status_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND approval_date IS NOT NULL
+    ) AS nonapproved_with_approval_date_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND approved_revenue_change IS NOT NULL
+    ) AS nonapproved_with_approved_revenue_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND (
+              approval_date IS NOT NULL
+              OR approved_revenue_change IS NOT NULL
+          )
+    ) AS nonapproved_with_either_approval_field_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND billed_date IS NOT NULL
+    ) AS nonapproved_with_billed_date_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND billed_amount IS NOT NULL
+          AND billed_amount <> 0
+    ) AS nonapproved_with_nonzero_billed_amount_count,
+
+    COUNT(*) FILTER (
+        WHERE LOWER(TRIM(status)) <> 'approved'
+          AND (
+              billed_date IS NOT NULL
+              OR (
+                  billed_amount IS NOT NULL
+                  AND billed_amount <> 0
+              )
+          )
+    ) AS nonapproved_with_either_billing_evidence_count
+
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - The standardized status groups account for all 146 change orders:
+--   103 approved and 43 non-approved.
+-- - One approved change order, CO0001, is missing approval_date.
+-- - All 103 approved change orders have a populated
+--   approved_revenue_change.
+-- - None of the 43 non-approved change orders has approval_date or
+--   approved_revenue_change populated.
+-- - No non-approved change order has a populated billed_date or a nonzero
+--   billed_amount.
+-- - CO0001 is the only approval-workflow inconsistency identified.
+
+-- Decision:
+-- - Preserve CO0001's approval_date as NULL and flag it in the cleaned layer;
+--   do not infer an unsupported approval date.
+
+
+-- Investigation 84: Estimated-cost sign consistency by change-order type
+-- Purpose:
+-- - Validate that estimated_cost_change follows the expected sign convention
+--   for standardized change_order_type values.
+-- - Confirm that additive change orders have positive estimated cost changes
+--   and deductive change orders have negative estimated cost changes.
+-- - Count zero values and any sign mismatches for follow-up inspection.
+SELECT
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND estimated_cost_change IS NOT NULL
+    ) AS additive_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND estimated_cost_change IS NOT NULL
+          AND estimated_cost_change <= 0
+    ) AS additive_nonpositive_estimated_cost_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND estimated_cost_change IS NOT NULL
+    ) AS deductive_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND estimated_cost_change IS NOT NULL
+          AND estimated_cost_change >= 0
+    ) AS deductive_nonnegative_estimated_cost_count,
+
+    COUNT(*) FILTER (
+        WHERE estimated_cost_change = 0
+    ) AS zero_estimated_cost_count
+
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - All 146 change orders were testable: 134 additive and 12 deductive.
+-- - All 134 additive change orders have positive estimated_cost_change values.
+-- - All 12 deductive change orders have negative estimated_cost_change values.
+-- - No sign mismatches or zero estimated-cost changes were identified.
+-- - The relationship between change_order_type and estimated_cost_change is
+--   fully consistent with the expected sign convention.
+
+-- Decision:
+-- - Preserve the existing estimated_cost_change signs in the cleaned layer;
+--   no sign correction or additional exception handling is required.
