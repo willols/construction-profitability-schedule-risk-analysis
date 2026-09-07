@@ -610,6 +610,48 @@ FROM budget_amounts;
 --   providing eight integer digits and reasonable future headroom.
 
 
+-- Investigation 90: Validate budget project IDs against projects
+-- Purpose:
+-- - Identify rows in project_budgets.csv whose project_id has no match
+--   in projects.csv.
+-- - Use an anti join to return unmatched budget rows for review.
+-- - Determine whether any budget rows lack a corresponding project
+--   before joining budgets to projects for analysis.
+SELECT
+    b.*
+FROM read_csv_auto('data/raw/project_budgets.csv') AS b
+ANTI JOIN read_csv_auto('data/raw/projects.csv') AS p
+    ON b.project_id = p.project_id;
+
+-- Findings:
+-- - One budget row has no matching project_id in projects.csv:
+--   BUD-P997-01, assigned to P997 in the Labor category.
+-- - Original and revised budget amounts are both 42,000.00,
+--   with an approved budget change of 0.00.
+-- - Flag this row as an orphan budget record.
+-- - An inner join to projects would exclude this row and its budget.
+
+
+-- Investigation 90A: Identify projects without budget coverage
+-- Purpose:
+-- - Identify project IDs in projects.csv with no matching project_id
+--   in project_budgets.csv.
+-- - Return distinct project IDs so duplicate source records do not
+--   repeat projects in the results.
+SELECT DISTINCT
+    p.project_id
+FROM read_csv_auto('data/raw/projects.csv') AS p
+ANTI JOIN read_csv_auto('data/raw/project_budgets.csv') AS b
+    ON p.project_id = b.project_id;
+
+-- Findings:
+-- - Returned zero unmatched project IDs.
+-- - All 96 distinct projects in projects.csv have at least one
+--   matching row in project_budgets.csv.
+-- - This confirms project-level budget coverage, not completeness
+--   of cost categories within each project.
+
+
 -- project_budgets.csv Profiling Conclusion
 --
 -- Dataset Structure:
@@ -644,6 +686,15 @@ FROM budget_amounts;
 --   revised amount of 31,672.00 minus an approved change of 0.00. This candidate
 --   is not source-confirmed.
 --
+-- Project-ID Validation:
+-- - BUD-P997-01 is the only budget row whose project_id has no match
+--   in projects.csv.
+-- - It references P997, uses the Labor category, and records original
+--   and revised budgets of 42,000.00 with zero approved budget change.
+-- - All 96 authoritative projects have at least one matching budget row.
+-- - Project-level coverage does not establish complete cost-category coverage.
+-- - An inner join to projects would exclude BUD-P997-01 and its budget.
+--
 -- Cleaning Decisions:
 -- - Preserve the raw project_budgets.csv file unchanged.
 -- - Remove one occurrence of the exact BUD-P031-01 duplicate only in cleaned data.
@@ -654,3 +705,8 @@ FROM budget_amounts;
 -- - Preserve the source NULL for BUD-P057-04. If the inferred candidate is used
 --   for analysis, store or expose it separately and flag it as inferred rather
 --   than observed.
+-- - Preserve BUD-P997-01 and its source project_id P997; flag the row
+--   as an orphan budget record requiring stakeholder clarification.
+-- - Do not assign a replacement project_id without authoritative evidence.
+-- - Account for the orphan separately when reconciling source budgets
+--   to project-level analytical totals.

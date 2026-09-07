@@ -1319,3 +1319,270 @@ FROM read_csv_auto('data/raw/change_orders.csv');
 -- Decision:
 -- - Preserve the existing estimated_cost_change signs in the cleaned layer;
 --   no sign correction or additional exception handling is required.
+
+
+-- Investigation 85: Validate approved revenue change signs by change order type
+-- Purpose:
+-- - Validate whether each populated approved_revenue_change has the sign
+--   expected for its change_order_type: positive for additive and negative
+--   for deductive change orders.
+-- - Count testable additive and deductive rows, nonpositive additive exceptions,
+--   nonnegative deductive exceptions, and zero approved revenue values.
+SELECT
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND approved_revenue_change IS NOT NULL
+    ) AS additive_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND approved_revenue_change IS NOT NULL
+    ) AS deductive_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND approved_revenue_change IS NOT NULL
+          AND approved_revenue_change <= 0
+    ) AS additive_nonpositive_exception_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND approved_revenue_change IS NOT NULL
+          AND approved_revenue_change >= 0
+    ) AS deductive_nonnegative_exception_count,
+
+    COUNT(*) FILTER (
+        WHERE approved_revenue_change IS NOT NULL
+          AND approved_revenue_change = 0
+    ) AS zero_approved_revenue_change_count
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - The query returned 93 testable additive rows and 10 testable deductive
+--   rows, for a total of 103 populated approved_revenue_change values.
+-- - The 103 testable rows reconcile with the earlier populated-value count
+--   and the 103 approved statuses identified in Investigation 83.
+-- - No additive values were nonpositive, no deductive values were nonnegative,
+--   and no zero approved_revenue_change values were found.
+--
+-- Conclusion:
+-- - All 103 populated approved_revenue_change values have signs consistent
+--   with their change_order_type.
+
+
+-- Investigation 86: Validate billed amount signs by change order type
+-- Purpose:
+-- - Validate whether each populated, nonzero billed_amount has the sign
+--   expected for its change_order_type: positive for additive and negative
+--   for deductive change orders.
+-- - Count testable nonzero additive and deductive rows, negative additive
+--   exceptions, positive deductive exceptions, and zero billed_amount values.
+SELECT
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND billed_amount IS NOT NULL
+          AND billed_amount <> 0
+    ) AS additive_nonzero_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND billed_amount IS NOT NULL
+          AND billed_amount <> 0
+    ) AS deductive_nonzero_testable_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'additive'
+          AND billed_amount IS NOT NULL
+          AND billed_amount < 0
+    ) AS additive_negative_exception_count,
+
+    COUNT(*) FILTER (
+        WHERE change_order_type = 'deductive'
+          AND billed_amount IS NOT NULL
+          AND billed_amount > 0
+    ) AS deductive_positive_exception_count,
+
+    COUNT(*) FILTER (
+        WHERE billed_amount = 0
+    ) AS zero_billed_amount_count
+
+FROM read_csv_auto('data/raw/change_orders.csv');
+
+-- Findings:
+-- - The query returned 71 nonzero additive rows and 8 nonzero deductive rows,
+--   for a total of 79 values eligible for sign validation.
+-- - The 79 nonzero values plus 24 zero values reconcile with the 103 populated
+--   billed_amount values identified during earlier profiling; the remaining
+--   43 rows are NULL.
+-- - No additive billed amounts were negative, and no deductive billed amounts
+--   were positive.
+-- - The 24 zero billed amounts were excluded from sign validation and retained
+--   for separate billing-status analysis.
+--
+-- Conclusion:
+-- - All 79 nonzero billed_amount values have signs consistent with their
+--   change_order_type. The 24 zero values require separate validation against
+--   billed_date.
+
+
+-- Investigation 87: Validate billed_amount and billed_date consistency
+-- Purpose:
+-- - Check for nonzero billed_amount values with NULL billed_date.
+-- - Check for populated billed_date values with NULL billed_amount.
+-- - Check for populated billed_date values with zero billed_amount.
+-- - Identify potential billing-workflow inconsistencies for review.
+-- - Cast billed_amount to the previously selected lossless DECIMAL(10,2).
+WITH standardized_change_orders AS (
+    SELECT
+        TRY_CAST(billed_amount AS DECIMAL(10, 2)
+        ) AS standardized_billed_amount,
+        billed_date
+    FROM read_csv_auto('data/raw/change_orders.csv')
+)
+SELECT
+COUNT(*) AS row_count,
+    COUNT(*) FILTER (
+        WHERE standardized_billed_amount <> 0
+          AND billed_date IS NULL
+    ) AS nonzero_amounts_with_null_dates,
+    COUNT(*) FILTER (
+        WHERE billed_date IS NOT NULL
+          AND standardized_billed_amount IS NULL
+    ) AS populated_dates_with_null_amounts,
+    COUNT(*) FILTER (
+        WHERE billed_date IS NOT NULL
+          AND standardized_billed_amount = 0
+    ) AS populated_dates_with_zero_amounts
+FROM standardized_change_orders;
+
+-- Findings:
+-- - Evaluated 146 rows.
+-- - All nonzero billed_amount values have a populated billed_date.
+-- - No populated billed_date is paired with a NULL or zero billed_amount.
+-- - No exceptions were found in these three billing-consistency checks.
+
+
+-- Investigation 88: Compare requested and approved revenue changes
+-- Purpose:
+-- - Compare rows where both revenue amounts are populated.
+-- - Count requested amounts equal to, less than, or greater than
+--   approved amounts, grouped by change_order_type.
+-- - Remove dollar signs and commas from requested_revenue_change.
+-- - Cast both monetary fields to the previously selected
+--   lossless DECIMAL(10,2).
+WITH standardized_change_orders AS (
+    SELECT
+        change_order_type,
+        TRY_CAST(
+            REPLACE(
+                REPLACE(requested_revenue_change, '$', ''),
+                ',', ''
+            ) AS DECIMAL(10, 2)
+        ) AS standardized_requested_revenue_change,
+        TRY_CAST(
+            approved_revenue_change AS DECIMAL(10, 2)
+        ) AS standardized_approved_revenue_change
+    FROM read_csv_auto('data/raw/change_orders.csv')
+)
+SELECT
+    change_order_type,
+    COUNT(*) AS total_rows,
+    COUNT(*) FILTER (
+        WHERE standardized_requested_revenue_change IS NOT NULL
+          AND standardized_approved_revenue_change IS NOT NULL
+    ) AS comparable_rows,
+    COUNT(*) FILTER (
+        WHERE standardized_requested_revenue_change
+            = standardized_approved_revenue_change
+    ) AS requested_equal_to_approved_count,
+    COUNT(*) FILTER (
+        WHERE standardized_requested_revenue_change
+            < standardized_approved_revenue_change
+    ) AS requested_less_than_approved_count,
+    COUNT(*) FILTER (
+        WHERE standardized_requested_revenue_change
+            > standardized_approved_revenue_change
+    ) AS requested_greater_than_approved_count
+FROM standardized_change_orders
+GROUP BY change_order_type;
+
+-- Findings:
+-- - 134 additive and 12 deductive rows reconcile to 146 total rows.
+-- - Both revenue amounts are populated in 103 rows:
+--   93 additive and 10 deductive.
+-- - Requested revenue exceeds approved revenue in all 93 comparable
+--   additive rows.
+-- - Requested revenue is numerically less than approved revenue in
+--   all 10 comparable deductive rows, meaning smaller approved deductions.
+-- - All 103 approved changes are smaller in magnitude than requested.
+-- - The remaining 43 rows have NULL approved revenue and are excluded
+--   from the comparison.
+
+
+-- Investigation 89: Compare approved_revenue_change and billed_amount
+-- Purpose:
+-- - Classify approved change orders by billing progress.
+-- - Unbilled: billed_amount is zero.
+-- - Partially billed: billed_amount has a nonzero magnitude smaller
+--   than approved_revenue_change.
+-- - Fully billed: billed_amount equals approved_revenue_change.
+-- - Potentially overbilled: billed_amount has a greater magnitude
+--   than approved_revenue_change.
+-- - Count NULL billed_amount values separately as missing information.
+-- - Cast both monetary fields to the previously selected
+--   lossless DECIMAL(10,2).
+WITH standardized_change_orders AS (
+    SELECT
+        change_order_type,
+        LOWER(TRIM(status)) AS standardized_status,
+        TRY_CAST(
+            approved_revenue_change AS DECIMAL(10, 2)
+        ) AS standardized_approved_revenue_change,
+        TRY_CAST(
+            billed_amount AS DECIMAL(10, 2)
+        ) AS standardized_billed_amount
+    FROM read_csv_auto('data/raw/change_orders.csv')
+)
+SELECT
+    change_order_type,
+    COUNT(*) AS approved_rows,
+    COUNT(*) FILTER (
+        WHERE standardized_approved_revenue_change IS NOT NULL
+          AND standardized_billed_amount = 0
+    ) AS unbilled_count,
+    COUNT(*) FILTER (
+        WHERE standardized_approved_revenue_change IS NOT NULL
+          AND standardized_billed_amount <> 0
+          AND ABS(standardized_billed_amount)
+              < ABS(standardized_approved_revenue_change)
+    ) AS partially_billed_count,
+    COUNT(*) FILTER (
+        WHERE standardized_approved_revenue_change IS NOT NULL
+          AND standardized_billed_amount
+              = standardized_approved_revenue_change
+    ) AS fully_billed_count,
+    COUNT(*) FILTER (
+        WHERE standardized_approved_revenue_change IS NOT NULL
+          AND ABS(standardized_billed_amount)
+              > ABS(standardized_approved_revenue_change)
+    ) AS potentially_overbilled_count,
+    COUNT(*) FILTER (
+        WHERE standardized_billed_amount IS NULL
+    ) AS missing_billed_amount_count,
+    COUNT(*) FILTER (
+        WHERE standardized_approved_revenue_change IS NULL
+    ) AS missing_approved_amount_count
+FROM standardized_change_orders
+WHERE standardized_status = 'approved'
+GROUP BY change_order_type;
+
+-- Findings:
+-- - Evaluated 103 approved rows: 93 additive and 10 deductive.
+-- - 24 are unbilled: 22 additive and 2 deductive.
+-- - 22 are partially billed: 20 additive and 2 deductive.
+-- - 57 are fully billed: 51 additive and 6 deductive.
+-- - No potentially overbilled rows were found.
+-- - No approved rows have missing approved revenue or billed amounts.
+-- - Billing categories reconcile to all 103 approved rows.
+-- - Results reflect billing as recorded, without applying the
+--   June 30, 2026 reporting cutoff.

@@ -3,6 +3,199 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 7, 2026
+
+### Work Completed
+
+- Completed Investigation 87 by validating the row-level relationship
+  between billed_amount and billed_date.
+- Completed Investigation 88 by comparing requested and approved revenue,
+  grouped by change_order_type.
+- Completed Investigation 89 by classifying approved change orders as
+  unbilled, partially billed, fully billed, or potentially overbilled.
+- Completed Investigation 90 in sql/02_project_budgets_profiling.sql by
+  identifying budget rows without matching records in projects.csv.
+- Completed Investigation 90A by checking for authoritative projects
+  without budget coverage.
+- Completed the remaining planned profiling checks across the six datasets.
+
+### Decisions and Reasoning
+
+- Monetary comparisons use the previously validated DECIMAL(10,2) type.
+  Requested revenue is normalized by removing dollar signs and commas.
+- NULL amounts represent missing information; zero billed amounts represent
+  unbilled approved changes in this dataset.
+- Requested-versus-approved differences are observations, not automatic
+  errors. Negotiation is a possible explanation but is not established
+  by the available data.
+- ABS() supports billing-magnitude comparisons for both additive and
+  deductive changes. Earlier sign checks established consistent signs.
+- Zero billed amounts are excluded from partially billed counts so the
+  billing categories remain mutually exclusive.
+- Billing classifications reflect amounts as recorded, without applying
+  the June 30, 2026 reporting cutoff.
+- CO0119's post-cutoff billing must still be excluded from June 30 billed
+  totals when implementing the analytical layer.
+- Preserve BUD-P997-01 and its project_id P997, flagging the record as an
+  orphan requiring stakeholder clarification. No replacement ID is supported.
+- Account for the orphan budget separately when reconciling source budgets
+  with project-level analytical totals.
+- Preserve existing investigation numbers. Investigations 90 and 90A belong
+  in the budget-profiling file despite their later chronological numbers.
+- Retain investigation purposes, queries, and findings together in SQL.
+  Consolidate final cleaning rules into a concise specification when
+  beginning implementation rather than expanding every SQL conclusion.
+- No raw source values were modified, and no cleaned analytical output
+  was implemented.
+
+### Key Results
+
+- Investigation 87 evaluated 146 raw rows and found:
+  - 0 nonzero billed amounts with NULL billed dates.
+  - 0 populated billed dates with NULL billed amounts.
+  - 0 populated billed dates with zero billed amounts.
+- Investigation 88 identified 103 comparable rows:
+  - All 93 additive rows have requested revenue greater than approved revenue.
+  - All 10 deductive rows have requested revenue numerically less than
+    approved revenue, representing smaller approved deductions.
+  - No comparable row has equal requested and approved revenue.
+  - All 103 approved changes are smaller in magnitude than requested.
+  - The remaining 43 rows have NULL approved revenue.
+- Investigation 89 returned:
+
+  | Type | Approved rows | Unbilled | Partially billed | Fully billed | Potentially overbilled |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | Additive | 93 | 22 | 20 | 51 | 0 |
+  | Deductive | 10 | 2 | 2 | 6 | 0 |
+  | Total | 103 | 24 | 22 | 57 | 0 |
+
+- No approved rows have missing approved revenue or billed amounts.
+- These change-order counts include the known raw CO0013 duplicate;
+  they are profiling counts, not deduplicated analytical totals.
+- Investigation 90 returned one unmatched budget row:
+  - Budget-line ID: BUD-P997-01
+  - Project ID: P997
+  - Cost category: Labor
+  - Original budget: 42,000.00
+  - Approved budget change: 0.00
+  - Revised budget: 42,000.00
+- Investigation 90A returned zero unmatched authoritative project IDs.
+  All 96 authoritative projects have at least one budget row.
+- Project-level budget coverage does not establish completeness of
+  individual cost categories.
+
+### Verification and Closeout
+
+- Individual queries for Investigations 87 through 90A executed
+  successfully, and the returned results were reviewed.
+- Comparison and billing-category counts reconcile to their respective
+  testable populations.
+- Full-file execution of the affected budget and change-order profiling
+  scripts, Git diff validation, commit, and push remain pending.
+- Planned profiling is complete; documented exceptions remain open for
+  clarification and explicit treatment during cleaning and analysis.
+
+### Next Session
+
+Begin the cleaned analytical layer with projects.csv. Review its
+documented cleaning decisions, summarize the transformation rules, and
+write the cleaning script's purpose comment before attempting SQL.
+
+Continue in coaching mode: explain the reasoning, attempt the work first,
+and review each transformation before proceeding.
+
+## September 4, 2026
+
+### Work Completed
+
+- Completed Investigation 85 by validating the sign of each populated
+  `approved_revenue_change` against `change_order_type`.
+- Counted testable additive and deductive rows, sign exceptions, and zero
+  approved-revenue values.
+- Completed Investigation 86 by validating nonzero `billed_amount` signs
+  against `change_order_type`.
+- Separated zero billed amounts from the sign-testable population because a
+  zero may represent an approved change order that has not yet been billed.
+- Counted nonzero additive and deductive billed amounts, sign exceptions, and
+  zero billed amounts.
+
+### Decisions and Reasoning
+
+- A populated additive `approved_revenue_change` is expected to be positive,
+  while a populated deductive value is expected to be negative.
+- A zero `approved_revenue_change` would be inconsistent with either
+  change-order type because an approved additive or deductive change should
+  alter approved revenue.
+- NULL `approved_revenue_change` values were excluded from sign testing because
+  no approved amount exists to evaluate. Their workflow validity was addressed
+  separately in Investigation 83.
+- A nonzero additive `billed_amount` is expected to be positive, while a
+  nonzero deductive billed amount is expected to be negative.
+- Zero billed amounts were not treated as sign errors because they may represent
+  approved changes for which no billing activity has occurred.
+- Zero billed amounts remain subject to separate row-level validation against
+  `billed_date`.
+- No raw source values were modified, and no cleaned analytical output was
+  implemented.
+
+### Key Results
+
+- Investigation 85 returned:
+  - 93 testable additive `approved_revenue_change` values
+  - 10 testable deductive `approved_revenue_change` values
+  - 0 nonpositive additive exceptions
+  - 0 nonnegative deductive exceptions
+  - 0 zero approved-revenue values
+- The 93 additive and 10 deductive values reconcile to all 103 populated
+  `approved_revenue_change` values and the 103 approved statuses validated in
+  Investigation 83.
+- All 103 populated approved-revenue values have signs consistent with their
+  `change_order_type`.
+- Investigation 86 returned:
+  - 71 nonzero additive `billed_amount` values
+  - 8 nonzero deductive `billed_amount` values
+  - 0 negative additive exceptions
+  - 0 positive deductive exceptions
+  - 24 zero billed amounts
+- The 71 additive and 8 deductive values reconcile to 79 nonzero billed
+  amounts.
+- The 79 nonzero values plus 24 zero values reconcile to all 103 populated
+  `billed_amount` values. The remaining 43 rows contain NULL billed amounts.
+- All 79 nonzero billed amounts have signs consistent with their
+  `change_order_type`.
+
+### Verification and Closeout
+
+- The individual queries for Investigations 85 and 86 executed successfully,
+  and their results were reviewed.
+- Investigation 85's testable sign groups reconcile to the 103 populated
+  `approved_revenue_change` values.
+- Investigation 86's nonzero and zero groups reconcile to the 103 populated
+  `billed_amount` values.
+- Complete-file execution, Git diff validation, commit, and push remain to be
+  completed during project closeout.
+
+### Next Session
+
+Begin Investigation 87 by writing its purpose comment.
+
+Validate the row-level relationship between `billed_amount` and `billed_date`.
+Confirm whether:
+
+- Every nonzero billed amount has a populated billed date.
+- Every zero billed amount has a NULL billed date.
+- Every NULL billed amount has a NULL billed date.
+- Every populated billed date is associated with a nonzero billed amount.
+
+Count the population and exceptions for each relationship before making a
+workflow-validity decision. The previously observed 79 populated billed dates
+and 79 nonzero billed amounts match in aggregate, but row-level alignment still
+must be established.
+
+After validating the billing-date relationship, continue comparing requested,
+approved, and billed monetary amounts. Treat approval adjustments and partial
+billing as investigation observations rather than automatic errors.
+
 ## September 3, 2026
 
 ### Work Completed
