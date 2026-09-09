@@ -19,8 +19,9 @@ and exception flags. No cleaned CSV has been exported.
 The next dataset is project_budgets.csv.
 `sql/08_project_budgets_cleaned.sql` has not been created.
 
-The latest confirmed pushed commit remains 2bbbefe from September 7.
-No commit or push has been confirmed for the September 8–9 cleaning work.
+September 8–9 projects cleaning work was committed and pushed as de633d3:
+"Complete projects cleaning and validated DuckDB view".
+The working tree was clean and main matched origin/main after the push.
 
 ## Profiling File Structure
 
@@ -1235,15 +1236,15 @@ saving the reusable budget output.
 Continue in coaching mode: explain the reasoning, write comments first,
 attempt the SQL, and review each transformation before proceeding.
 
-Latest confirmed commit:
+Latest confirmed analysis commit:
 
-- Commit: 2bbbefe
-- Message: Complete change order and budget relationship profiling
-- Date: September 7, 2026
+- Commit: de633d3
+- Message: Complete projects cleaning and validated DuckDB view
+- Date: September 9, 2026
 - Successfully pushed to origin/main.
 
-No commit or push has been confirmed for the September 8–9 cleaning work.
-Git closeout remains unconfirmed.
+The working tree was clean and main matched origin/main after the analysis
+push. This documentation update records that completed closeout.
 
 ## End-of-Session Update Routine
 

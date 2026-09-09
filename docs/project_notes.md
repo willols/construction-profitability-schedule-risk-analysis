@@ -54,12 +54,11 @@ and lessons. Add each new dated entry directly below this introduction.
 
 ### Verification and Closeout
 
-- All seven cleaning validations and both final flag/view checks passed.
-- Projects cleaning is complete for the current scope.
-- The database and its write-ahead log were accidentally deleted,
-  restored, and followed by a successful view-access check.
-- No Git commit or push has been confirmed for this session.
-- `08_project_budgets_cleaned.sql` has not been created.
+- Analysis commit `de633d3`, "Complete projects cleaning and validated
+  DuckDB view", was pushed to origin/main.
+- The commit includes the projects cleaning SQL and both documentation files.
+- Staged whitespace checks passed. After the push, the working tree was
+  clean and main matched origin/main.
 
 ### Next Session
 
