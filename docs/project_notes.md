@@ -3,6 +3,141 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 9, 2026
+
+### Work Completed
+
+- Completed `sql/07_projects_cleaned.sql`.
+- Passed Validation 6: reconciled cleaned contract values against a
+  deduplicated-source reference using P066's verified 672000.00 and
+  direct decimal conversion for the remaining projects.
+- Passed Validation 7: confirmed P052's project_type remains NULL.
+- Added and checked two Boolean exception flags:
+  - `project_type_missing_flag`
+  - `baseline_completion_date_unresolved_flag`
+- Created the persistent `construction.duckdb` database and saved
+  `construction.cleaned_projects` as a reusable view.
+- Verified the saved view's row count, unique project count, contract
+  total, and exception counts.
+
+### Decisions and Reasoning
+
+- Use a view to reuse the cleaning query without storing a separate
+  copy of its results. The view reads the raw CSV when queried.
+- Preserve raw columns alongside cleaned values and exception flags.
+- P052's missing project type and P013's unresolved baseline completion
+  date remain NULL; neither value is inferred.
+- Exception flags identify data limitations without correcting them
+  or automatically excluding entire projects.
+- Save the view definition in a persistent database rather than relying
+  on an in-memory session.
+- Editing the SQL file does not update the saved view until
+  `CREATE OR REPLACE VIEW` is executed.
+- Finish cleaning rules and flags before validation and view creation
+  in subsequent datasets.
+- Profiling remains frozen unless implementation exposes a specific
+  unresolved issue.
+
+### Key Results
+
+- Validation 6: cleaned and reference contract totals both equal
+  141761000.00; difference = 0.00.
+- Validation 7: one row for P052 with project_type = NULL.
+- Only P052 has project_type_missing_flag = TRUE.
+- Only P013 has baseline_completion_date_unresolved_flag = TRUE.
+- Final saved-view check:
+  - 96 rows.
+  - 96 distinct project IDs.
+  - Contract total: 141761000.00.
+  - One missing project type.
+  - One unresolved baseline completion date.
+
+### Verification and Closeout
+
+- All seven cleaning validations and both final flag/view checks passed.
+- Projects cleaning is complete for the current scope.
+- The database and its write-ahead log were accidentally deleted,
+  restored, and followed by a successful view-access check.
+- No Git commit or push has been confirmed for this session.
+- `08_project_budgets_cleaned.sql` has not been created.
+
+### Next Session
+
+Begin `sql/08_project_budgets_cleaned.sql` by reviewing the documented
+budget cleaning rules and writing its purpose, grain, transformations,
+exception handling, and expected results before attempting SQL.
+
+Preserve BUD-P997-01 and project_id P997, flag the orphan, avoid an
+unsupported ID replacement, and reconcile its budget separately.
+
+Continue in coaching mode: explain the reasoning, write comments first,
+and attempt the SQL before receiving a complete solution.
+
+## September 8, 2026
+
+### Work Completed
+
+- Began the projects cleaning SQL file and documented its purpose,
+  grain, cleaning rules, and expected results.
+- Built a combined cleaning query that:
+  - Removes exact duplicate rows using SELECT DISTINCT.
+  - Preserves original columns for traceability.
+  - Standardizes project_status using LOWER(TRIM()) and CASE mappings.
+  - Removes currency symbols and thousands separators from
+    original_contract_value and converts it to DECIMAL(10,2).
+  - Safely converts baseline_completion_date to DATE.
+  - Preserves P052's missing project_type as NULL.
+- Completed and reviewed cleaning Validations 1–5.
+
+### Decisions and Reasoning
+
+- Cleaning steps and validations use numbering separate from profiling
+  investigations.
+- P013's ambiguous baseline completion date, '8/10/2023', remains
+  NULL in the cleaned date column; its raw value is preserved.
+- P013's unambiguous labor work_date does not establish its planned
+  completion date.
+- Existing DATE types for baseline_start_date and actual_completion_date
+  require no additional conversion.
+- Successful conversion does not by itself prove monetary values
+  were preserved accurately; monetary reconciliation remains pending.
+- Profiling remains frozen unless cleaned-layer validation exposes
+  a specific unresolved issue.
+
+### Key Results
+
+- Validation 1: 96 rows and 96 distinct project IDs.
+- Validation 2: Zero populated contract values became NULL.
+- Validation 3: Only P013's populated baseline completion date became NULL,
+  matching the documented exception.
+- Validation 4: on_hold (3), active (18), and completed (75);
+  counts total 96 with no unexpected statuses.
+- Validation 5: Cleaned status is VARCHAR, cleaned contract value is
+  DECIMAL(10,2), and cleaned baseline completion date is DATE.
+  baseline_start_date and actual_completion_date are also DATE.
+- Individually confirmed P066's cleaned contract value is 672000.00
+  and P052's project_type remains NULL.
+
+### Verification and Closeout
+
+- Individual transformation and validation queries were executed,
+  and their results were reviewed.
+- The cleaned projects layer remains in progress.
+- No reusable cleaned view, table, or CSV has been created.
+- No Git closeout was performed today.
+
+### Next Session
+
+Begin monetary reconciliation for original_contract_value.
+Compare the cleaned total with the expected total from deduplicated
+source rows, accounting explicitly for removal of the P042 duplicate.
+
+Complete remaining validation before saving the cleaned projects
+dataset as a reusable DuckDB view or table.
+
+Continue in coaching mode: explain the reasoning, write comments,
+and attempt the SQL before receiving a complete solution.
+
 ## September 7, 2026
 
 ### Work Completed
@@ -86,14 +221,12 @@ and lessons. Add each new dated entry directly below this introduction.
 
 ### Verification and Closeout
 
-- Individual queries for Investigations 87 through 90A executed
-  successfully, and the returned results were reviewed.
-- Comparison and billing-category counts reconcile to their respective
-  testable populations.
-- Full-file execution of the affected budget and change-order profiling
-  scripts, Git diff validation, commit, and push remain pending.
-- Planned profiling is complete; documented exceptions remain open for
-  clarification and explicit treatment during cleaning and analysis.
+- Changes were committed as 2bbbefe:
+  "Complete change order and budget relationship profiling".
+- Successfully pushed to origin/main; local main and origin/main
+  were synchronized.
+- Full profiling files were not rerun during closeout because the
+  individual queries had already been executed and saved.
 
 ### Next Session
 

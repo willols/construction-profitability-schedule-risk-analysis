@@ -1,70 +1,26 @@
 # Project Status
 
-Last updated: September 7, 2026
+Last updated: September 9, 2026
 
 ## Current Phase
 
-Planned profiling of all six source datasets is complete.
+Planned profiling and required relationship validation are complete for all
+six source datasets. Profiling remains frozen unless cleaning or analysis
+reveals a specific unresolved issue.
 
-Individual queries executed successfully through Investigation 89 in
-sql/06_change_orders_profiling.sql and through Investigations 90 and 90A
-in sql/02_project_budgets_profiling.sql.
+Projects cleaning is complete in `sql/07_projects_cleaned.sql`.
+All seven cleaning validations, exception-flag checks, and saved-view
+verification passed.
 
-The final checks established billing-date consistency, requested-versus-approved
-revenue relationships, approved-versus-billed classifications, and budget
-project-ID validation in both directions.
+The reusable view `construction.cleaned_projects` is saved in
+`construction.duckdb`. It preserves raw columns and exposes cleaned values
+and exception flags. No cleaned CSV has been exported.
 
-Current work is profiling closeout: finish documentation, execute the two
-affected profiling files end to end, review the Git diff, and commit and push.
+The next dataset is project_budgets.csv.
+`sql/08_project_budgets_cleaned.sql` has not been created.
 
-Full-file verification of today's changes remains pending. The last confirmed
-end-to-end change-order execution was through Investigation 84.
-
-After closeout, begin implementing the documented cleaning rules, starting
-with projects.csv. Unresolved source exceptions will remain preserved and
-flagged rather than delaying implementation indefinitely.
-
-No cleaned analytical outputs have been implemented.
-
-### Change Orders
-
-All 12 change-order fields have completed standalone profiling. Monetary
-completeness, range, fractional scale, cleaned datatypes, date completeness,
-date ranges, and reporting-cutoff behavior are documented.
-
-Investigation 82 found no chronological violations among testable request,
-approval, and billing dates. CO0001 is the only billed record with a missing
-`approval_date`.
-
-Investigation 83 confirmed that all 103 standardized approved records contain
-`approved_revenue_change`, while none of the 43 non-approved records contains
-approval fields or evidence of billing. CO0001's missing approval date is the
-only identified status-to-approval inconsistency.
-
-Investigation 84 confirmed that all 134 additive change orders have positive
-`estimated_cost_change` values and all 12 deductive change orders have negative
-values.
-
-Investigation 85 confirmed that all 93 populated additive
-`approved_revenue_change` values are positive and all 10 populated deductive
-values are negative. No sign exceptions or zero approved-revenue values were
-identified.
-
-Investigation 86 confirmed that all 71 nonzero additive `billed_amount` values
-are positive and all 8 nonzero deductive values are negative. No sign
-exceptions were identified. The 24 zero billed amounts remain subject to
-separate validation against `billed_date`.
-
-All four change-order monetary fields will use `DECIMAL(10,2)` in the cleaned
-analytical layer.
-
-CO0119's July 9, 2026 billing activity will remain in the raw data but be
-excluded from billed totals calculated as of June 30, 2026.
-
-Project-ID relationship validation remains outstanding for
-`project_budgets.csv`.
-
-No cleaned analytical outputs have been implemented.
+The latest confirmed pushed commit remains 2bbbefe from September 7.
+No commit or push has been confirmed for the September 8–9 cleaning work.
 
 ## Profiling File Structure
 
@@ -73,11 +29,11 @@ Profiling SQL is organized into separate dataset-specific files:
 | Dataset | SQL file | Status |
 | --- | --- | --- |
 | `projects.csv` | `sql/01_projects_profiling.sql` | Planned profiling complete |
-| `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Planned profiling complete, including project-ID validation through 90A; updated full-file verification pending |
+| `project_budgets.csv` | `sql/02_project_budgets_profiling.sql` | Planned profiling complete, including project-ID validation through 90A |
 | `cost_transactions.csv` | `sql/03_cost_transactions_profiling.sql` | Planned standalone and transaction-relationship profiling complete |
 | `labor_entries.csv` | `sql/04_labor_entries_profiling.sql` | Planned profiling complete through 40A |
 | `project_updates.csv` | `sql/05_project_updates_profiling.sql` | Planned profiling complete through 63A |
-| `change_orders.csv` | `sql/06_change_orders_profiling.sql` | Planned profiling complete through 89; updated full-file verification pending |
+| `change_orders.csv` | `sql/06_change_orders_profiling.sql` | Planned profiling complete through 89 |
 
 The superseded combined `sql/01_data_profiling.sql` file has been removed.
 Existing investigation numbers and documentation references were preserved
@@ -131,6 +87,54 @@ Confirmed cleaning rules:
 * Treat P052's `project_type` as unknown unless authoritative evidence becomes
   available.
 
+#### Cleaning Implementation
+
+Projects cleaning is complete in `sql/07_projects_cleaned.sql`.
+
+The reusable view `construction.cleaned_projects` is stored in the
+persistent `construction.duckdb` database. It removes exact duplicates,
+preserves original columns, and adds:
+
+- `project_status_clean`
+- `original_contract_value_clean`
+- `baseline_completion_date_clean`
+- `project_type_missing_flag`
+- `baseline_completion_date_unresolved_flag`
+
+P013's ambiguous baseline completion date remains NULL in the cleaned
+column while its raw value is preserved. P052's project_type remains NULL.
+P066's cleaned contract value is 672000.00.
+
+The project-type flag identifies NULL project types. The unresolved-date
+flag identifies populated raw baseline dates that cannot convert to DATE.
+Flags identify limitations without automatically excluding entire projects.
+
+The view stores the cleaning query rather than a separate copy of its
+results. It reads `data/raw/projects.csv` when queried. Changes to the
+saved definition require execution of `CREATE OR REPLACE VIEW`.
+
+#### Cleaned-Layer Validation
+
+- Validation 1: 96 rows and 96 distinct project IDs; passed.
+- Validation 2: Zero populated contract values became NULL; passed.
+- Validation 3: Only P013's populated baseline completion date became NULL,
+  matching the documented exception; passed.
+- Validation 4: on_hold (3), active (18), completed (75); total 96,
+  with no unexpected statuses; passed.
+- Validation 5: Cleaned status is VARCHAR, cleaned contract value is
+  DECIMAL(10,2), and cleaned baseline completion date is DATE; passed.
+- baseline_start_date and actual_completion_date are already DATE.
+- Validation 6: Cleaned and deduplicated-source reference contract totals
+  both equal 141761000.00; difference = 0.00; passed.
+- The reference uses P066's independently verified 672000.00 and direct
+  decimal conversion for the remaining deduplicated source records.
+- Validation 7: P052 appears once with project_type = NULL; passed.
+- Exception check: Only P052 has a missing project type, and only P013
+  has an unresolved baseline completion date; passed.
+- Final saved-view check: 96 rows, 96 distinct project IDs,
+  contract total = 141761000.00, one missing project type,
+  and one unresolved baseline completion date; passed.
+
 ### Project Budgets
 
 Standalone profiling and project-ID validation are complete through
@@ -154,27 +158,31 @@ Key results:
 * Of 674 rows, 673 satisfy the expected monetary relationship and one is
   untestable because of the missing original budget.
 * `DECIMAL(10, 2)` was selected for cleaned monetary fields.
-
-Confirmed cleaning rules:
-
-* Retain one BUD-P031-01 row in cleaned output.
-* Apply the following category mappings:
-
-  * `General conditions` → `General Conditions`
-  * `Materials ` → `Materials`
-  * `labor` → `Labor`
-  * `Sub-Contractors` → `Subcontractors`
-* Remove `$` and `,` from `approved_budget_change` before numeric conversion.
-* Convert cleaned monetary fields to `DECIMAL(10, 2)`.
-* Preserve BUD-P057-04's source NULL.
-* If the formula-derived 31,672.00 candidate is used, expose it separately and
-  flag it as inferred.
-  - BUD-P997-01 is the only budget row without a matching project in projects.csv.
+- BUD-P997-01 is the only budget row without a matching project in projects.csv.
 - It references P997 in the Labor category, with original and revised budgets
   of 42,000.00 and an approved budget change of 0.00.
 - All 96 authoritative projects have at least one matching budget row.
 - Project-level coverage does not establish complete cost-category coverage.
 - An inner join to projects would exclude the orphan row and its budget.
+
+Confirmed cleaning rules:
+
+* Retain one BUD-P031-01 row in cleaned output.
+* Apply the following category mappings:
+  - `General conditions` → `General Conditions`
+  - `Materials ` → `Materials`
+  - `labor` → `Labor`
+  - `Sub-Contractors` → `Subcontractors`
+* Remove `$` and `,` from `approved_budget_change` before numeric conversion.
+* Convert cleaned monetary fields to `DECIMAL(10, 2)`.
+* Preserve BUD-P057-04's source NULL.
+* If the formula-derived 31,672.00 candidate is used, expose it separately
+  and flag it as inferred.
+* Preserve BUD-P997-01 and its source project_id P997.
+* Flag the row as an orphan requiring stakeholder clarification.
+* Do not assign a replacement project ID without authoritative evidence.
+* Account for its budget separately when reconciling source budgets
+  with project-level analytical totals.
 
 ### Cost Transactions
 
@@ -207,11 +215,6 @@ Key results:
   inconsistencies.
 * After applying documented corrections, zero transaction project/category
   pairs remain unmatched.
-  - Preserve BUD-P997-01 and its source project_id P997.
-- Flag the row as an orphan requiring stakeholder clarification.
-- Do not assign a replacement project ID without authoritative evidence.
-- Account for its budget separately when reconciling source budgets with
-  project-level analytical totals.
 
 Payment-status results after standardization:
 
@@ -1031,8 +1034,9 @@ Decision:
 ### Change Orders
 
 Planned standalone and relationship profiling is complete through
-Investigation 89. Individual queries executed successfully; updated full-file
-verification remains pending.
+Investigation 89. Individual queries executed successfully and their
+results were reviewed. The full file was not rerun during September 7
+closeout.
 
 #### Structure and Project References
 
@@ -1147,8 +1151,8 @@ No planned change-order profiling checks remain.
 
 ### Project Budgets
 
-* Compare the 97 distinct budget project IDs with the 96 distinct project IDs
-  in `projects.csv`.
+* Obtain stakeholder clarification for orphan budget BUD-P997-01,
+  which references unmatched project ID P997.
 * Preserve BUD-P057-04's original-budget NULL unless a stakeholder confirms the
   formula-derived candidate.
 
@@ -1198,53 +1202,48 @@ No planned change-order profiling checks remain.
 
 ## Remaining Project Work
 
-1. Complete profiling closeout: documentation, affected-file execution,
-   Git diff review, commit, and push.
-2. Consolidate the documented cleaning rules into a concise implementation
-   specification and build dataset-specific cleaned outputs.
-3. Validate cleaned row counts, identifiers, datatypes, relationships,
-   exceptions, and monetary reconciliations.
-4. Build a one-row-per-project analysis table as of June 30, 2026.
-5. Build profitability, budget-variance, change-order-exposure, and
-   schedule-risk metrics.
-6. Create ranked project-risk outputs, Excel and Power BI deliverables,
-   visualizations, and an executive summary.
+1. Begin project_budgets cleaning using the documented rules.
+2. Implement cleaning for cost transactions, labor entries, project
+   updates, and change orders.
+3. Validate each remaining cleaned dataset's counts, identifiers, types,
+   relationships, exceptions, and monetary totals before saving its
+   reusable output.
+4. Build project-level analytical outputs as of June 30, 2026.
+5. Build an Excel budget-versus-actual report once its required cleaned
+   inputs are ready.
+6. Develop profitability, change-order-exposure, and schedule-risk
+   metrics, Power BI visuals, and an executive summary.
 7. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
-Finish the current session's profiling closeout.
+Begin `sql/08_project_budgets_cleaned.sql`.
+The file has not yet been created.
 
-1. Save the updated project notes, project status, and profiling conclusions.
-2. Execute sql/02_project_budgets_profiling.sql and
-   sql/06_change_orders_profiling.sql end to end using DuckDB with -bail.
-3. Review the Git diff and run whitespace checks.
-4. Commit the completed changes and push to GitHub.
-5. Record the actual verification results and confirmed commit reference.
+1. Review Project Budgets → Confirmed cleaning rules.
+2. Explain the expected grain and write the purpose, cleaning rules,
+   exception handling, and expected results before SQL.
+3. Account for the BUD-P031-01 duplicate, category mappings, monetary
+   conversions, and BUD-P057-04's missing original budget.
+4. Preserve BUD-P997-01 and P997, flag the orphan, avoid unsupported
+   replacement IDs, and reconcile its budget separately.
+5. Attempt the first cleaning step and review its result before continuing.
 
-Full-file verification and the current closeout commit and push are pending.
-Do not mark them complete until their results are confirmed.
+Finish transformations and exception flags before final validation and
+saving the reusable budget output.
 
-After successful closeout, begin cleaning projects.csv. Review its documented
-rules, summarize the intended transformations, and write the cleaning script's
-purpose comment before attempting SQL.
+Continue in coaching mode: explain the reasoning, write comments first,
+attempt the SQL, and review each transformation before proceeding.
 
-Continue in coaching mode: explain the reasoning, attempt the work first,
-and review each transformation before proceeding.
+Latest confirmed commit:
 
-The latest committed analysis is:
+- Commit: 2bbbefe
+- Message: Complete change order and budget relationship profiling
+- Date: September 7, 2026
+- Successfully pushed to origin/main.
 
-- Commit:
-  [0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/0ae2f8b46f9eab5b95eb34a324864c5b15acdfa4)
-- Message: `Profile change order monetary fields and workflow relationships`
-- Date: September 3, 2026
-
-The latest correction commit is:
-
-* Commit:
-  [52a08ac4164bd7279d95e0ea6c91229d229c44ef](https://github.com/willols/construction-profitability-schedule-risk-analysis/commit/52a08ac4164bd7279d95e0ea6c91229d229c44ef)
-* Message: `Fix budget normalization query`
-* Date: July 31, 2026
+No commit or push has been confirmed for the September 8–9 cleaning work.
+Git closeout remains unconfirmed.
 
 ## End-of-Session Update Routine
 
