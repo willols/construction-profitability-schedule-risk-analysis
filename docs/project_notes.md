@@ -3,6 +3,163 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 11, 2026
+
+### Work Completed
+
+- Completed Validation 7 in `sql/08_project_budgets_cleaned.sql`.
+- Reconciled all three monetary fields between the deduplicated source
+  and cleaned output.
+- Reconciled matched-project and orphan budgets against full cleaned totals.
+- Created `construction.cleaned_project_budgets` as a reusable view.
+- Verified the saved view's row count and distinct budget-line IDs.
+- Began cost-transactions cleaning with purpose, grain, cleaning rules,
+  exception handling, reporting treatment, and expected results.
+- Removed the exact TX000138 duplicate while preserving raw columns.
+- Added transaction-specific project-ID corrections and
+  `project_id_corrected_flag`.
+- Implemented and inspected the documented cost-category mappings.
+
+### Decisions and Reasoning
+
+- Use deduplicated-source totals as the reconciliation reference so the
+  duplicate does not inflate the expected totals.
+- Reconcile each monetary field separately.
+- Preserve BUD-P057-04's original-budget NULL; SUM excludes the missing
+  value and does not resolve it.
+- Preserve P997 and reconcile its orphan budget separately.
+- Save the cleaning query as a persistent view; the view still depends
+  on access to the source CSV.
+- Preserve raw transaction project IDs alongside cleaned IDs.
+- Apply corrections specifically to TX000316 and TX000729 rather than
+  replacing missing or unmatched project IDs generally.
+- Standardize transaction categories to match the cleaned budget labels.
+- Previously documented payment-status counts total 11204 and therefore
+  include the duplicate. Recalculate reporting totals after deduplication.
+- Preserve negative applied credits and report pending exposure separately.
+
+### Key Results
+
+- Budget Validation 7 PASS: source and cleaned totals match:
+  - Original budget: 116164328.00.
+  - Approved budget change: 3368833.67.
+  - Revised budget: 119564833.67.
+- All three cleaning differences and split differences equal 0.00.
+- Matched-project budget totals:
+  - Original budget: 116122328.00.
+  - Approved budget change: 3368833.67.
+  - Revised budget: 119522833.67.
+- Orphan budget totals:
+  - Original budget: 42000.00.
+  - Approved budget change: 0.00.
+  - Revised budget: 42000.00.
+- Saved budget view returns 673 rows and 673 distinct budget_line_id values.
+- Deduplicated transactions return 11203 rows and 11203 distinct
+  transaction_id values.
+- TX000316: raw project_id remains NULL; project_id_clean is P003.
+- TX000729: raw project_id remains P998; project_id_clean is P007.
+- Category mappings inspected:
+  - Sub-Contractor → Subcontractors.
+  - materials with trailing whitespace → Materials.
+
+### Verification and Closeout
+
+- All seven budget validations are complete.
+- The saved cleaned-budget view was queried successfully.
+- Transaction project-ID corrections were checked against the two
+  affected records.
+- The correction flag was visually inspected; exact counts of 2 TRUE
+  and 11201 FALSE remain to be validated.
+- Category cleaning was inspected separately and still needs integration
+  with the other transaction transformations.
+- Cost-transactions cleaning remains in progress; no reusable
+  cost-transactions view has been created.
+- No Git commit or push has been performed during this closeout.
+
+### Next Session
+
+Begin Cleaning Step 4 in `sql/09_cost_transactions_cleaned.sql`.
+
+Write the amount-cleaning comments first, then attempt an expression
+that removes dollar signs and commas from amount and uses TRY_CAST
+to produce amount_clean as DECIMAL(10, 2). Preserve negative values.
+
+Next, standardize payment statuses and combine the transformations
+and flags. Validate the cleaned output, including deduplicated reporting
+totals and project/category relationships, before saving and verifying
+the reusable view.
+
+Continue in coaching mode: explain reasoning, write comments first,
+and attempt the SQL before receiving a complete solution.
+
+Begin the Excel budget-versus-actual report once cleaned cost
+transactions are ready; do not wait for every remaining dataset.
+
+## September 10, 2026
+
+### Work Completed
+
+- Began `sql/08_project_budgets_cleaned.sql`, documenting its purpose,
+  grain, cleaning rules, exception handling, and expected results.
+- Implemented and combined budget cleaning transformations using
+  `deduplicated` and `cleaned_project_budgets` CTEs.
+- Removed the exact duplicate while retaining one BUD-P031-01 row.
+- Preserved raw columns and applied the documented category mappings.
+- Removed dollar signs and commas from approved_budget_change.
+- Converted all three cleaned monetary fields to DECIMAL(10, 2).
+- Added original_budget_missing_flag and orphan_project_flag.
+- Used a LEFT JOIN to construction.cleaned_projects to retain
+  budget rows without matching projects.
+- Completed Validations 1–6.
+
+### Decisions and Reasoning
+
+- Preserve BUD-P057-04's source original-budget NULL. The inferred
+  31672.00 candidate is not included in the current cleaned output.
+- Preserve BUD-P997-01 and its source project_id P997.
+- Flag the orphan for stakeholder clarification; do not replace its
+  project ID without authoritative evidence.
+- Account for the orphan budget separately during reconciliation.
+- Conversion-failure checks distinguish populated raw values that
+  become NULL from source values that were already NULL.
+- Continue the sequence: transformations and flags → validation →
+  save reusable output → verify → document.
+
+### Key Results
+
+- Validation 1 PASS: 673 rows and 673 distinct budget_line_id values.
+- Validation 2 PASS: all documented category mappings are correct;
+  seven standardized categories remain.
+- Validation 3 PASS: zero monetary conversion failures.
+- Validation 4 PASS: only BUD-P057-04 has the missing-budget flag;
+  its raw and cleaned original-budget amounts are both NULL.
+- Validation 5 PASS: only BUD-P997-01 has the orphan flag;
+  project_id P997 is preserved.
+- Validation 6 PASS: all three cleaned monetary fields are
+  DECIMAL(10, 2).
+
+### Verification and Closeout
+
+- Reconnected the current DuckDB session to construction.duckdb
+  using ATTACH and USE; the join to cleaned_projects then ran.
+- Stopped before starting Validation 7.
+- Budget-total reconciliation remains pending.
+- The reusable cleaned-budget view has not been created or verified.
+- Documentation-only mini closeout; no commit or push performed.
+
+### Next Session
+
+Begin Validation 7: reconcile all three monetary fields between the
+deduplicated source and cleaned output. Account for matched-project
+budgets and the orphan budget separately, preserving the known NULL.
+
+Explain why the reference must use the deduplicated source rather
+than all 674 raw rows, then write the validation comments before SQL.
+
+Continue in coaching mode: explain reasoning and attempt the work
+first. After validation passes, save the reusable view, verify it,
+and document the results.
+
 ## September 9, 2026
 
 ### Work Completed

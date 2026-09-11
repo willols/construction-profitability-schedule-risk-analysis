@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: September 9, 2026
+Last updated: September 11, 2026
 
 ## Current Phase
 
@@ -12,16 +12,27 @@ Projects cleaning is complete in `sql/07_projects_cleaned.sql`.
 All seven cleaning validations, exception-flag checks, and saved-view
 verification passed.
 
-The reusable view `construction.cleaned_projects` is saved in
-`construction.duckdb`. It preserves raw columns and exposes cleaned values
-and exception flags. No cleaned CSV has been exported.
+Project budgets cleaning is complete in `sql/08_project_budgets_cleaned.sql`.
+All seven validations passed, including monetary reconciliation and
+separate orphan-budget accounting. Saved-view verification returned
+673 rows and 673 distinct budget-line IDs.
 
-The next dataset is project_budgets.csv.
-`sql/08_project_budgets_cleaned.sql` has not been created.
+The reusable views `construction.cleaned_projects` and
+`construction.cleaned_project_budgets` are saved in `construction.duckdb`.
+They preserve raw columns and expose cleaned values and exception flags.
+No cleaned CSV has been exported.
 
-September 8–9 projects cleaning work was committed and pushed as de633d3:
-"Complete projects cleaning and validated DuckDB view".
-The working tree was clean and main matched origin/main after the push.
+Cost-transactions cleaning is in progress in
+`sql/09_cost_transactions_cleaned.sql`. Deduplication and the two
+documented project-ID corrections were verified. A correction flag
+was added and category mappings were inspected. Exact flag counts,
+combined transformations, and full validation remain pending.
+
+The next task is Cleaning Step 4: amount normalization and conversion.
+No reusable cost-transactions view has been created.
+
+Latest confirmed analysis commit: de633d3, pushed September 9.
+No new commit or push has been performed during this closeout.
 
 ## Profiling File Structure
 
@@ -185,6 +196,67 @@ Confirmed cleaning rules:
 * Account for its budget separately when reconciling source budgets
   with project-level analytical totals.
 
+#### Cleaning Implementation
+
+Cleaning is complete in `sql/08_project_budgets_cleaned.sql`.
+
+The reusable view `construction.cleaned_project_budgets` is saved in
+the persistent `construction.duckdb` database.
+
+The cleaning query uses `deduplicated` and `cleaned_project_budgets`
+CTEs to remove exact duplicates before applying transformations and
+joining to `construction.cleaned_projects`.
+
+It preserves raw budget columns and adds:
+
+- `cost_category_clean`
+- `approved_budget_change_clean`
+- `original_budget_amount_clean`
+- `revised_budget_amount_clean`
+- `original_budget_missing_flag`
+- `orphan_project_flag`
+
+BUD-P057-04's original-budget NULL remains NULL in cleaned output.
+The optional formula-derived 31672.00 candidate is not included.
+
+A LEFT JOIN preserves BUD-P997-01 and its source project_id P997.
+The unmatched project is flagged for stakeholder clarification;
+no replacement ID is assigned. Its budget was reconciled separately.
+
+The view stores the cleaning query rather than a separate copy of its
+results. It reads the source CSV when queried.
+
+#### Cleaned-Layer Validation
+
+- Validation 1 PASS: 673 rows and 673 distinct budget_line_id values.
+- Validation 2 PASS: all documented category mappings are correct;
+  already-standardized categories remain unchanged. Seven cleaned
+  categories remain: Equipment, General Conditions, Labor, Materials,
+  Other, Permits & Fees, and Subcontractors.
+- Validation 3 PASS: zero populated raw monetary values became NULL
+  during conversion across all three monetary fields.
+- Validation 4 PASS: only BUD-P057-04 has the missing-budget flag;
+  its raw and cleaned original-budget amounts are both NULL.
+- Validation 5 PASS: only BUD-P997-01 has the orphan flag;
+  its source project_id remains P997.
+- Validation 6 PASS: all three cleaned monetary fields are DECIMAL(10, 2).
+- Validation 7 PASS: all three deduplicated-source totals equal their
+  cleaned totals. Matched-project totals plus orphan totals equal
+  full cleaned totals. All cleaning and split differences are 0.00.
+
+| Monetary field | Source total | Cleaned total | Matched total | Orphan total |
+| --- | ---: | ---: | ---: | ---: |
+| Original budget | 116164328.00 | 116164328.00 | 116122328.00 | 42000.00 |
+| Approved budget change | 3368833.67 | 3368833.67 | 3368833.67 | 0.00 |
+| Revised budget | 119564833.67 | 119564833.67 | 119522833.67 | 42000.00 |
+
+The original-budget total excludes the known NULL; reconciliation
+does not resolve that missing amount.
+
+Saved-view verification PASS: 673 rows and 673 distinct budget_line_id
+values returned from `construction.cleaned_project_budgets`.
+
+
 ### Cost Transactions
 
 Standalone and required transaction-relationship profiling is complete.
@@ -217,7 +289,12 @@ Key results:
 * After applying documented corrections, zero transaction project/category
   pairs remain unmatched.
 
-Payment-status results after standardization:
+Payment-status profiling results after standardization, before deduplication:
+
+These counts total 11204 and include the known duplicate. The monetary
+figures below, including the reporting-treatment figures, are profiling
+references rather than final cleaned reporting totals. Recalculate them
+from deduplicated transactions during cleaned-layer validation.
 
 * `paid`: 8,586 transactions totaling $67,763,269.51
 * `approved`: 1,635 transactions totaling $12,725,390.85
@@ -247,7 +324,43 @@ Confirmed cleaning rules:
   * `Sub-Contractor` → `Subcontractors`
   * `materials ` → `Materials`
 * Standardize payment statuses with `LOWER(TRIM(payment_status))`.
-* Preserve negative applied credits.
+
+#### Cleaning Implementation
+
+Cleaning is in progress in `sql/09_cost_transactions_cleaned.sql`.
+Purpose, grain, cleaning rules, exception handling, reporting treatment,
+and expected results have been documented.
+
+Implemented so far:
+
+- Deduplication using SELECT DISTINCT while preserving raw columns.
+- `project_id_clean` with transaction-specific corrections:
+  - TX000316 → P003.
+  - TX000729 → P007.
+  - All other project IDs remain unchanged.
+- `project_id_corrected_flag` identifying the two specified transactions.
+- Category cleaning inspected separately:
+  - Sub-Contractor → Subcontractors.
+  - materials with trailing whitespace → Materials.
+
+Category cleaning still needs integration with the other transformations.
+Amount cleaning and payment-status standardization remain pending.
+No reusable cleaned-cost-transactions view has been created.
+
+#### Cleaned-Layer Validation
+
+- Deduplication PASS: 11203 rows and 11203 distinct transaction_id values.
+- Project-ID correction check PASS:
+  - TX000316 retains raw NULL and produces cleaned P003.
+  - TX000729 retains raw P998 and produces cleaned P007.
+- Correction flag visually inspected; exact counts of 2 TRUE and
+  11201 FALSE remain to be validated.
+- Category mappings visually inspected; full category validation remains
+  pending.
+- Monetary conversions, credit preservation, standardized payment
+  statuses, project/category relationships, and deduplicated reporting
+  totals remain to be validated.
+
 
 ### Labor Entries
 
@@ -1203,38 +1316,41 @@ No planned change-order profiling checks remain.
 
 ## Remaining Project Work
 
-1. Begin project_budgets cleaning using the documented rules.
-2. Implement cleaning for cost transactions, labor entries, project
-   updates, and change orders.
-3. Validate each remaining cleaned dataset's counts, identifiers, types,
-   relationships, exceptions, and monetary totals before saving its
-   reusable output.
-4. Build project-level analytical outputs as of June 30, 2026.
-5. Build an Excel budget-versus-actual report once its required cleaned
-   inputs are ready.
+1. Complete cost-transactions amount cleaning, payment-status
+   standardization, and the combined transformations and flags.
+2. Validate cleaned cost transactions, including counts, identifiers,
+   types, corrections, credits, relationships, and deduplicated totals.
+   Save and verify the reusable view.
+3. Build the first Excel budget-versus-actual report using cleaned
+   projects, budgets, and cost transactions. Do not wait for all
+   remaining datasets.
+4. Implement and validate cleaning for labor entries, project updates,
+   and change orders; save and verify their reusable outputs.
+5. Complete project-level analytical outputs as of June 30, 2026.
 6. Develop profitability, change-order-exposure, and schedule-risk
    metrics, Power BI visuals, and an executive summary.
 7. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
-Begin `sql/08_project_budgets_cleaned.sql`.
-The file has not yet been created.
+Begin Cleaning Step 4 in `sql/09_cost_transactions_cleaned.sql`.
 
-1. Review Project Budgets → Confirmed cleaning rules.
-2. Explain the expected grain and write the purpose, cleaning rules,
-   exception handling, and expected results before SQL.
-3. Account for the BUD-P031-01 duplicate, category mappings, monetary
-   conversions, and BUD-P057-04's missing original budget.
-4. Preserve BUD-P997-01 and P997, flag the orphan, avoid unsupported
-   replacement IDs, and reconcile its budget separately.
-5. Attempt the first cleaning step and review its result before continuing.
+1. Write the purpose and expected results for amount cleaning.
+2. Attempt an expression that removes dollar signs and commas from
+   amount, then uses TRY_CAST to convert it to DECIMAL(10, 2).
+3. Preserve raw amount and name the new field amount_clean.
+4. Preserve negative credits.
+5. Standardize payment_status using LOWER(TRIM(payment_status)).
+6. Combine deduplication, project-ID corrections, the correction flag,
+   category cleaning, amount conversion, and status standardization.
+7. Validate before creating the reusable cost-transactions view.
 
-Finish transformations and exception flags before final validation and
-saving the reusable budget output.
+Deduplication and the two project-ID corrections have been verified.
+The correction flag and category mappings were visually inspected;
+exact flag counts and full category validation remain pending.
 
-Continue in coaching mode: explain the reasoning, write comments first,
-attempt the SQL, and review each transformation before proceeding.
+Continue in coaching mode: explain the reasoning, write comments
+first, attempt the SQL, and use graduated hints when needed.
 
 Latest confirmed analysis commit:
 
@@ -1243,8 +1359,11 @@ Latest confirmed analysis commit:
 - Date: September 9, 2026
 - Successfully pushed to origin/main.
 
-The working tree was clean and main matched origin/main after the analysis
-push. This documentation update records that completed closeout.
+The working tree was confirmed clean immediately after that analysis
+push. A subsequent documentation commit/push was reported complete;
+its hash was not provided. No new commit or push has been performed
+during the September 11 closeout. Current working-tree status has
+not been verified.
 
 ## End-of-Session Update Routine
 
