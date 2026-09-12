@@ -3,6 +3,111 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 12, 2026
+
+### Work Completed
+
+- Completed cost-transactions cleaning in
+  `sql/09_cost_transactions_cleaned.sql`.
+- Removed currency formatting and converted amount to DECIMAL(10, 2),
+  preserving the raw amount and negative values.
+- Standardized payment statuses with LOWER(TRIM(payment_status)).
+- Combined deduplication, project-ID corrections, the correction flag,
+  category mappings, amount conversion, and status standardization.
+- Completed Validations 1–10 for the combined cleaned output.
+- Created `construction.cleaned_cost_transactions` as a reusable view.
+- Verified the saved view's row count and distinct transaction IDs.
+
+### Decisions and Reasoning
+
+- Preserve raw columns alongside cleaned values for traceability.
+- Use project_id_clean when joining transactions to cleaned projects.
+- Define incurred cost for this dataset as paid + approved + applied
+  credits; report pending transactions separately as pending exposure.
+- Preserve negative applied credits so they reduce incurred cost.
+- Calculate the full cleaned total using an unconditional SUM(amount_clean).
+  Filtering the reference total to expected statuses could hide omitted
+  amounts during reconciliation.
+- The reporting-split reconciliation checks that incurred cost and pending
+  exposure account for the full cleaned total. It does not independently
+  establish source completeness or prove all monetary conversions accurate.
+- Compare costs, progress, and forecasts as of the same reporting date
+  when building the analytical report.
+- Budget remaining is not estimated cost to complete.
+- Project updates contain estimated costs to complete and forecast
+  completion dates, but the dataset lacks dedicated commitment and
+  accrual records. Pending transactions do not replace those records.
+- Before combining labor and transaction costs, confirm whether labor
+  is already included to avoid double counting.
+- Begin Excel reporting with the cleaned projects, budgets, and cost
+  transactions; do not wait for all remaining datasets.
+
+### Key Results
+
+- Validation 1 PASS: 11203 rows and 11203 distinct transaction IDs.
+- Validation 2 PASS: only the two documented transactions are flagged:
+  - TX000316: raw project_id NULL → project_id_clean P003.
+  - TX000729: raw project_id P998 → project_id_clean P007.
+- Validation 3 PASS: correction flag counts are 2 TRUE and 11201 FALSE.
+- Validation 4 PASS: zero populated raw amounts became NULL during
+  conversion.
+- Validation 5: deduplicated payment-status counts reconcile to 11203:
+  - paid: 8585.
+  - approved: 1635.
+  - pending: 980.
+  - applied: 3.
+- Validation 6 PASS: cleaned category mappings inspected and confirmed.
+- Validation 7 PASS: all three applied credits retain -1800.00 in both
+  raw and cleaned amounts; total applied credits are -5400.00.
+- Validation 8 PASS: zero transactions have a cleaned project ID without
+  a match in construction.cleaned_projects.
+- Validation 9 PASS: cleaned totals by payment status:
+  - paid: 67748448.37.
+  - approved: 12725390.85.
+  - pending: 7961647.60.
+  - applied: -5400.00.
+- Validation 10 PASS:
+  - Full cleaned total: 88430086.82.
+  - Incurred cost: 80468439.22.
+  - Pending exposure: 7961647.60.
+  - Reconciliation difference: 0.00.
+- Saved view returns 11203 rows and 11203 distinct transaction IDs.
+
+### Verification and Closeout
+
+- Cleaning validations were executed and results reviewed during the session.
+- The saved cleaned-cost-transactions view was queried successfully.
+- The view preserves raw columns and adds project_id_clean,
+  project_id_corrected_flag, cost_category_clean, amount_clean,
+  and payment_status_clean.
+- The persistent view stores the query definition and still depends
+  on access to the source CSV.
+- Reported monetary totals cover the full cleaned transaction dataset;
+  reporting-cutoff treatment remains part of the analytical reporting step.
+- No Git commit or push has been performed during this closeout.
+- The previous session's commit was c62ce80; today's changes have not
+  yet been committed.
+
+### Next Session
+
+Begin the first Excel budget-versus-actual reporting output using the
+three saved cleaned views.
+
+Explain the report's purpose, intended row grain, June 30, 2026 cutoff,
+and calculation definitions in comments before writing SQL.
+
+Plan how budgets and transactions will be aggregated to the same grain
+before joining, so repeated rows do not inflate totals. Keep incurred
+cost and pending exposure separate, and account for the known orphan
+budget and missing original-budget value.
+
+Validate the reporting totals before exporting to Excel. Add progress
+and forecast context as the remaining cleaned datasets become available.
+
+Continue in coaching mode: explain reasoning, write comments first,
+and attempt the work before receiving a complete solution.
+
+
 ## September 11, 2026
 
 ### Work Completed
