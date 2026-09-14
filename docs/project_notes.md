@@ -3,6 +3,221 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 14, 2026
+
+### Work Completed
+
+- Completed the budget-versus-actual report logic in
+  `sql/10_budget_vs_actual_report.sql`.
+- Added budget_remaining as revised budget minus recorded incurred
+  cost, retaining zero-cost treatment for unmatched transaction groups.
+- Replaced separate budget-side and cost-side identity columns with
+  COALESCE expressions for project_id and cost_category.
+- Explicitly retained revised budget and both budget data-quality flags.
+- Added project_name from construction.cleaned_projects through a
+  LEFT JOIN, preserving all report rows, including orphan budgets.
+- Enforced the transaction cutoff inside cost_summary using
+  transaction_date <= DATE '2026-06-30'.
+- Documented the unverified effective date of the supplied budgets.
+- Added validation sections 5E–5H for excluded transactions, updated
+  report totals, duplicate project/category pairs, and flag counts.
+- Created construction.budget_vs_actual_report as a reusable view.
+- Verified the saved view's row count and three monetary totals.
+
+### Decisions and Reasoning
+
+- Budget remaining equals revised budget minus recorded incurred cost.
+  Pending exposure remains separate; budget remaining is not an
+  estimate of the cost to finish.
+- Use COALESCE to select the available budget-side or cost-side
+  identifier without losing the identity of unmatched report rows.
+- Keep the combined budget-and-cost report on the left side of the
+  project-context LEFT JOIN. Add matching project details without
+  dropping orphan rows or introducing projects with no report rows.
+- Apply the transaction cutoff before aggregating costs.
+- Check transactions after the cutoff and transactions with NULL dates
+  directly in the cleaned transaction source.
+- Use the supplied revised budgets. Neither the raw budget table nor
+  the cleaned budget view has an effective date or version history.
+  Budget validity as of June 30, 2026 remains unverified.
+- In a client engagement, request confirmation of the budget snapshot
+  or obtain the appropriate historical budget.
+- Pending exposure above budget remaining indicates a potential
+  category overrun if those pending costs become incurred. It does
+  not establish that the whole project is already over budget.
+- The saved view reruns its query against the underlying sources;
+  it is not a frozen snapshot.
+- Use the existing outputs folder for the upcoming CSV export.
+
+### Key Results
+
+- Report row count after adding project context: 673.
+- Duplicate project/category groups: 0.
+- Transactions after June 30, 2026 or with NULL dates: 0.
+  The cutoff excludes no transactions from the current dataset.
+- Revised budget total: 119564833.67, including orphan budgets.
+- Pending exposure total: 7961647.60.
+- Incurred cost total: 80468439.22.
+- All three updated-report totals match previously validated totals.
+- Flag counts:
+  - original_budget_missing_flag TRUE: 1.
+  - orphan_project_flag TRUE: 1.
+  - no_matching_transactions_flag TRUE: 97.
+- P053 / Labor: revised budget 379995.00, recorded incurred cost 0,
+  pending exposure 0, budget remaining 379995.00, and
+  no_matching_transactions_flag TRUE.
+- P053 / Permits & Fees: revised budget 62053.66, incurred cost
+  58844.78, and budget remaining 3208.88.
+  Pending exposure of 5718.64 would exceed the remaining category
+  budget by 2509.76 if all pending costs became incurred.
+- P997 / Labor remains in the report with project_name NULL,
+  revised budget and budget remaining 42000.00, and
+  orphan_project_flag TRUE.
+- Saved view row count: 673.
+- Saved view monetary totals match the validated report exactly.
+
+### Verification and Closeout
+
+- Checked budget_remaining on matched and budget-only rows.
+- Confirmed project names appear for matched projects and P997 remains
+  visible without matching project details.
+- Executed cutoff-exclusion, monetary-total, row-grain, and flag-count
+  checks; all returned the expected results.
+- Created the report view and independently queried its row count
+  and monetary totals.
+- Budget effective-date verification remains a documented limitation.
+- No CSV export or Excel workbook has been created.
+- Documentation and Git closeout are in progress.
+- No September 14 commit or push has been confirmed yet.
+- Latest confirmed prior commit:
+  c43410a, "Complete cost transaction cleaning and validated DuckDB view".
+
+### Next Session
+
+Begin Section 6 of `sql/10_budget_vs_actual_report.sql` for CSV export.
+
+Write the export purpose comment, then export the validated
+construction.budget_vs_actual_report view with column headers to:
+
+outputs/budget_vs_actual_2026-06-30.csv
+
+Verify the exported row count and monetary totals, then begin the
+Excel budget-versus-actual report. Carry the budget-date limitation
+and recorded-cost definitions into the report documentation.
+
+Continue in coaching mode: reasoning and comments first, followed
+by the user's attempt. Work one section, one change, and one check
+at a time, with exact insertion or replacement instructions.
+
+## September 13, 2026
+
+### Work Completed
+
+- Began `sql/10_budget_vs_actual_report.sql` for the first Excel
+  budget-versus-actual report.
+- Defined the purpose, project/category row grain, intended June 30,
+  2026 reporting cutoff, and financial reporting rules.
+- Aggregated cleaned budgets and transactions separately to the same
+  grain before joining.
+- Preserved missing-original-budget and orphan-project flags using
+  BOOL_OR().
+- Combined budget_summary and cost_summary CTEs with a FULL OUTER JOIN
+  on project ID and cleaned cost category.
+- Validated matching coverage and monetary totals after joining.
+- Added CASE expressions to display zero recorded incurred cost and
+  pending exposure when no transaction group matches.
+- Added no_matching_transactions_flag.
+- Organized the SQL file into five clearly labeled sections:
+  definitions, standalone budget summary, standalone cost summary,
+  report query, and inspection/validation.
+- Removed decorative divider lines for readability.
+
+### Decisions and Reasoning
+
+- One report row represents one project and cost category, allowing
+  category overruns to remain visible within a project's total.
+- Aggregate each dataset before joining to prevent repeated amounts.
+- Match budget project_id to transaction project_id_clean and match
+  cost_category_clean on both sides.
+- Use a FULL OUTER JOIN to retain budget-only and cost-only groups.
+- Use BOOL_OR() to preserve a TRUE flag when any budget line in the
+  group has the flagged condition.
+- Retain P057 Equipment's reported revised budget of 31672.00.
+  Its original budget remains NULL; the original-plus-change
+  calculation cannot be verified.
+- Retain and flag P997's orphan budget of 42000.00.
+- No matching transactions means no recorded costs for that
+  project/category in the supplied transaction data. It does not
+  establish why transactions are absent or prove no spending occurred.
+- Display zero recorded costs only when the transaction group is
+  absent; do not generally replace unknown monetary amounts with zero.
+- Budget remaining will equal revised budget minus recorded incurred
+  cost. Pending exposure remains separate.
+- Budget remaining is not estimated cost to complete.
+- Join reconciliation verifies preservation of supplied amounts,
+  not completeness of all real-world expenses.
+
+### Key Results
+
+- Budget summary: 673 project/category groups.
+- Transaction-cost summary: 576 project/category groups.
+- FULL OUTER JOIN: 673 rows.
+- Matched groups: 576.
+- Budget-only groups: 97.
+- Cost-only groups: 0.
+- Incurred cost after joining: 80468439.22.
+- Pending exposure after joining: 7961647.60.
+- Both transaction totals match the previously validated totals.
+- Revised budget before and after joining: 119564833.67.
+- Revised-budget reconciliation difference: 0.00.
+- P057 / Equipment retains revised budget 31672.00 and a TRUE
+  original_budget_missing_flag.
+- P997 / Labor retains revised budget 42000.00 and a TRUE
+  orphan_project_flag.
+- Inspected P053 / Labor after adding the no-match treatment:
+  revised budget 379995.00, recorded incurred cost 0,
+  pending exposure 0, and no_matching_transactions_flag TRUE.
+
+### Verification and Closeout
+
+- Standalone summaries, join coverage checks, and monetary
+  reconciliations were executed and results reviewed.
+- The no-match CASE expressions and flag were executed and a
+  budget-only row was inspected.
+- Full flag-count and monetary validation of the final report output
+  remains outstanding.
+- Current totals cover the full cleaned datasets; June 30 cutoff
+  handling has not yet been verified for the report.
+- Budget remaining has been defined but not added to the SQL output.
+- The report still includes separate budget-side and cost-side keys.
+- construction.cleaned_projects has not yet been joined to the report.
+- No reusable report view or Excel export has been created.
+- No Git commit or push was performed during this session.
+- Latest confirmed prior commit from the September 12 handoff:
+  c43410a, "Complete cost transaction cleaning and validated DuckDB view".
+  Current working-tree status has not been checked.
+
+### Next Session
+
+Resume Section 4 of `sql/10_budget_vs_actual_report.sql`.
+
+First, review the existing final SELECT and explain how the CASE
+expressions handle budget-only rows. Then attempt the budget_remaining
+expression using revised budget minus the same recorded-incurred-cost
+logic, so an absent transaction group does not produce a NULL result.
+
+Continue by completing the report columns, preserving flags and orphan
+records, verifying reporting-cutoff treatment, and adding project
+context from construction.cleaned_projects with join validation.
+
+Validate the completed report's grain, flags, and totals before saving
+a reusable view and exporting to Excel.
+
+Continue in coaching mode: comments and reasoning first, followed by
+the user's attempt. Identify the exact section and block for every
+edit, and explicitly state whether to replace existing code or add
+new code.
+
 ## September 12, 2026
 
 ### Work Completed

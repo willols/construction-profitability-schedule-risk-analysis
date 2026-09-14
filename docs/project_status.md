@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: September 12, 2026
+Last updated: September 14, 2026
 
 ## Current Phase
 
@@ -22,7 +22,7 @@ The following reusable views are saved in `construction.duckdb`:
 - `construction.cleaned_cost_transactions`: 11203 rows and 11203
   distinct transaction IDs.
 
-The views preserve raw columns and expose cleaned values and exception
+These views preserve raw columns and expose cleaned values and exception
 flags. They store query definitions and depend on access to the source
 CSVs. Saved-view row counts and identifier counts have been verified.
 
@@ -30,16 +30,75 @@ Cost-transactions Validations 1–10 are complete. Incurred cost is
 80468439.22 and pending exposure is 7961647.60. Together they reconcile
 to the full cleaned total of 88430086.82, with a difference of 0.00.
 
-The next task is to define and build the first Excel budget-versus-actual
-report using these three cleaned views. No cleaned CSV or Excel report
-has been exported.
+### First Budget-Versus-Actual Report
+
+Report SQL is complete in `sql/10_budget_vs_actual_report.sql`.
+The reusable view `construction.budget_vs_actual_report` is saved
+in construction.duckdb and has been verified.
+
+The report compares supplied revised budgets with recorded incurred
+cost and pending exposure at one row per project and cost category.
+
+Completed:
+
+- Aggregated budgets and costs separately before a FULL OUTER JOIN.
+- Used COALESCE to produce one project ID and cost category.
+- Preserved missing-original-budget and orphan-project flags.
+- Displayed zero recorded costs when no transaction group matches,
+  with a separate no_matching_transactions_flag.
+- Calculated budget_remaining as revised budget minus recorded
+  incurred cost; pending exposure remains separate.
+- Added project_name through a LEFT JOIN to cleaned_projects,
+  retaining orphan report rows.
+- Enforced transaction_date <= DATE '2026-06-30' before aggregation.
+- Documented the unverified effective date of the supplied budgets.
+- Validated report totals, unique project/category pairs, flag counts,
+  selected exception rows, and budget-remaining calculations.
+- Created the reusable report view and verified its row count and totals.
+
+Confirmed results:
+
+- Budget groups: 673.
+- Cost groups: 576.
+- Report rows: 673.
+- Matched groups: 576.
+- Budget-only groups: 97.
+- Cost-only groups: 0.
+- Duplicate project/category groups: 0.
+- Transactions after the cutoff or with NULL dates: 0.
+- Missing-original-budget flag TRUE: 1.
+- Orphan-project flag TRUE: 1.
+- No-matching-transactions flag TRUE: 97.
+
+Confirmed report and saved-view monetary totals:
+
+- Revised budget: 119564833.67.
+- Pending exposure: 7961647.60.
+- Incurred cost: 80468439.22.
+- All three match the previously validated totals.
+
+P053 Labor retains revised budget and budget remaining of 379995.00,
+zero recorded costs, and no_matching_transactions_flag TRUE.
+
+P997 Labor remains visible with project_name NULL, revised budget and
+budget remaining of 42000.00, and orphan_project_flag TRUE.
+
+Zero recorded costs do not prove no real spending occurred.
+Reconciliation establishes preservation of supplied amounts, not
+source completeness. Budget remaining is not estimated cost to complete.
+
+The budget source has no effective date or version history.
+Its validity as of June 30, 2026 remains unverified.
+
+The report view stores a query definition, not a frozen snapshot.
+No CSV export or Excel workbook has been created.
 
 Labor entries, project updates, and change orders still require cleaning
 implementation.
 
-Latest confirmed commit: c62ce80, pushed September 11.
-No new commit or push has been performed during the September 12 closeout.
-
+Latest confirmed commit: c43410a, pushed September 12.
+September 14 documentation and Git closeout are in progress.
+No new commit or push has been confirmed; working-tree status is unchecked.
 
 ## Profiling File Structure
 
@@ -68,6 +127,13 @@ The reporting cutoff is June 30, 2026, inclusive.
   from cutoff-based calculations.
 * Future planned and forecast dates remain because they support schedule-risk
   analysis.
+* The budget-versus-actual view now enforces the transaction cutoff before
+  cost aggregation. Validation found zero transactions after June 30, 2026
+  or with NULL transaction dates.
+* The report uses supplied revised budgets. Neither the raw budget table
+  nor its cleaned view includes an effective date or version history.
+* Budget validity at the reporting cutoff remains unverified and is
+  documented as a reporting limitation.
 
 ## Dataset Status
 
@@ -410,10 +476,19 @@ Saved-view verification PASS: 11203 rows and 11203 distinct
 transaction IDs returned directly from
 `construction.cleaned_cost_transactions`.
 
-Project/category budget matching was established during profiling.
-The reporting query still needs validation at its chosen join grain.
+Project/category budget matching was revalidated in
+`sql/10_budget_vs_actual_report.sql` on September 13.
 
+All 576 aggregated transaction groups matched budget groups.
+The FULL OUTER JOIN retained 673 rows, including 97 budget-only groups,
+with zero cost-only groups. Incurred cost, pending exposure, and revised
+budget totals were preserved after joining.
 
+Final report validation was completed on September 14 after adding
+output columns, project context, and the transaction cutoff.
+The report retained 673 unique project/category rows and all three
+monetary totals. The saved construction.budget_vs_actual_report view
+also returned 673 rows and matching monetary totals.
 
 ### Labor Entries
 
@@ -1371,11 +1446,15 @@ No planned change-order profiling checks remain.
 
 ### Analytical Reporting
 
-- Define the first report's row grain and aggregate budgets and costs
-  to that grain before joining.
-- Apply the June 30, 2026 reporting cutoff explicitly.
-- Account for the orphan budget separately and disclose the missing
-  original-budget amount.
+- Export the validated construction.budget_vs_actual_report view to CSV
+  and build the first Excel budget-versus-actual report.
+- Verify exported row counts and monetary totals.
+- Carry financial definitions, data-quality flags, and the budget-date
+  limitation into the Excel report.
+- Confirm whether the supplied revised budgets were valid on June 30,
+  2026; retain the documented limitation until confirmed.
+- Keep P997's orphan budget visible and separately accounted for in
+  project-level reporting.
 - Confirm whether transaction costs already include labor before
   adding costs from labor_entries.
 - Align costs, progress, and forecasts to the same reporting date.
@@ -1385,12 +1464,10 @@ No planned change-order profiling checks remain.
   Pending transactions do not substitute for those records.
 - Keep budget remaining distinct from estimated cost to complete.
 
-
 ## Remaining Project Work
 
-1. Define and build the first Excel budget-versus-actual report using
-   cleaned projects, budgets, and cost transactions. Validate the
-   reporting grain, cutoff, joins, and totals before export.
+1. Export the validated budget-versus-actual view to CSV, verify the
+   exported data, and build the first Excel report.
 2. Implement and validate cleaning for labor entries, project updates,
    and change orders; save and verify their reusable outputs.
 3. Extend project-level analytical outputs as of June 30, 2026 with
@@ -1401,38 +1478,44 @@ No planned change-order profiling checks remain.
 
 ## Exact Next Task
 
-Begin the first Excel budget-versus-actual reporting output.
+Begin Section 6: EXPORT FOR EXCEL at the bottom of
+`sql/10_budget_vs_actual_report.sql`, after the validation checks.
 
-1. Explain the report's purpose and intended row grain.
-2. Write comments defining the June 30, 2026 cutoff, revised budget,
-   incurred cost, pending exposure, and budget remaining.
-3. Plan how to aggregate budgets and transactions to the same grain
-   before joining, preventing repeated rows from inflating amounts.
-4. Use the saved cleaned views and cleaned join fields.
-5. Account for the orphan budget and preserve the known missing
-   original-budget value.
-6. Attempt the reporting SQL and validate its totals before exporting
-   to Excel.
+1. Write a comment explaining the export's purpose.
+2. Export construction.budget_vs_actual_report to CSV with column headers.
+3. Use the existing outputs folder and the planned filename:
+   outputs/budget_vs_actual_2026-06-30.csv
+4. Verify 673 exported data rows and these monetary totals:
+   revised budget 119564833.67, pending exposure 7961647.60,
+   incurred cost 80468439.22.
+5. Begin the Excel report, preserving the documented definitions
+   and budget-date limitation.
 
-Do not wait for the remaining datasets to begin the first report.
-Progress and forecast context will extend it as those cleaned
-datasets become available.
+Reconnect to construction.duckdb in VS Code if required:
 
-Continue in coaching mode: explain the reasoning, write comments
-first, attempt the SQL, and use graduated hints when needed.
+ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
+USE construction;
+
+Continue in coaching mode: explain reasoning, write comments first,
+attempt the SQL, and use graduated hints when needed. Work one section,
+one change, and one check at a time. Identify exact insertion or
+replacement locations.
+
+### Git Status
 
 Latest confirmed commit:
 
-- Commit: c62ce80
-- Message: Complete budget cleaning and begin cost transaction cleaning
-- Date: September 11, 2026
+- Commit: c43410a.
+- Message: Complete cost transaction cleaning and validated DuckDB view.
+- Date: September 12, 2026.
 - Successfully pushed to origin/main.
 
-The working tree was confirmed clean and main matched origin/main
-after the September 11 push. Today's cost-transactions work and
-documentation updates have not yet been committed or pushed.
-Current working-tree status has not been verified during this closeout.
+The working tree was confirmed clean after that push.
+No September 13 or September 14 commit or push has been confirmed.
 
+September 14 closeout is in progress. Review working-tree changes,
+finish documentation updates, then commit and push the report SQL
+and documentation. Update this section after successful Git closeout.
 
 ## End-of-Session Update Routine
 
