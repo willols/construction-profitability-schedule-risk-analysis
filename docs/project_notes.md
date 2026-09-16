@@ -3,6 +3,258 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 16, 2026
+
+### Work Completed
+
+- Reviewed the Excel workbook's Report Notes and Project Summary
+  layout, including wrapping and row heights.
+- Added workbook notes explaining:
+  - P997 has no matching master project record, but its 42000.00
+    revised budget remains included in report totals.
+  - BUD-P057-04's missing original budget remains NULL and must
+    not be interpreted as zero.
+  - Zero recorded costs do not prove that no spending occurred.
+- Added an explicit P997 exception note above the Project Summary
+  PivotTable without changing its values.
+- Confirmed the workbook's saved indicator.
+- Downloaded the workbook into
+  `outputs/budget_vs_actual_2026-06-30.xlsx`.
+- Replaced the downloaded copy after adding the Project Summary note.
+- Reviewed the SQL diff and confirmed the exported-CSV validation
+  query follows COPY in Section 6.
+- Reviewed the September 15 documentation changes.
+- Began `sql/11_labor_entries_cleaned.sql`, following the structure
+  of `sql/09_cost_transactions_cleaned.sql`.
+- Prepared opening comments covering purpose, grain, cleaning rules,
+  exception handling, reporting treatment, and expected results.
+- Implemented individual labor cleaning steps 1–5:
+  - Remove exact duplicate rows.
+  - Convert work_date using standard DATE parsing and an M/D/YYYY fallback.
+  - Convert regular_hours to DECIMAL(10,4).
+  - Convert overtime_hours to DECIMAL(10,2).
+  - Convert hourly_rate to DECIMAL(10,2), fill TE001843's missing
+    rate with 38.96, and add hourly_rate_derived_flag.
+
+### Decisions and Reasoning
+
+- Follow the existing cost-transactions cleaning-file structure:
+  opening documentation, database connection, individual cleaning
+  steps, combined transformations, validations, saved view,
+  and saved-view verification.
+- During individual cleaning steps, spot-check affected records.
+  Reserve full-dataset checks for the validations section.
+- Use DECIMAL(10,4) for regular_hours_clean.
+- Use DECIMAL(10,2) for overtime_hours_clean, hourly_rate_clean,
+  and labor_cost_clean.
+- These types accommodate the profiled ranges and decimal places;
+  full value-preservation checks remain pending.
+- Preserve raw source fields and add separate cleaned fields.
+- Fill the missing hourly rate only where time_entry_id is
+  TE001843 and the raw hourly_rate is NULL.
+- Flag the filled hourly rate as formula-derived, not source-confirmed.
+- The labor row grain is one unique time_entry_id after exact
+  duplicate removal. Project IDs and trades can repeat.
+- The reporting period represented by each labor entry remains unknown.
+- Clarified the current Excel report's source relationships:
+  - Projects supplies project identity and names.
+  - Project budgets supplies revised budgets by project and category.
+  - Cost transactions supplies incurred cost and pending exposure.
+- Incurred cost includes paid, approved, and applied transactions
+  through June 30, 2026. Pending transactions remain separate.
+- Labor-category transactions are already included where eligible.
+  Costs from labor_entries have not been added separately.
+- Investigate overlap between labor entries and cost transactions
+  before combining their costs to avoid double counting.
+- Change-order amounts have not been added separately. Their
+  relationship to supplied revised budgets still needs reconciliation.
+- Cleaning labor entries does not change the existing Excel report.
+- Keep documentation updates and Git closeout for the end of the
+  portfolio block.
+
+### Key Results
+
+- Cleaning step 1 returned 18003 rows and 18003 distinct time_entry_id
+  values after exact duplicate removal.
+- Cleaning step 2 retained 18003 rows.
+- Date spot-check: TE002542's raw 5/19/2023 converted to May 19, 2023.
+  The results viewer displayed 2023-05-19T00:00:00.000Z.
+- Regular-hours spot-check: TE016347 retained 16.5592.
+- Overtime-hours spot-check: TE000119 retained 5.03.
+- Hourly-rate spot-check: TE001843 retained raw NULL, received
+  hourly_rate_clean of 38.96, and returned TRUE for
+  hourly_rate_derived_flag.
+
+### Verification and Closeout
+
+- Workbook layout and exception-note closeout are complete,
+  including the updated local .xlsx copy.
+- CSV validation-query placement after COPY is confirmed.
+- These confirmations supersede the corresponding pending items
+  in the September 15 entry.
+- Labor deduplication counts passed.
+- Cleaning steps 2–5 passed the documented spot-checks only;
+  full-dataset validations have not yet been performed.
+- Labor transformations have not yet been combined into a final query.
+- No reusable cleaned_labor_entries view has been created.
+- Cleaning step 6 has not started.
+- Final documentation updates, output-file review, and Git closeout
+  remain in progress.
+- No new commit or push has been confirmed for the September 15–16 work.
+
+### Next Session
+
+Begin Cleaning step 6 in `sql/11_labor_entries_cleaned.sql`:
+preserve raw labor_cost and add labor_cost_clean using DECIMAL(10,2).
+
+Keep recorded labor costs unchanged, including the documented
+one-cent differences and TE003191's unexplained 125.00 difference.
+Add the required exception flag in a later step.
+
+Continue the remaining documented transformations and flags,
+then combine them, perform full validations, and create and
+verify the reusable cleaned view.
+
+Continue in coaching mode: reasoning and comments first, followed
+by the user's attempt. Follow the cost-transactions file structure
+and work one step at a time.
+
+
+## September 15, 2026
+
+### Work Completed
+
+- Added Section 6: EXPORT FOR EXCEL to
+  `sql/10_budget_vs_actual_report.sql`.
+- Exported construction.budget_vs_actual_report with column headers to
+  `outputs/budget_vs_actual_2026-06-30.csv`.
+- Confirmed the CSV appeared in the repository's outputs folder.
+- Queried the exported CSV with read_csv_auto() to validate its
+  revised budget, incurred cost, and pending exposure totals.
+- Opened the CSV in Excel for the web and converted it into an
+  editable Excel workbook.
+- Confirmed 673 data rows plus one header row.
+- Independently checked all three monetary totals using Excel SUM formulas.
+- Created an Excel Table covering A1:J674 on the Budget vs Actual sheet.
+- Added labeled import-validation totals outside the table.
+- Practiced filtering negative budget remaining and sorting category
+  overruns from most negative upward.
+- Applied comma formatting with two decimal places to monetary columns.
+- Applied conditional formatting to I2:I674 to highlight budget
+  remaining below zero.
+- Created a Project Summary PivotTable grouped by project_id, with
+  sums of revised_budget, incurred_cost, pending_exposure, and
+  budget_remaining.
+- Checked the PivotTable's first three monetary grand totals against
+  the validated report.
+- Added a project-summary title and a separate Report Notes sheet.
+- Documented budget remaining, pending exposure treatment, and the
+  budget effective-date limitation.
+
+### Decisions and Reasoning
+
+- Use free Excel for the web on Mac for the initial workbook.
+- DuckDB executes the SQL; the VS Code DuckDB extension provides the
+  interface for running statements and viewing results.
+- Export the validated saved view rather than rebuilding report logic
+  in Excel.
+- A CSV contains exported values and headers. The Excel workbook
+  supports formatting, multiple worksheets, and PivotTables.
+- CSV type inference can produce floating-point totals with tiny
+  trailing differences. The exported totals matched to the cent.
+- Excel number formatting changes display, not underlying values.
+  Dashes can represent zero, and parentheses can represent negatives.
+- Apply monetary formatting with filters cleared so previously hidden
+  rows receive consistent formatting.
+- PivotTables group category rows by project_id and sum their amounts,
+  serving a similar purpose to SQL GROUP BY.
+- A category overrun does not establish a project-level overrun;
+  other categories may have positive remaining balances.
+- Budget remaining equals revised budget minus recorded incurred cost.
+  Pending exposure is neither included in incurred cost nor deducted
+  from budget remaining.
+- A positive remaining budget does not establish that a project will
+  finish within budget. That requires an estimate of remaining costs.
+- Dividing budget remaining by revised budget gives the remaining
+  budget proportion. A negative result indicates incurred costs
+  exceed budget when the revised budget is positive.
+- When using Excel Percentage formatting, do not also multiply the
+  formula by 100.
+- Keep long report notes on a separate worksheet because wrapped text
+  increases row height across the entire worksheet.
+- Supplied revised budgets remain unverified as of June 30, 2026
+  because the budget source lacks effective dates and version history.
+
+### Key Results
+
+- Exported CSV: 673 data rows and 10 columns.
+- Excel data ends at row 674, including the header row.
+- Exported CSV totals matched the validated view to the cent.
+- Excel SUM formulas and PivotTable grand totals matched:
+  - Revised budget: 119564833.67.
+  - Incurred cost: 80468439.22.
+  - Pending exposure: 7961647.60.
+- P042 / Permits & Fees has budget remaining of -3548.72.
+- P007 / Materials had the most negative category budget remaining
+  in the filtered and sorted report:
+  - Revised budget: 612380.57.
+  - Incurred cost: 732358.26.
+  - Budget remaining: -119977.69.
+  - Budget remaining percentage: approximately -19.59%, equivalent
+    to incurred costs being 19.59% over the category budget.
+- P007 project totals:
+  - Revised budget: 2165501.79.
+  - Incurred cost: 1828939.47.
+  - Pending exposure: 88843.95.
+  - Budget remaining: 336562.32.
+- P007's positive overall remaining budget offsets its category
+  overruns but does not establish sufficient budget to finish.
+
+### Verification and Closeout
+
+- Confirmed the export location, CSV row count, and monetary totals.
+- Independently reconciled the Excel import and PivotTable totals.
+- Confirmed the negative-budget conditional-formatting rule applies
+  to I2:I674.
+- Confirmed comma formatting reached a previously hidden row after
+  clearing the filter and reapplying formatting.
+- Workbook contains Budget vs Actual, Project Summary, and
+  Report Notes worksheets.
+- Report Notes layout cleanup and restoration of Project Summary
+  row heights still need a final visual check.
+- Final workbook save and download of an .xlsx copy into the
+  repository's outputs folder have not yet been confirmed.
+- Placement of the CSV validation query after COPY, under the
+  suggested Section 6A heading, needs confirmation.
+- September 15 Git review, commit, and push remain pending.
+- September 14 closeout was confirmed in the session handoff:
+  d4989d0, "Complete and validate budget-versus-actual report view",
+  committed and pushed to origin/main with a clean working tree.
+  This supersedes the pending-closeout statements in the
+  September 14 entry.
+
+### Next Session
+
+Finish workbook layout and save verification before adding analysis.
+
+Check that Report Notes column A is wide enough, all note text is
+visible, and Project Summary rows 2–4 have appropriate heights.
+
+Document the retained orphan budget, missing-original-budget flag,
+and meaning of zero recorded costs in the workbook. Ensure P997
+is identifiable as an orphan in the project summary before treating
+all summary rows as confirmed projects.
+
+Confirm the CSV validation query follows the export statement.
+Confirm the workbook is saved and download an .xlsx copy into outputs.
+
+Review the project changes, update project_status.md, and complete
+Git closeout.
+
+Continue in coaching mode: reasoning and comments first, followed
+by the user's attempt. Work one section, one change, and one check
+at a time.
+
 ## September 14, 2026
 
 ### Work Completed

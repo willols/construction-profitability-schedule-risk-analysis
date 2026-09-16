@@ -1,0 +1,674 @@
+project_id,project_name,cost_category,revised_budget,original_budget_missing_flag,orphan_project_flag,pending_exposure,incurred_cost,budget_remaining,no_matching_transactions_flag
+P007,Wasatch Renovation 07,Other,43310.04,false,false,3365.48,44979.64,-1669.60,false
+P015,Juniper Residences 15,Permits & Fees,41794.81,false,false,0.00,45901.82,-4107.01,false
+P026,Granite Commons 26,Subcontractors,820490.49,false,false,55238.98,747150.17,73340.32,false
+P028,Copper Office 28,Equipment,9318.57,false,false,515.30,9131.95,186.62,false
+P028,Copper Office 28,General Conditions,20748.28,false,false,2247.20,18304.56,2443.72,false
+P029,Copper Center 29,Subcontractors,264269.10,false,false,38794.69,232338.22,31930.88,false
+P031,Summit Lodge 31,Subcontractors,164610.00,false,false,23517.41,157977.99,6632.01,false
+P033,Bonneville Retail 33,Subcontractors,238140.00,false,false,0.00,232077.93,6062.07,false
+P035,Aspen Office 35,Permits & Fees,41676.00,false,false,746.47,41166.17,509.83,false
+P041,Canyon Office 41,Subcontractors,462561.19,false,false,41864.01,437965.70,24595.49,false
+P042,Juniper Residences 42,Materials,503890.31,false,false,28596.83,552811.92,-48921.61,false
+P043,Granite Medical 43,Equipment,46094.36,false,false,0.00,46541.32,-446.96,false
+P043,Granite Medical 43,General Conditions,73786.27,false,false,0.00,79383.99,-5597.72,false
+P049,Wasatch Commons 49,Subcontractors,323548.42,false,false,31859.71,325202.10,-1653.68,false
+P051,Aspen Retail 51,Equipment,17128.00,false,false,0.00,17060.41,67.59,false
+P051,Aspen Retail 51,General Conditions,38538.00,false,false,0.00,40102.79,-1564.79,false
+P055,Canyon Lodge 55,Materials,305832.00,false,false,0.00,343817.66,-37985.66,false
+P056,Wasatch Office 56,General Conditions,31842.56,false,false,6031.41,23806.79,8035.77,false
+P057,Juniper Commons 57,Other,23754.00,false,false,1212.19,22085.57,1668.43,false
+P062,Granite Residences 62,Permits & Fees,138478.81,false,false,8545.13,154137.57,-15658.76,false
+P069,Bonneville Retail 69,Equipment,34658.32,false,false,820.52,35943.21,-1284.89,false
+P072,Aspen Office 72,Other,20855.95,false,false,2301.03,18142.15,2713.80,false
+P092,Copper Retail 92,Other,24326.56,false,false,1831.67,19099.17,5227.39,false
+P094,Copper Commons 94,Materials,533977.98,false,false,0.00,277083.35,256894.63,false
+P020,Wasatch Commons 20,Permits & Fees,21900.28,false,false,461.80,21513.04,387.24,false
+P021,Copper Center 21,Permits & Fees,59570.60,false,false,10074.37,52652.49,6918.11,false
+P056,Wasatch Office 56,Equipment,14243.34,false,false,878.48,12785.66,1457.68,false
+P060,Canyon Retail 60,General Conditions,96862.42,false,false,2610.80,93392.09,3470.33,false
+P065,Aspen Lodge 65,Materials,162864.00,false,false,7911.78,162401.98,462.02,false
+P069,Bonneville Retail 69,General Conditions,55392.54,false,false,3470.37,55820.47,-427.93,false
+P093,Granite Office 93,Materials,712791.00,false,false,48861.70,517322.37,195468.63,false
+P073,Canyon Commons 73,Other,56589.00,false,false,367.97,64404.93,-7815.93,false
+P060,Canyon Retail 60,Equipment,68913.45,false,false,5038.63,63984.82,4928.63,false
+P067,Copper Office 67,Other,17629.25,false,false,1002.59,15807.95,1821.30,false
+P044,Copper Medical 44,Subcontractors,128912.00,false,false,8296.68,128464.46,447.54,false
+P016,Wasatch Lodge 16,Subcontractors,141399.60,false,false,14614.96,139662.72,1736.88,false
+P004,Juniper Medical 04,Equipment,36525.69,false,false,850.30,35997.90,527.79,false
+P004,Juniper Medical 04,General Conditions,81190.15,false,false,4882.14,74625.37,6564.78,false
+P013,Aspen Renovation 13,Equipment,88696.00,false,false,4220.32,83152.82,5543.18,false
+P013,Aspen Renovation 13,General Conditions,155218.00,false,false,13243.15,160742.62,-5524.62,false
+P021,Copper Center 21,Subcontractors,433132.56,false,false,104465.38,389688.63,43443.93,false
+P024,Aspen Retail 24,Equipment,47053.07,false,false,14002.00,32820.39,14232.68,false
+P024,Aspen Retail 24,General Conditions,104744.12,false,false,5203.96,104693.45,50.67,false
+P026,Granite Commons 26,Permits & Fees,89576.07,false,false,6900.80,79592.18,9983.89,false
+P029,Copper Center 29,Permits & Fees,52423.64,false,false,0.00,58222.64,-5799.00,false
+P035,Aspen Office 35,Subcontractors,322989.00,false,false,19831.34,323908.29,-919.29,false
+P041,Canyon Office 41,Permits & Fees,87952.68,false,false,0.00,91326.07,-3373.39,false
+P042,Juniper Residences 42,Other,61701.64,false,false,5454.01,58155.55,3546.09,false
+P045,Bonneville Office 45,Equipment,47040.00,false,false,0.00,42217.08,4822.92,false
+P045,Bonneville Office 45,General Conditions,105840.00,false,false,16035.86,80572.56,25267.44,false
+P055,Canyon Lodge 55,Other,38229.00,false,false,2454.44,40646.03,-2417.03,false
+P057,Juniper Commons 57,Materials,197950.00,false,false,9205.06,202929.38,-4979.38,false
+P062,Granite Residences 62,Subcontractors,760763.97,false,false,70082.97,768041.15,-7277.18,false
+P065,Aspen Lodge 65,Other,20358.00,false,false,791.23,20442.96,-84.96,false
+P072,Aspen Office 72,Materials,297627.22,false,false,58604.54,310028.95,-12401.73,false
+P073,Canyon Commons 73,Materials,547027.00,false,false,130621.81,457181.57,89845.43,false
+P092,Copper Retail 92,Materials,196960.79,false,false,0.00,188123.41,8837.38,false
+P093,Granite Office 93,Other,73737.00,false,false,4116.23,50264.82,23472.18,false
+P007,Wasatch Renovation 07,Materials,612380.57,false,false,0.00,732358.26,-119977.69,false
+P011,Granite Residences 11,Equipment,41500.00,false,false,9957.66,32698.70,8801.30,false
+P011,Granite Residences 11,General Conditions,66400.00,false,false,1437.50,63584.13,2815.87,false
+P015,Juniper Residences 15,Subcontractors,299367.89,false,false,79704.66,237134.51,62233.38,false
+P020,Wasatch Commons 20,Subcontractors,157299.26,false,false,0.00,161604.05,-4304.79,false
+P031,Summit Lodge 31,Permits & Fees,21240.00,false,false,1602.22,20659.71,580.29,false
+P033,Bonneville Retail 33,Permits & Fees,34020.00,false,false,6399.40,28165.63,5854.37,false
+P044,Copper Medical 44,Permits & Fees,18416.00,false,false,3936.06,14495.13,3920.87,false
+P067,Copper Office 67,Materials,143924.13,false,false,32167.44,114352.02,29572.11,false
+P094,Copper Commons 94,Other,37778.63,false,false,402.32,15459.27,22319.36,false
+P016,Wasatch Lodge 16,Permits & Fees,18009.53,false,false,0.00,18290.24,-280.71,false
+P052,Summit Medical 52,Equipment,64943.80,false,false,1868.85,61603.90,3339.90,false
+P052,Summit Medical 52,General Conditions,113407.00,false,false,6777.70,109320.64,4086.36,false
+P049,Wasatch Commons 49,Permits & Fees,42271.14,false,false,0.00,46231.09,-3959.95,false
+P007,Wasatch Renovation 07,Equipment,85110.05,false,false,11280.37,74766.89,10343.16,false
+P007,Wasatch Renovation 07,General Conditions,148565.09,false,false,0.00,176846.02,-28280.93,false
+P011,Granite Residences 11,Materials,199200.00,false,false,4393.52,214037.74,-14837.74,false
+P036,Bonneville Commons 36,Subcontractors,659618.00,false,false,0.00,672597.61,-12979.61,false
+P043,Granite Medical 43,Other,27691.92,false,false,3518.25,26338.37,1353.55,false
+P051,Aspen Retail 51,Other,12846.00,false,false,1758.42,10991.65,1854.35,false
+P052,Summit Medical 52,Materials,527379.21,false,false,0.00,543440.85,-16061.64,false
+P053,Wasatch Center 53,Subcontractors,475451.35,false,false,82976.28,395221.45,80229.90,false
+P056,Wasatch Office 56,Other,10653.22,false,false,0.00,9799.97,853.25,false
+P057,Juniper Commons 57,Equipment,31672.00,true,false,3953.42,27412.31,4259.69,false
+P057,Juniper Commons 57,General Conditions,71262.00,false,false,14933.34,60207.48,11054.52,false
+P060,Canyon Retail 60,Other,41443.97,false,false,2949.24,36525.39,4918.58,false
+P064,Juniper Commons 64,Subcontractors,420976.33,false,false,34568.67,388991.64,31984.69,false
+P067,Copper Office 67,Equipment,29321.89,false,false,6012.69,23791.03,5530.86,false
+P068,Aspen Lodge 68,Permits & Fees,25374.78,false,false,0.00,25783.64,-408.86,false
+P069,Bonneville Retail 69,Other,20734.22,false,false,1917.09,20794.19,-59.97,false
+P072,Aspen Office 72,Equipment,40300.93,false,false,8784.44,32620.67,7680.26,false
+P072,Aspen Office 72,General Conditions,70173.88,false,false,20316.40,60422.85,9751.03,false
+P073,Canyon Commons 73,Equipment,94315.00,false,false,3419.56,102875.54,-8560.54,false
+P073,Canyon Commons 73,General Conditions,132041.00,false,false,12916.81,134119.73,-2078.73,false
+P076,Granite Center 76,Subcontractors,338104.94,false,false,38915.35,249809.78,88295.16,false
+P079,Canyon Center 79,Permits & Fees,51072.00,false,false,9321.07,35350.49,15721.51,false
+P090,Canyon Office 90,Permits & Fees,27623.15,false,false,0.00,24765.73,2857.42,false
+P092,Copper Retail 92,Equipment,40495.32,false,false,4050.71,35756.93,4738.39,false
+P092,Copper Retail 92,General Conditions,64821.87,false,false,0.00,64622.54,199.33,false
+P004,Juniper Medical 04,Materials,235801.39,false,false,7550.08,224161.34,11640.05,false
+P013,Aspen Renovation 13,Materials,620872.00,false,false,135931.90,598047.73,22824.27,false
+P024,Aspen Retail 24,Materials,302601.79,false,false,98092.18,219863.72,82738.07,false
+P028,Copper Office 28,Other,6957.72,false,false,0.00,6354.38,603.34,false
+P045,Bonneville Office 45,Materials,294000.00,false,false,6654.55,283651.95,10348.05,false
+P086,Copper Center 86,Permits & Fees,16076.00,false,false,958.99,8825.40,7250.60,false
+P088,Copper Center 88,Permits & Fees,28055.89,false,false,3528.69,18916.30,9139.59,false
+P005,Summit Residences 05,Permits & Fees,141342.68,false,false,11073.09,139328.23,2014.45,false
+P061,Summit Center 61,Permits & Fees,143682.44,false,false,36895.91,128812.06,14870.38,false
+P067,Copper Office 67,General Conditions,46951.15,false,false,2241.84,45348.15,1603.00,false
+P016,Wasatch Lodge 16,Other,13586.52,false,false,2219.55,12869.90,716.62,false
+P021,Copper Center 21,Materials,663513.56,false,false,189201.43,564301.71,99211.85,false
+P026,Granite Commons 26,Other,89576.08,false,false,0.00,85307.05,4269.03,false
+P029,Copper Center 29,Other,16947.64,false,false,1730.50,14513.98,2433.66,false
+P033,Bonneville Retail 33,Other,25515.00,false,false,1858.78,25420.05,94.95,false
+P036,Bonneville Commons 36,Equipment,106390.00,false,false,9462.23,94887.39,11502.61,false
+P036,Bonneville Commons 36,General Conditions,170224.00,false,false,23835.55,146184.36,24039.64,false
+P041,Canyon Office 41,Other,29968.68,false,false,8238.28,18296.24,11672.44,false
+P049,Wasatch Commons 49,Other,31527.15,false,false,0.00,31545.75,-18.60,false
+P053,Wasatch Center 53,Equipment,77329.48,false,false,12339.49,64897.56,12431.92,false
+P053,Wasatch Center 53,General Conditions,123632.14,false,false,15100.43,110402.66,13229.48,false
+P062,Granite Residences 62,Materials,707829.00,false,false,33385.15,785779.44,-77950.44,false
+P064,Juniper Commons 64,Equipment,67439.15,false,false,5417.00,61789.87,5649.28,false
+P067,Copper Office 67,Subcontractors,183312.98,false,false,35940.22,147539.47,35773.51,false
+P072,Aspen Office 72,Subcontractors,317623.34,false,false,20249.37,337621.22,-19997.88,false
+P073,Canyon Commons 73,Subcontractors,509301.00,false,false,0.00,544952.73,-35651.73,false
+P076,Granite Center 76,Equipment,53821.22,false,false,8452.38,40802.30,13018.92,false
+P076,Granite Center 76,General Conditions,86219.03,false,false,2176.47,74979.83,11239.20,false
+P092,Copper Retail 92,Subcontractors,252303.91,false,false,4169.03,236518.91,15785.00,false
+P093,Granite Office 93,Permits & Fees,73737.00,false,false,0.00,51547.42,22189.58,false
+P094,Copper Commons 94,Permits & Fees,108258.62,false,false,4949.72,49809.26,58449.36,false
+P015,Juniper Residences 15,Materials,271423.91,false,false,60855.10,227449.49,43974.42,false
+P035,Aspen Office 35,Materials,250056.00,false,false,41671.57,226838.29,23217.71,false
+P042,Juniper Residences 42,Permits & Fees,81840.64,false,false,0.00,85389.36,-3548.72,false
+P044,Copper Medical 44,Other,13812.00,false,false,0.00,14288.50,-476.50,false
+P064,Juniper Commons 64,General Conditions,107970.58,false,false,23156.09,83612.04,24358.54,false
+P065,Aspen Lodge 65,Permits & Fees,27144.00,false,false,3696.49,24937.15,2206.85,false
+P007,Wasatch Renovation 07,Subcontractors,665265.48,false,false,40240.40,688745.63,-23480.15,false
+P055,Canyon Lodge 55,Permits & Fees,50972.00,false,false,3990.12,51021.49,-49.49,false
+P020,Wasatch Commons 20,Materials,242420.46,false,false,36711.33,210077.99,32342.47,false
+P031,Summit Lodge 31,Other,15930.00,false,false,0.00,15883.45,46.55,false
+P057,Juniper Commons 57,Subcontractors,221704.00,false,false,0.00,225221.85,-3517.85,false
+P001,Juniper Retail 01,Materials,369577.78,false,false,13385.62,375450.91,-5873.13,false
+P002,Wasatch Renovation 02,Subcontractors,185808.00,false,false,14006.84,173772.01,12035.99,false
+P006,Granite Commons 06,Equipment,64285.00,false,false,1526.27,64269.93,15.07,false
+P006,Granite Commons 06,General Conditions,102856.00,false,false,13667.77,90618.77,12237.23,false
+P008,Bonneville Renovation 08,Other,46380.00,false,false,2062.96,43399.62,2980.38,false
+P010,Juniper Office 10,Other,17149.81,false,false,2158.18,13136.50,4013.31,false
+P018,Wasatch Renovation 18,Equipment,60565.00,false,false,2630.75,64006.58,-3441.58,false
+P023,Summit Office 23,Subcontractors,689229.00,false,false,0.00,764221.38,-74992.38,false
+P025,Aspen Medical 25,Materials,659881.88,false,false,54861.88,659111.01,770.87,false
+P034,Bonneville Office 34,Equipment,26870.00,false,false,3700.33,25596.97,1273.03,false
+P034,Bonneville Office 34,General Conditions,42992.00,false,false,6100.22,41622.80,1369.20,false
+P047,Granite Lodge 47,Permits & Fees,135684.00,false,false,17458.84,128992.74,6691.26,false
+P048,Bonneville Office 48,Other,15409.36,false,false,2622.82,13797.72,1611.64,false
+P058,Bonneville Medical 58,Other,11883.00,false,false,533.66,10108.86,1774.14,false
+P059,Aspen Residences 59,Materials,130125.00,false,false,15755.72,128748.02,1376.98,false
+P063,Summit Office 63,Materials,270835.49,false,false,34567.98,265370.95,5464.54,false
+P066,Canyon Medical 66,Permits & Fees,23576.37,false,false,1477.41,21058.65,2517.72,false
+P074,Copper Center 74,Other,38985.00,false,false,0.00,35210.96,3774.04,false
+P075,Granite Lodge 75,Permits & Fees,62598.00,false,false,3690.13,58068.94,4529.06,false
+P081,Canyon Center 81,Other,22695.00,false,false,1214.16,14234.40,8460.60,false
+P082,Wasatch Retail 82,Permits & Fees,45740.58,false,false,9848.14,34899.51,10841.07,false
+P084,Bonneville Renovation 84,Subcontractors,247725.00,false,false,0.00,222897.84,24827.16,false
+P089,Aspen Center 89,Other,29361.00,false,false,261.74,3899.47,25461.53,false
+P091,Granite Medical 91,Permits & Fees,71916.17,false,false,8250.99,55479.07,16437.10,false
+P095,Summit Lodge 95,Equipment,21200.00,false,false,871.80,16793.10,4406.90,false
+P009,Wasatch Retail 09,Subcontractors,155008.00,false,false,13436.01,150642.93,4365.07,false
+P019,Wasatch Center 19,Materials,135661.01,false,false,11762.77,138147.34,-2486.33,false
+P032,Granite Residences 32,Other,54176.80,false,false,0.00,63416.31,-9239.51,false
+P038,Canyon Renovation 38,Materials,161674.07,false,false,15371.62,156996.40,4677.67,false
+P040,Summit Commons 40,Other,31676.55,false,false,0.00,29833.95,1842.60,false
+P078,Aspen Residences 78,Other,37096.00,false,false,1143.46,28883.22,8212.78,false
+P083,Wasatch Renovation 83,Permits & Fees,44600.00,false,false,5262.80,38177.81,6422.19,false
+P095,Summit Lodge 95,General Conditions,47700.00,false,false,2734.79,34800.16,12899.84,false
+P096,Granite Center 96,Permits & Fees,132426.00,false,false,3088.15,43262.31,89163.69,false
+P018,Wasatch Renovation 18,General Conditions,84791.00,false,false,7663.28,90736.80,-5945.80,false
+P022,Juniper Medical 22,Other,88963.46,false,false,5005.25,76164.45,12799.01,false
+P002,Wasatch Renovation 02,Other,19908.00,false,false,1750.12,19877.08,30.92,false
+P008,Bonneville Renovation 08,Subcontractors,718890.00,false,false,45225.05,694202.76,24687.24,false
+P009,Wasatch Retail 09,Other,16608.00,false,false,2956.33,15429.07,1178.93,false
+P012,Canyon Retail 12,Equipment,44369.93,false,false,5947.43,38229.70,6140.23,false
+P019,Wasatch Center 19,Permits & Fees,12426.81,false,false,504.62,11782.88,643.93,false
+P022,Juniper Medical 22,Subcontractors,807211.62,false,false,136169.43,666404.43,140807.19,false
+P023,Summit Office 23,Other,76581.00,false,false,9534.95,74516.80,2064.20,false
+P030,Granite Center 30,Equipment,69985.04,false,false,5717.56,66615.91,3369.13,false
+P030,Granite Center 30,General Conditions,121655.07,false,false,26867.59,109025.89,12629.18,false
+P032,Granite Residences 32,Subcontractors,568034.29,false,false,19529.38,621795.15,-53760.86,false
+P038,Canyon Renovation 38,Permits & Fees,25417.00,false,false,727.03,24768.84,648.16,false
+P039,Granite Commons 39,Equipment,23236.00,false,false,1024.72,23824.24,-588.24,false
+P039,Granite Commons 39,General Conditions,52281.00,false,false,0.00,56328.54,-4047.54,false
+P040,Summit Commons 40,Subcontractors,214823.00,false,false,5121.84,207462.63,7360.37,false
+P047,Granite Lodge 47,Materials,633192.00,false,false,61713.22,612021.28,21170.72,false
+P048,Bonneville Office 48,Subcontractors,146301.34,false,false,2896.64,146220.88,80.46,false
+P063,Summit Office 63,Permits & Fees,42993.84,false,false,1346.79,45650.30,-2656.46,false
+P066,Canyon Medical 66,Materials,149968.96,false,false,17905.89,127888.76,22080.20,false
+P075,Granite Lodge 75,Materials,605114.00,false,false,20443.87,591039.99,14074.01,false
+P077,Canyon Residences 77,Equipment,45200.38,false,false,5550.30,32122.24,13078.14,false
+P077,Canyon Residences 77,General Conditions,72285.29,false,false,1530.01,64309.47,7975.82,false
+P081,Canyon Center 81,Subcontractors,234515.00,false,false,23520.02,147878.89,86636.11,false
+P082,Wasatch Retail 82,Materials,494489.32,false,false,34433.80,474872.80,19616.52,false
+P083,Wasatch Renovation 83,Materials,267600.00,false,false,0.00,287455.30,-19855.30,false
+P084,Bonneville Renovation 84,Other,27525.00,false,false,4412.94,18745.92,8779.08,false
+P087,Copper Office 87,Equipment,116598.88,false,false,6801.87,48226.48,68372.40,false
+P087,Copper Office 87,General Conditions,163426.13,false,false,4505.74,74254.66,89171.47,false
+P089,Aspen Center 89,Subcontractors,264249.00,false,false,1294.51,33539.79,230709.21,false
+P096,Granite Center 96,Materials,617988.00,false,false,31195.44,183989.38,433998.62,false
+P001,Juniper Retail 01,Permits & Fees,34467.61,false,false,1969.33,33646.88,820.73,false
+P010,Juniper Office 10,Subcontractors,180279.40,false,false,12179.16,163201.12,17078.28,false
+P012,Canyon Retail 12,General Conditions,77359.22,false,false,15534.20,63104.04,14255.18,false
+P025,Aspen Medical 25,Permits & Fees,67489.93,false,false,6809.44,59907.19,7582.74,false
+P059,Aspen Residences 59,Permits & Fees,20820.00,false,false,0.00,21391.36,-571.36,false
+P058,Bonneville Medical 58,Subcontractors,110908.00,false,false,5461.75,108000.17,2907.83,false
+P074,Copper Center 74,Subcontractors,402845.00,false,false,26573.99,392363.42,10481.58,false
+P078,Aspen Residences 78,Subcontractors,336149.85,false,false,0.00,298652.22,37497.63,false
+P091,Granite Medical 91,Materials,452458.67,false,false,33821.27,370192.39,82266.28,false
+P001,Juniper Retail 01,Other,34467.61,false,false,1459.65,32763.71,1703.90,false
+P009,Wasatch Retail 09,Permits & Fees,22144.00,false,false,3131.42,21171.92,972.08,false
+P010,Juniper Office 10,Materials,144940.92,false,false,0.00,137585.37,7355.55,false
+P014,Bonneville Lodge 14,Equipment,97528.00,false,false,12818.05,88409.87,9118.13,false
+P014,Bonneville Lodge 14,General Conditions,170674.00,false,false,7985.92,169922.71,751.29,false
+P017,Summit Retail 17,Equipment,49801.79,false,false,4810.35,47295.31,2506.48,false
+P017,Summit Retail 17,General Conditions,86995.66,false,false,23406.52,73574.20,13421.46,false
+P019,Wasatch Center 19,Other,12426.81,false,false,1782.95,11606.08,820.73,false
+P022,Juniper Medical 22,Materials,869185.26,false,false,110677.39,829350.31,39834.95,false
+P025,Aspen Medical 25,Other,67489.92,false,false,5498.07,65721.55,1768.37,false
+P038,Canyon Renovation 38,Other,19135.01,false,false,1523.70,19742.61,-607.60,false
+P046,Granite Lodge 46,General Conditions,78635.19,false,false,24310.39,64264.85,14370.34,false
+P047,Granite Lodge 47,Subcontractors,701034.00,false,false,0.00,707071.92,-6037.92,false
+P058,Bonneville Medical 58,Materials,99025.00,false,false,5399.31,97550.71,1474.29,false
+P063,Summit Office 63,Other,32299.85,false,false,1409.78,36040.51,-3740.66,false
+P066,Canyon Medical 66,Subcontractors,166779.03,false,false,10131.48,149433.24,17345.79,false
+P074,Copper Center 74,Materials,311880.00,false,false,23897.91,283924.19,27955.81,false
+P075,Granite Lodge 75,Subcontractors,563382.00,false,false,25478.15,518992.41,44389.59,false
+P078,Aspen Residences 78,Materials,361811.82,false,false,27303.96,291476.84,70334.98,false
+P081,Canyon Center 81,Materials,181560.00,false,false,8404.75,130904.53,50655.47,false
+P083,Wasatch Renovation 83,Subcontractors,345650.00,false,false,0.00,351849.86,-6199.86,false
+P089,Aspen Center 89,Materials,283823.00,false,false,4177.55,34870.02,248952.98,false
+P091,Granite Medical 91,Subcontractors,569403.25,false,false,15508.90,510519.76,58883.49,false
+P096,Granite Center 96,Subcontractors,684201.00,false,false,16292.51,194927.93,489273.07,false
+P023,Summit Office 23,Permits & Fees,76581.00,false,false,2170.41,83243.09,-6662.09,false
+P032,Granite Residences 32,Materials,454148.79,false,false,53256.69,486503.19,-32354.40,false
+P046,Granite Lodge 46,Equipment,48999.51,false,false,5139.74,43789.27,5210.24,false
+P048,Bonneville Office 48,Materials,132975.74,false,false,7807.63,142073.66,-9097.92,false
+P059,Aspen Residences 59,Other,15615.00,false,false,0.00,17734.68,-2119.68,false
+P082,Wasatch Retail 82,Subcontractors,313380.37,false,false,17181.53,290170.90,23209.47,false
+P008,Bonneville Renovation 08,Materials,649320.00,false,false,62632.67,659200.04,-9880.04,false
+P040,Summit Commons 40,Materials,340728.89,false,false,24666.05,320374.43,20354.46,false
+P084,Bonneville Renovation 84,Permits & Fees,27525.00,false,false,1888.72,21769.75,5755.25,false
+P002,Wasatch Renovation 02,Permits & Fees,26544.00,false,false,3009.81,24516.59,2027.41,false
+P001,Juniper Retail 01,Equipment,46016.92,false,false,2081.75,42535.85,3481.07,false
+P001,Juniper Retail 01,General Conditions,80484.53,false,false,6100.52,80825.35,-340.82,false
+P006,Granite Commons 06,Materials,308568.00,false,false,13877.97,300759.80,7808.20,false
+P012,Canyon Retail 12,Permits & Fees,63673.29,false,false,323.80,65610.81,-1937.52,false
+P014,Bonneville Lodge 14,Other,48764.00,false,false,7474.08,46205.63,2558.37,false
+P017,Summit Retail 17,Other,37193.87,false,false,4856.53,36027.76,1166.11,false
+P019,Wasatch Center 19,Equipment,16666.22,false,false,924.39,16233.86,432.36,false
+P019,Wasatch Center 19,General Conditions,29093.03,false,false,4707.92,28550.74,542.29,false
+P025,Aspen Medical 25,Equipment,112286.40,false,false,18369.50,97000.67,15285.73,false
+P025,Aspen Medical 25,General Conditions,157673.33,false,false,18530.65,153410.19,4263.14,false
+P030,Granite Center 30,Permits & Fees,51670.03,false,false,0.00,54073.24,-2403.21,false
+P039,Granite Commons 39,Permits & Fees,23236.00,false,false,2657.67,22239.78,996.22,false
+P046,Granite Lodge 46,Other,29635.68,false,false,2550.76,27236.99,2398.69,false
+P050,Granite Lodge 50,Subcontractors,301937.83,false,false,40609.42,281852.59,20085.24,false
+P054,Granite Office 54,Subcontractors,84058.25,false,false,0.00,78497.81,5560.44,false
+P059,Aspen Residences 59,Equipment,20820.00,false,false,4727.83,18345.80,2474.20,false
+P059,Aspen Residences 59,General Conditions,46845.00,false,false,0.00,51375.19,-4530.19,false
+P070,Granite Commons 70,Subcontractors,384613.33,false,false,0.00,418100.02,-33486.69,false
+P071,Wasatch Office 71,Subcontractors,203362.22,false,false,6718.61,206163.44,-2801.22,false
+P077,Canyon Residences 77,Permits & Fees,36230.92,false,false,5437.53,26845.54,9385.38,false
+P095,Summit Lodge 95,Materials,132500.00,false,false,0.00,109063.37,23436.63,false
+P003,Summit Center 03,Subcontractors,465587.98,false,false,26507.74,424211.79,41376.19,false
+P018,Wasatch Renovation 18,Materials,351277.00,false,false,58598.43,340653.65,10623.35,false
+P027,Canyon Renovation 27,Subcontractors,545536.62,false,false,48134.94,550639.72,-5103.10,false
+P034,Bonneville Office 34,Materials,128976.00,false,false,29704.13,107859.85,21116.15,false
+P038,Canyon Renovation 38,Equipment,25561.51,false,false,4199.10,22356.71,3204.80,false
+P038,Canyon Renovation 38,General Conditions,57260.51,false,false,1523.47,63044.65,-5784.14,false
+P063,Summit Office 63,Equipment,43102.76,false,false,4066.10,40631.05,2471.71,false
+P063,Summit Office 63,General Conditions,96790.61,false,false,12232.70,97591.54,-800.93,false
+P080,Aspen Lodge 80,Subcontractors,122248.00,false,false,6120.34,93722.50,28525.50,false
+P085,Summit Residences 85,Subcontractors,243066.81,false,false,27307.21,192487.09,50579.72,false
+P087,Copper Office 87,Permits & Fees,70006.25,false,false,4533.93,27890.75,42115.50,false
+P037,Wasatch Medical 37,Subcontractors,307825.11,false,false,64768.61,272186.48,35638.63,false
+P005,Summit Residences 05,Equipment,97204.03,false,false,2360.05,98663.05,-1459.02,false
+P005,Summit Residences 05,General Conditions,169660.71,false,false,31821.09,160850.27,8810.44,false
+P016,Wasatch Lodge 16,Materials,111232.41,false,false,10636.72,114441.48,-3209.07,false
+P020,Wasatch Commons 20,Other,21900.27,false,false,4666.45,16144.45,5755.82,false
+P021,Copper Center 21,Other,59570.59,false,false,10966.57,46538.42,13032.17,false
+P026,Granite Commons 26,Materials,886036.18,false,false,159179.62,770936.61,115099.57,false
+P031,Summit Lodge 31,Materials,127440.00,false,false,11193.79,127665.76,-225.76,false
+P033,Bonneville Retail 33,Materials,212625.00,false,false,0.00,223127.49,-10502.49,false
+P035,Aspen Office 35,Other,31257.00,false,false,718.89,29174.94,2082.06,false
+P041,Canyon Office 41,Materials,421514.89,false,false,32312.90,429917.36,-8402.47,false
+P042,Juniper Residences 42,Subcontractors,641651.70,false,false,0.00,693869.02,-52217.32,false
+P044,Copper Medical 44,Materials,115100.00,false,false,10980.55,109915.16,5184.84,false
+P049,Wasatch Commons 49,Materials,246578.27,false,false,13346.55,270619.77,-24041.50,false
+P055,Canyon Lodge 55,Subcontractors,395033.00,false,false,49827.24,370635.24,24397.76,false
+P057,Juniper Commons 57,Permits & Fees,31672.00,false,false,1870.07,28703.10,2968.90,false
+P061,Summit Center 61,General Conditions,166262.10,false,false,26006.88,162618.64,3643.46,false
+P062,Granite Residences 62,Other,49782.81,false,false,3540.48,44189.00,5593.81,false
+P067,Copper Office 67,Permits & Fees,23385.26,false,false,512.24,22925.76,459.50,false
+P068,Aspen Lodge 68,Equipment,34018.68,false,false,0.00,35400.87,-1382.19,false
+P072,Aspen Office 72,Permits & Fees,56923.95,false,false,3694.53,61844.71,-4920.76,false
+P073,Canyon Commons 73,Permits & Fees,56589.00,false,false,0.00,58760.24,-2171.24,false
+P079,Canyon Center 79,General Conditions,102144.00,false,false,19961.12,79438.98,22705.02,false
+P086,Copper Center 86,Equipment,16076.00,false,false,1153.19,8529.30,7546.70,false
+P086,Copper Center 86,General Conditions,36171.00,false,false,2186.23,22095.72,14075.28,false
+P088,Copper Center 88,Equipment,35087.84,false,false,2767.24,26801.74,8286.10,false
+P088,Copper Center 88,General Conditions,56147.73,false,false,0.00,47402.57,8745.16,false
+P090,Canyon Office 90,General Conditions,64605.86,false,false,2255.23,59761.40,4844.46,false
+P093,Granite Office 93,Subcontractors,663633.00,false,false,103488.03,393700.83,269932.17,false
+P094,Copper Commons 94,Subcontractors,580491.42,false,false,13456.49,268409.53,312081.89,false
+P007,Wasatch Renovation 07,Permits & Fees,123890.04,false,false,33957.70,111243.03,12647.01,false
+P015,Juniper Residences 15,Other,31607.80,false,false,0.00,30835.07,772.73,false
+P029,Copper Center 29,Materials,235686.20,false,false,56588.84,211362.76,24323.44,false
+P061,Summit Center 61,Equipment,94933.66,false,false,8178.91,90709.51,4224.15,false
+P065,Aspen Lodge 65,Subcontractors,210366.00,false,false,20931.93,200597.55,9768.45,false
+P068,Aspen Lodge 68,General Conditions,59393.46,false,false,2104.00,59665.70,-272.24,false
+P079,Canyon Center 79,Equipment,63840.00,false,false,3818.77,56417.11,7422.89,false
+P092,Copper Retail 92,Permits & Fees,32337.55,false,false,1477.09,27644.82,4692.73,false
+P090,Canyon Office 90,Equipment,45886.72,false,false,1175.11,40380.09,5506.63,false
+P003,Summit Center 03,Materials,424743.83,false,false,0.00,429233.55,-4489.72,false
+P009,Wasatch Retail 09,Equipment,22144.00,false,false,1745.12,22309.62,-165.62,false
+P018,Wasatch Renovation 18,Subcontractors,327051.00,false,false,38033.91,315650.02,11400.98,false
+P023,Summit Office 23,Equipment,127635.00,false,false,0.00,135081.85,-7446.85,false
+P023,Summit Office 23,General Conditions,178689.00,false,false,8418.04,205684.31,-26995.31,false
+P037,Wasatch Medical 37,Materials,239728.43,false,false,56924.03,194453.06,45275.37,false
+P039,Granite Commons 39,Other,17427.00,false,false,1950.36,15218.34,2208.66,false
+P046,Granite Lodge 46,Permits & Fees,38727.67,false,false,6013.93,35052.82,3674.85,false
+P054,Granite Office 54,Materials,133622.82,false,false,0.00,132470.73,1152.09,false
+P070,Granite Commons 70,Materials,350512.09,false,false,19256.89,391861.81,-41349.72,false
+P071,Wasatch Office 71,Materials,185343.37,false,false,20725.62,186683.22,-1339.85,false
+P077,Canyon Residences 77,Other,27084.91,false,false,6430.68,16636.62,10448.29,false
+P084,Bonneville Renovation 84,Equipment,45875.00,false,false,2482.75,36343.14,9531.86,false
+P084,Bonneville Renovation 84,General Conditions,64225.00,false,false,7250.69,50161.94,14063.06,false
+P087,Copper Office 87,Other,70006.26,false,false,7391.54,27636.05,42370.21,false
+P002,Wasatch Renovation 02,Equipment,26544.00,false,false,522.13,27193.18,-649.18,false
+P006,Granite Commons 06,Subcontractors,398567.00,false,false,26990.98,389700.22,8866.78,false
+P009,Wasatch Retail 09,General Conditions,49824.00,false,false,7280.80,49731.82,92.18,false
+P012,Canyon Retail 12,Other,22761.30,false,false,2481.33,18069.62,4691.68,false
+P030,Granite Center 30,Other,51670.02,false,false,0.00,56610.10,-4940.08,false
+P034,Bonneville Office 34,Subcontractors,166594.00,false,false,28374.22,151463.08,15130.92,false
+P085,Summit Residences 85,Materials,261460.18,false,false,9935.39,243780.23,17679.95,false
+P095,Summit Lodge 95,Subcontractors,148400.00,false,false,24306.81,93468.33,54931.67,false
+P002,Wasatch Renovation 02,General Conditions,59724.00,false,false,6081.04,52990.27,6733.73,false
+P014,Bonneville Lodge 14,Permits & Fees,146292.00,false,false,0.00,164317.20,-18025.20,false
+P017,Summit Retail 17,Permits & Fees,37193.86,false,false,6201.60,30987.73,6206.13,false
+P027,Canyon Renovation 27,Materials,427663.25,false,false,75493.35,400926.26,26736.99,false
+P050,Granite Lodge 50,Materials,270483.57,false,false,14696.20,290963.68,-20480.11,false
+P080,Aspen Lodge 80,Materials,109150.00,false,false,13046.60,76654.26,32495.74,false
+P005,Summit Residences 05,Materials,700066.95,false,false,46433.00,760489.66,-60422.71,false
+P016,Wasatch Lodge 16,Equipment,22591.29,false,false,2874.92,19589.58,3001.71,false
+P024,Aspen Retail 24,Permits & Fees,46410.05,false,false,3835.82,46513.85,-103.80,false
+P026,Granite Commons 26,General Conditions,209540.68,false,false,19374.69,202176.68,7364.00,false
+P028,Copper Office 28,Subcontractors,65979.14,false,false,0.00,66740.96,-761.82,false
+P029,Copper Center 29,Equipment,34290.46,false,false,0.00,37343.47,-3053.01,false
+P031,Summit Lodge 31,General Conditions,42480.00,false,false,2868.51,44963.17,-2483.17,false
+P033,Bonneville Retail 33,General Conditions,76545.00,false,false,0.00,80705.70,-4160.70,false
+P036,Bonneville Commons 36,Other,63834.00,false,false,6209.37,59114.79,4719.21,false
+P041,Canyon Office 41,Equipment,59449.02,false,false,7055.42,51902.76,7546.26,false
+P041,Canyon Office 41,General Conditions,103913.70,false,false,6223.48,103305.21,608.49,false
+P043,Granite Medical 43,Subcontractors,287267.27,false,false,32516.26,264471.82,22795.45,false
+P044,Copper Medical 44,Equipment,18416.00,false,false,3126.88,15999.41,2416.59,false
+P045,Bonneville Office 45,Permits & Fees,47040.00,false,false,2010.90,41489.67,5550.33,false
+P049,Wasatch Commons 49,Equipment,52662.71,false,false,9989.94,45687.00,6975.71,false
+P049,Wasatch Commons 49,General Conditions,84189.85,false,false,20668.07,79995.36,4194.49,false
+P051,Aspen Retail 51,Subcontractors,119896.00,false,false,0.00,122322.65,-2426.65,false
+P053,Wasatch Center 53,Other,46302.65,false,false,5777.64,43379.23,2923.42,false
+P056,Wasatch Office 56,Subcontractors,100406.04,false,false,4604.48,94329.92,6076.12,false
+P060,Canyon Retail 60,Subcontractors,377311.08,false,false,65196.49,321501.08,55810.00,false
+P068,Aspen Lodge 68,Materials,276604.53,false,false,0.00,295611.99,-19007.46,false
+P069,Bonneville Retail 69,Subcontractors,212328.92,false,false,16994.84,217809.97,-5481.05,false
+P076,Granite Center 76,Other,32397.80,false,false,3090.84,25384.98,7012.82,false
+P086,Copper Center 86,Materials,100475.00,false,false,2606.62,62992.08,37482.92,false
+P088,Copper Center 88,Materials,169054.29,false,false,28411.42,108353.25,60701.04,false
+P090,Canyon Office 90,Materials,272794.33,false,false,64453.95,198293.44,74500.89,false
+P011,Granite Residences 11,Permits & Fees,33200.00,false,false,3708.45,29529.48,3670.52,false
+P013,Aspen Renovation 13,Permits & Fees,133044.00,false,false,19569.69,129434.93,3609.07,false
+P016,Wasatch Lodge 16,General Conditions,36177.81,false,false,6697.77,34487.93,1689.88,false
+P026,Granite Commons 26,Equipment,148763.61,false,false,19569.02,124786.35,23977.26,false
+P029,Copper Center 29,General Conditions,60107.09,false,false,7299.00,58841.56,1265.53,false
+P031,Summit Lodge 31,Equipment,26550.00,false,false,466.10,28433.08,-1883.08,false
+P052,Summit Medical 52,Permits & Fees,48463.20,false,false,2934.10,43753.43,4709.77,false
+P064,Juniper Commons 64,Other,40531.42,false,false,4303.15,31226.92,9304.50,false
+P079,Canyon Center 79,Materials,306432.00,false,false,53551.02,244014.88,62417.12,false
+P004,Juniper Medical 04,Permits & Fees,35958.46,false,false,1734.63,34549.22,1409.24,false
+P044,Copper Medical 44,General Conditions,41436.00,false,false,4138.17,38466.59,2969.41,false
+P061,Summit Center 61,Materials,658895.01,false,false,60703.73,713709.53,-54814.52,false
+P033,Bonneville Retail 33,Equipment,34020.00,false,false,0.00,31909.28,2110.72,false
+P003,Summit Center 03,Other,30180.73,false,false,1258.88,24353.59,5827.14,false
+P006,Granite Commons 06,Permits & Fees,51428.00,false,false,7478.77,43386.75,8041.25,false
+P014,Bonneville Lodge 14,Subcontractors,755842.00,false,false,0.00,799822.39,-43980.39,false
+P017,Summit Retail 17,Subcontractors,256568.14,false,false,10279.09,275669.43,-19101.29,false
+P018,Wasatch Renovation 18,Permits & Fees,36339.00,false,false,2601.48,36138.02,200.98,false
+P027,Canyon Renovation 27,Other,52500.45,false,false,11463.04,41424.75,11075.70,false
+P034,Bonneville Office 34,Permits & Fees,21496.00,false,false,0.00,23956.31,-2460.31,false
+P039,Granite Commons 39,Materials,145225.00,false,false,8517.28,146723.70,-1498.70,false
+P046,Granite Lodge 46,Subcontractors,313707.61,false,false,53143.20,269140.65,44566.96,false
+P066,Canyon Medical 66,Equipment,23710.56,false,false,0.00,23554.88,155.68,false
+P070,Granite Commons 70,Other,24919.51,false,false,0.00,23979.40,940.11,false
+P075,Granite Lodge 75,Equipment,104330.00,false,false,0.00,97861.34,6468.66,false
+P077,Canyon Residences 77,Materials,213854.68,false,false,22844.81,165000.57,48854.11,false
+P080,Aspen Lodge 80,Other,13098.00,false,false,2295.90,7521.07,5576.93,false
+P082,Wasatch Retail 82,General Conditions,106933.96,false,false,8847.31,94270.75,12663.21,false
+P083,Wasatch Renovation 83,Equipment,55750.00,false,false,5050.19,51928.55,3821.45,false
+P085,Summit Residences 85,Other,26877.95,false,false,0.00,25668.28,1209.67,false
+P087,Copper Office 87,Materials,679699.04,false,false,23716.07,295577.51,384121.53,false
+P091,Granite Medical 91,Equipment,90419.25,false,false,11637.21,65616.98,24802.27,false
+P091,Granite Medical 91,General Conditions,144880.42,false,false,7457.96,129251.81,15628.61,false
+P095,Summit Lodge 95,Permits & Fees,21200.00,false,false,1746.98,15642.22,5557.78,false
+P096,Granite Center 96,Equipment,88284.00,false,false,0.00,26818.79,61465.21,false
+P096,Granite Center 96,General Conditions,154497.00,false,false,0.00,48328.33,106168.67,false
+P030,Granite Center 30,Materials,586080.44,false,false,96621.19,527197.83,58882.61,false
+P037,Wasatch Medical 37,Other,29711.51,false,false,3550.53,28465.59,1245.92,false
+P047,Granite Lodge 47,Equipment,90456.00,false,false,23760.39,62560.03,27895.97,false
+P047,Granite Lodge 47,General Conditions,158298.00,false,false,24251.47,128851.88,29446.12,false
+P050,Granite Lodge 50,Other,32249.09,false,false,3616.54,28424.04,3825.05,false
+P066,Canyon Medical 66,General Conditions,53113.93,false,false,3940.76,46627.39,6486.54,false
+P071,Wasatch Office 71,Other,13176.47,false,false,340.57,13085.94,90.53,false
+P075,Granite Lodge 75,General Conditions,146062.00,false,false,2372.44,150297.36,-4235.36,false
+P082,Wasatch Retail 82,Equipment,61193.37,false,false,3552.79,55555.68,5637.69,false
+P083,Wasatch Renovation 83,General Conditions,89200.00,false,false,15297.33,80295.68,8904.32,false
+P012,Canyon Retail 12,Materials,323268.62,false,false,49545.58,317870.19,5398.43,false
+P054,Granite Office 54,Other,12449.41,false,false,1043.10,9979.39,2470.02,false
+P003,Summit Center 03,Permits & Fees,88328.74,false,false,12702.38,77720.69,10608.05,false
+P006,Granite Commons 06,Other,38571.00,false,false,1176.57,41091.43,-2520.43,false
+P008,Bonneville Renovation 08,Equipment,92760.00,false,false,0.00,91869.58,890.42,false
+P008,Bonneville Renovation 08,General Conditions,162330.00,false,false,13476.13,148756.59,13573.41,false
+P012,Canyon Retail 12,Subcontractors,348189.40,false,false,71929.70,291763.27,56426.13,false
+P018,Wasatch Renovation 18,Other,36339.00,false,false,5498.44,35530.55,808.45,false
+P022,Juniper Medical 22,Equipment,148030.18,false,false,16648.87,125974.00,22056.18,false
+P022,Juniper Medical 22,General Conditions,207823.63,false,false,28962.89,189178.61,18645.02,false
+P027,Canyon Renovation 27,Permits & Fees,69681.45,false,false,11018.63,64702.02,4979.43,false
+P032,Granite Residences 32,Equipment,89862.70,false,false,0.00,99374.40,-9511.70,false
+P032,Granite Residences 32,General Conditions,144039.50,false,false,16713.41,152853.01,-8813.51,false
+P034,Bonneville Office 34,Other,16122.00,false,false,1990.94,17221.85,-1099.85,false
+P037,Wasatch Medical 37,Permits & Fees,39530.53,false,false,5532.02,36141.26,3389.27,false
+P039,Granite Commons 39,Subcontractors,162652.00,false,false,4371.57,166982.84,-4330.84,false
+P040,Summit Commons 40,Equipment,42324.33,false,false,9514.21,30692.57,11631.76,false
+P040,Summit Commons 40,General Conditions,74000.89,false,false,5413.24,67738.29,6262.60,false
+P046,Granite Lodge 46,Materials,255962.80,false,false,0.00,282902.93,-26940.13,false
+P048,Bonneville Office 48,Equipment,20645.04,false,false,2596.61,19105.83,1539.21,false
+P050,Granite Lodge 50,Permits & Fees,42923.10,false,false,2044.63,44517.16,-1594.06,false
+P054,Granite Office 54,Permits & Fees,12449.43,false,false,569.69,11540.71,908.72,false
+P058,Bonneville Medical 58,Equipment,15844.00,false,false,3203.01,12959.31,2884.69,false
+P071,Wasatch Office 71,Permits & Fees,38656.46,false,false,2488.74,41015.18,-2358.72,false
+P074,Copper Center 74,Equipment,64975.00,false,false,7916.61,53356.61,11618.39,false
+P074,Copper Center 74,General Conditions,103960.00,false,false,5100.80,99457.42,4502.58,false
+P077,Canyon Residences 77,Subcontractors,278759.38,false,false,43066.29,192104.36,86655.02,false
+P078,Aspen Residences 78,Equipment,61741.98,false,false,6438.69,43034.54,18707.44,false
+P078,Aspen Residences 78,General Conditions,86641.97,false,false,5953.69,68712.57,17929.40,false
+P080,Aspen Lodge 80,Permits & Fees,17464.00,false,false,357.02,13103.41,4360.59,false
+P081,Canyon Center 81,Equipment,37825.00,false,false,2004.98,26297.43,11527.57,false
+P081,Canyon Center 81,General Conditions,60520.00,false,false,4201.82,44011.83,16508.17,false
+P087,Copper Office 87,Subcontractors,632167.91,false,false,24933.16,267844.26,364323.65,false
+P089,Aspen Center 89,Equipment,48935.00,false,false,1101.88,5032.15,43902.85,false
+P095,Summit Lodge 95,Other,15900.00,false,false,917.33,11719.51,4180.49,false
+P010,Juniper Office 10,Equipment,28421.71,false,false,2760.53,23762.43,4659.28,false
+P014,Bonneville Lodge 14,Materials,682696.00,false,false,56529.18,699624.33,-16928.33,false
+P030,Granite Center 30,Subcontractors,389225.37,false,false,102645.06,301558.44,87666.93,false
+P048,Bonneville Office 48,General Conditions,45930.40,false,false,13039.31,37634.54,8295.86,false
+P058,Bonneville Medical 58,General Conditions,35649.00,false,false,1561.32,35047.79,601.21,false
+P070,Granite Commons 70,Permits & Fees,73119.51,false,false,10787.62,71897.54,1221.97,false
+P010,Juniper Office 10,General Conditions,45571.52,false,false,3490.81,38787.99,6783.53,false
+P089,Aspen Center 89,General Conditions,68509.00,false,false,0.00,9621.82,58887.18,false
+P017,Summit Retail 17,Materials,403453.80,false,false,50963.48,387180.73,16273.07,false
+P085,Summit Residences 85,Permits & Fees,26877.95,false,false,0.00,23078.72,3799.23,false
+P004,Juniper Medical 04,Subcontractors,259083.23,false,false,44585.17,226534.08,32549.15,false
+P005,Summit Residences 05,Other,49494.69,false,false,10037.28,43312.70,6181.99,false
+P011,Granite Residences 11,Subcontractors,257300.00,false,false,47909.50,240174.78,17125.22,false
+P013,Aspen Renovation 13,Subcontractors,687394.00,false,false,36979.93,665428.78,21965.22,false
+P015,Juniper Residences 15,General Conditions,94300.02,false,false,17063.14,86464.67,7835.35,false
+P020,Wasatch Commons 20,Equipment,29475.92,false,false,0.00,30454.32,-978.40,false
+P021,Copper Center 21,Equipment,80305.40,false,false,15463.99,74658.69,5646.71,false
+P021,Copper Center 21,General Conditions,139875.99,false,false,23151.78,132683.88,7192.11,false
+P028,Copper Office 28,Permits & Fees,9193.71,false,false,696.30,8330.96,862.75,false
+P035,Aspen Office 35,General Conditions,83352.00,false,false,17361.71,67811.59,15540.41,false
+P043,Granite Medical 43,Permits & Fees,36804.91,false,false,1848.04,34379.38,2425.53,false
+P045,Bonneville Office 45,Subcontractors,329280.00,false,false,0.00,298974.86,30305.14,false
+P052,Summit Medical 52,Subcontractors,336462.21,false,false,69078.46,275775.51,60686.70,false
+P053,Wasatch Center 53,Materials,362818.48,false,false,42616.99,350613.36,12205.12,false
+P056,Wasatch Office 56,Permits & Fees,14126.23,false,false,310.19,13376.74,749.49,false
+P060,Canyon Retail 60,Permits & Fees,41443.97,false,false,3037.87,38590.86,2853.11,false
+P062,Granite Residences 62,Equipment,96848.22,false,false,0.00,103925.60,-7077.38,false
+P062,Granite Residences 62,General Conditions,168805.03,false,false,25383.31,170589.60,-1784.57,false
+P064,Juniper Commons 64,Materials,329686.91,false,false,0.00,321240.91,8446.00,false
+P076,Granite Center 76,Materials,267588.97,false,false,13211.55,231448.59,36140.38,false
+P079,Canyon Center 79,Other,38304.00,false,false,6667.13,30416.52,7887.48,false
+P015,Juniper Residences 15,Equipment,42318.21,false,false,2439.53,42339.42,-21.21,false
+P024,Aspen Retail 24,Subcontractors,333229.66,false,false,13480.33,331922.30,1307.36,false
+P035,Aspen Office 35,Equipment,52095.00,false,false,5491.67,48165.49,3929.51,false
+P036,Bonneville Commons 36,Materials,510672.00,false,false,59816.42,468806.01,41865.99,false
+P051,Aspen Retail 51,Permits & Fees,17128.00,false,false,0.00,16888.32,239.68,false
+P061,Summit Center 61,Other,47210.43,false,false,2666.47,41993.82,5216.61,false
+P069,Bonneville Retail 69,Permits & Fees,27848.22,false,false,743.22,27929.94,-81.72,false
+P088,Copper Center 88,Other,21059.89,false,false,806.95,16191.17,4868.72,false
+P090,Canyon Office 90,Other,27623.14,false,false,2830.23,21544.32,6078.82,false
+P020,Wasatch Commons 20,General Conditions,51376.20,false,false,4466.76,47575.37,3800.83,false
+P068,Aspen Lodge 68,Other,25374.78,false,false,1228.11,22304.40,3070.38,false
+P086,Copper Center 86,Other,12057.00,false,false,1091.93,5882.53,6174.47,false
+P001,Juniper Retail 01,Subcontractors,232248.25,false,false,0.00,232027.57,220.68,false
+P003,Summit Center 03,Equipment,59808.11,false,false,2058.58,51385.69,8422.42,false
+P003,Summit Center 03,General Conditions,104525.85,false,false,11417.55,92987.91,11537.94,false
+P008,Bonneville Renovation 08,Permits & Fees,139140.00,false,false,10714.68,138860.19,279.81,false
+P022,Juniper Medical 22,Permits & Fees,88963.45,false,false,10740.70,77082.48,11880.97,false
+P023,Summit Office 23,Materials,740283.00,false,false,124570.46,688453.53,51829.47,false
+P027,Canyon Renovation 27,Equipment,87341.18,false,false,18990.48,69042.06,18299.12,false
+P027,Canyon Renovation 27,General Conditions,139841.63,false,false,21518.46,129267.48,10574.15,false
+P032,Granite Residences 32,Permits & Fees,71371.80,false,false,7867.14,67139.04,4232.76,false
+P037,Wasatch Medical 37,General Conditions,79188.32,false,false,4259.08,80505.61,-1317.29,false
+P038,Canyon Renovation 38,Subcontractors,179797.56,false,false,0.00,194605.31,-14807.75,false
+P040,Summit Commons 40,Permits & Fees,31676.56,false,false,4788.25,26156.96,5519.60,false
+P047,Granite Lodge 47,Other,45228.00,false,false,8337.00,37952.11,7275.89,false
+P054,Granite Office 54,Equipment,16625.14,false,false,0.00,15078.63,1546.51,false
+P054,Granite Office 54,General Conditions,29074.57,false,false,1363.04,27546.30,1528.27,false
+P059,Aspen Residences 59,Subcontractors,145740.00,false,false,19271.72,136883.06,8856.94,false
+P063,Summit Office 63,Subcontractors,302372.88,false,false,35078.83,297838.21,4534.67,false
+P070,Granite Commons 70,Equipment,49429.26,false,false,6426.49,44767.66,4661.60,false
+P071,Wasatch Office 71,Equipment,26134.69,false,false,1787.43,25286.24,848.45,false
+P071,Wasatch Office 71,General Conditions,45681.15,false,false,3689.46,45364.84,316.31,false
+P075,Granite Lodge 75,Other,62598.00,false,false,5101.38,60931.54,1666.46,false
+P080,Aspen Lodge 80,General Conditions,39294.00,false,false,1165.34,31974.61,7319.39,false
+P081,Canyon Center 81,Permits & Fees,30260.00,false,false,2641.86,19518.25,10741.75,false
+P082,Wasatch Retail 82,Other,45740.59,false,false,0.00,39569.79,6170.80,false
+P083,Wasatch Renovation 83,Other,33450.00,false,false,3284.05,30718.24,2731.76,false
+P085,Summit Residences 85,Equipment,44753.42,false,false,1142.47,40787.99,3965.43,false
+P089,Aspen Center 89,Permits & Fees,29361.00,false,false,329.09,3576.67,25784.33,false
+P091,Granite Medical 91,Other,54461.15,false,false,7681.32,41570.58,12890.57,false
+P096,Granite Center 96,Other,44142.00,false,false,2701.22,12267.02,31874.98,false
+P009,Wasatch Retail 09,Materials,138400.00,false,false,11806.81,147878.70,-9478.70,false
+P010,Juniper Office 10,Permits & Fees,22543.81,false,false,1685.05,19431.50,3112.31,false
+P025,Aspen Medical 25,Subcontractors,612723.56,false,false,113418.61,505562.83,107160.73,false
+P050,Granite Lodge 50,Equipment,43036.65,false,false,5162.90,40075.87,2960.78,false
+P050,Granite Lodge 50,General Conditions,96633.75,false,false,6885.29,102078.96,-5445.21,false
+P066,Canyon Medical 66,Other,17749.38,false,false,1630.74,13942.13,3807.25,false
+P070,Granite Commons 70,General Conditions,86398.76,false,false,7211.57,84390.61,2008.15,false
+P074,Copper Center 74,Permits & Fees,51980.00,false,false,4067.15,45168.01,6811.99,false
+P078,Aspen Residences 78,Permits & Fees,37095.99,false,false,3792.33,26725.41,10370.58,false
+P080,Aspen Lodge 80,Equipment,17464.00,false,false,305.19,14052.41,3411.59,false
+P085,Summit Residences 85,General Conditions,62758.37,false,false,4149.37,53701.73,9056.64,false
+P002,Wasatch Renovation 02,Materials,165900.00,false,false,11284.34,156686.28,9213.72,false
+P019,Wasatch Center 19,Subcontractors,86827.98,false,false,14880.03,79992.03,6835.95,false
+P058,Bonneville Medical 58,Permits & Fees,15844.00,false,false,900.42,14897.26,946.74,false
+P084,Bonneville Renovation 84,Materials,266075.00,false,false,65624.72,176400.77,89674.23,false
+P037,Wasatch Medical 37,Equipment,49476.79,false,false,0.00,49880.99,-404.20,false
+P048,Bonneville Office 48,Permits & Fees,20347.36,false,false,1217.80,20286.63,60.73,false
+P004,Juniper Medical 04,Other,27252.47,false,false,1286.96,23633.05,3619.42,false
+P005,Summit Residences 05,Subcontractors,760026.24,false,false,0.00,775461.62,-15435.38,false
+P011,Granite Residences 11,Other,24900.00,false,false,0.00,23549.40,1350.60,false
+P013,Aspen Renovation 13,Other,44348.00,false,false,2971.02,43333.31,1014.69,false
+P024,Aspen Retail 24,Other,35129.06,false,false,6035.91,30018.45,5110.61,false
+P028,Copper Office 28,Materials,59895.42,false,false,13813.38,44129.04,15766.38,false
+P036,Bonneville Commons 36,Permits & Fees,85112.00,false,false,9993.49,70590.96,14521.04,false
+P042,Juniper Residences 42,Equipment,102621.97,false,false,6605.47,104714.78,-2092.81,false
+P042,Juniper Residences 42,General Conditions,164323.61,false,false,6841.24,182088.20,-17764.59,false
+P043,Granite Medical 43,Materials,224358.55,false,false,54601.87,170938.09,53420.46,false
+P045,Bonneville Office 45,Other,35280.00,false,false,2429.59,32729.01,2550.99,false
+P051,Aspen Retail 51,Materials,107050.00,false,false,7909.38,101056.18,5993.82,false
+P052,Summit Medical 52,Other,48463.19,false,false,769.07,46165.37,2297.82,false
+P053,Wasatch Center 53,Permits & Fees,62053.66,false,false,5718.64,58844.78,3208.88,false
+P055,Canyon Lodge 55,General Conditions,101944.00,false,false,22151.76,90966.01,10977.99,false
+P056,Wasatch Office 56,Materials,90572.60,false,false,1262.63,82904.31,7668.29,false
+P060,Canyon Retail 60,Materials,406698.50,false,false,35207.87,384352.27,22346.23,false
+P061,Summit Center 61,Subcontractors,733812.92,false,false,56245.74,733224.55,588.37,false
+P065,Aspen Lodge 65,General Conditions,54288.00,false,false,13196.97,46080.55,8207.45,false
+P068,Aspen Lodge 68,Subcontractors,176776.08,false,false,8512.66,169946.87,6829.21,false
+P069,Bonneville Retail 69,Materials,161011.46,false,false,25776.91,142366.77,18644.69,false
+P076,Granite Center 76,Permits & Fees,42846.81,false,false,4659.72,31863.64,10983.17,false
+P079,Canyon Center 79,Subcontractors,395808.00,false,false,98064.64,266570.52,129237.48,false
+P086,Copper Center 86,Subcontractors,112532.00,false,false,0.00,69482.88,43049.12,false
+P088,Copper Center 88,Subcontractors,217846.56,false,false,0.00,172246.95,45599.61,false
+P090,Canyon Office 90,Subcontractors,252708.47,false,false,25374.52,202395.35,50313.12,false
+P093,Granite Office 93,Equipment,122895.00,false,false,4740.46,88380.51,34514.49,false
+P093,Granite Office 93,General Conditions,172053.00,false,false,10404.09,125684.79,46368.21,false
+P094,Copper Commons 94,General Conditions,129686.56,false,false,11737.77,52931.53,76755.03,false
+P055,Canyon Lodge 55,Equipment,63715.00,false,false,4588.22,62249.79,1465.21,false
+P064,Juniper Commons 64,Permits & Fees,53815.43,false,false,6319.38,48104.19,5711.24,false
+P065,Aspen Lodge 65,Equipment,33930.00,false,false,2429.67,32275.24,1654.76,false
+P094,Copper Commons 94,Equipment,74287.94,false,false,4404.00,30172.78,44115.16,false
+P053,Wasatch Center 53,Labor,379995.00,false,false,0.00,0.00,379995.00,true
+P036,Bonneville Commons 36,Labor,531950.00,false,false,0.00,0.00,531950.00,true
+P064,Juniper Commons 64,Labor,341951.76,false,false,0.00,0.00,341951.76,true
+P076,Granite Center 76,Labor,276461.75,false,false,0.00,0.00,276461.75,true
+P069,Bonneville Retail 69,Labor,169037.14,false,false,0.00,0.00,169037.14,true
+P051,Aspen Retail 51,Labor,115614.00,false,false,0.00,0.00,115614.00,true
+P056,Wasatch Office 56,Labor,97167.27,false,false,0.00,0.00,97167.27,true
+P043,Granite Medical 43,Labor,232942.18,false,false,0.00,0.00,232942.18,true
+P028,Copper Office 28,Labor,63992.85,false,false,0.00,0.00,63992.85,true
+P060,Canyon Retail 60,Labor,364775.04,false,false,0.00,0.00,364775.04,true
+P088,Copper Center 88,Labor,175942.45,false,false,0.00,0.00,175942.45,true
+P061,Summit Center 61,Labor,515725.36,false,false,0.00,0.00,515725.36,true
+P068,Aspen Lodge 68,Labor,266846.86,false,false,0.00,0.00,266846.86,true
+P090,Canyon Office 90,Labor,244715.61,false,false,0.00,0.00,244715.61,true
+P005,Summit Residences 05,Labor,556938.93,false,false,0.00,0.00,556938.93,true
+P079,Canyon Center 79,Labor,319200.00,false,false,0.00,0.00,319200.00,true
+P086,Copper Center 86,Labor,108513.00,false,false,0.00,0.00,108513.00,true
+P024,Aspen Retail 24,Labor,323234.71,false,false,0.00,0.00,323234.71,true
+P045,Bonneville Office 45,Labor,317520.00,false,false,0.00,0.00,317520.00,true
+P013,Aspen Renovation 13,Labor,487828.00,false,false,0.00,0.00,487828.00,true
+P004,Juniper Medical 04,Labor,251511.70,false,false,0.00,0.00,251511.70,true
+P052,Summit Medical 52,Labor,508941.41,false,false,0.00,0.00,508941.41,true
+P011,Granite Residences 11,Labor,207500.00,false,false,0.00,0.00,207500.00,true
+P007,Wasatch Renovation 07,Labor,486980.52,false,false,0.00,0.00,486980.52,true
+P092,Copper Retail 92,Labor,204531.46,false,false,0.00,0.00,204531.46,true
+P057,Juniper Commons 57,Labor,213786.00,false,false,0.00,0.00,213786.00,true
+P073,Canyon Commons 73,Labor,490438.00,false,false,0.00,0.00,490438.00,true
+P067,Copper Office 67,Labor,149138.24,false,false,0.00,0.00,149138.24,true
+P072,Aspen Office 72,Labor,239292.30,false,false,0.00,0.00,239292.30,true
+P033,Bonneville Retail 33,Labor,229635.00,false,false,0.00,0.00,229635.00,true
+P044,Copper Medical 44,Labor,124308.00,false,false,0.00,0.00,124308.00,true
+P026,Granite Commons 26,Labor,794870.57,false,false,0.00,0.00,794870.57,true
+P016,Wasatch Lodge 16,Labor,115179.12,false,false,0.00,0.00,115179.12,true
+P029,Copper Center 29,Labor,183657.74,false,false,0.00,0.00,183657.74,true
+P031,Summit Lodge 31,Labor,132750.00,false,false,0.00,0.00,132750.00,true
+P049,Wasatch Commons 49,Labor,258379.56,false,false,0.00,0.00,258379.56,true
+P041,Canyon Office 41,Labor,333073.87,false,false,0.00,0.00,333073.87,true
+P042,Juniper Residences 42,Labor,522102.34,false,false,0.00,0.00,522102.34,true
+P055,Canyon Lodge 55,Labor,318575.00,false,false,0.00,0.00,318575.00,true
+P093,Granite Office 93,Labor,639054.00,false,false,0.00,0.00,639054.00,true
+P065,Aspen Lodge 65,Labor,169650.00,false,false,0.00,0.00,169650.00,true
+P094,Copper Commons 94,Labor,424450.05,false,false,0.00,0.00,424450.05,true
+P015,Juniper Residences 15,Labor,290227.70,false,false,0.00,0.00,290227.70,true
+P035,Aspen Office 35,Labor,260475.00,false,false,0.00,0.00,260475.00,true
+P021,Copper Center 21,Labor,637511.16,false,false,0.00,0.00,637511.16,true
+P062,Granite Residences 62,Labor,566632.78,false,false,0.00,0.00,566632.78,true
+P020,Wasatch Commons 20,Labor,233191.54,false,false,0.00,0.00,233191.54,true
+P006,Granite Commons 06,Labor,321425.00,false,false,0.00,0.00,321425.00,true
+P018,Wasatch Renovation 18,Labor,314938.00,false,false,0.00,0.00,314938.00,true
+P034,Bonneville Office 34,Labor,134350.00,false,false,0.00,0.00,134350.00,true
+P095,Summit Lodge 95,Labor,143100.00,false,false,0.00,0.00,143100.00,true
+P030,Granite Center 30,Labor,561215.40,false,false,0.00,0.00,561215.40,true
+P077,Canyon Residences 77,Labor,223530.30,false,false,0.00,0.00,223530.30,true
+P039,Granite Commons 39,Labor,156843.00,false,false,0.00,0.00,156843.00,true
+P012,Canyon Retail 12,Labor,258442.69,false,false,0.00,0.00,258442.69,true
+P087,Copper Office 87,Labor,609458.16,false,false,0.00,0.00,609458.16,true
+P997,,Labor,42000.00,false,true,0.00,0.00,42000.00,true
+P014,Bonneville Lodge 14,Labor,536404.00,false,false,0.00,0.00,536404.00,true
+P017,Summit Retail 17,Labor,389586.00,false,false,0.00,0.00,389586.00,true
+P046,Granite Lodge 46,Labor,261515.28,false,false,0.00,0.00,261515.28,true
+P003,Summit Center 03,Labor,335861.72,false,false,0.00,0.00,335861.72,true
+P037,Wasatch Medical 37,Labor,249165.64,false,false,0.00,0.00,249165.64,true
+P027,Canyon Renovation 27,Labor,443408.07,false,false,0.00,0.00,443408.07,true
+P071,Wasatch Office 71,Labor,146468.68,false,false,0.00,0.00,146468.68,true
+P054,Granite Office 54,Labor,129291.68,false,false,0.00,0.00,129291.68,true
+P070,Granite Commons 70,Labor,276982.83,false,false,0.00,0.00,276982.83,true
+P050,Granite Lodge 50,Labor,291490.92,false,false,0.00,0.00,291490.92,true
+P080,Aspen Lodge 80,Labor,117882.00,false,false,0.00,0.00,117882.00,true
+P085,Summit Residences 85,Labor,234452.75,false,false,0.00,0.00,234452.75,true
+P084,Bonneville Renovation 84,Labor,238550.00,false,false,0.00,0.00,238550.00,true
+P002,Wasatch Renovation 02,Labor,179172.00,false,false,0.00,0.00,179172.00,true
+P009,Wasatch Retail 09,Labor,149472.00,false,false,0.00,0.00,149472.00,true
+P023,Summit Office 23,Labor,663702.00,false,false,0.00,0.00,663702.00,true
+P010,Juniper Office 10,Labor,148883.21,false,false,0.00,0.00,148883.21,true
+P081,Canyon Center 81,Labor,189125.00,false,false,0.00,0.00,189125.00,true
+P008,Bonneville Renovation 08,Labor,510180.00,false,false,0.00,0.00,510180.00,true
+P089,Aspen Center 89,Labor,254462.00,false,false,0.00,0.00,254462.00,true
+P022,Juniper Medical 22,Labor,779495.08,false,false,0.00,0.00,779495.08,true
+P078,Aspen Residences 78,Labor,324461.84,false,false,0.00,0.00,324461.84,true
+P040,Summit Commons 40,Labor,329547.55,false,false,0.00,0.00,329547.55,true
+P074,Copper Center 74,Labor,324875.00,false,false,0.00,0.00,324875.00,true
+P032,Granite Residences 32,Labor,467456.09,false,false,0.00,0.00,467456.09,true
+P048,Bonneville Office 48,Labor,141958.70,false,false,0.00,0.00,141958.70,true
+P058,Bonneville Medical 58,Labor,106947.00,false,false,0.00,0.00,106947.00,true
+P066,Canyon Medical 66,Labor,161220.41,false,false,0.00,0.00,161220.41,true
+P091,Granite Medical 91,Labor,466769.42,false,false,0.00,0.00,466769.42,true
+P075,Granite Lodge 75,Labor,542516.00,false,false,0.00,0.00,542516.00,true
+P047,Granite Lodge 47,Labor,497508.00,false,false,0.00,0.00,497508.00,true
+P082,Wasatch Retail 82,Labor,477800.95,false,false,0.00,0.00,477800.95,true
+P096,Granite Center 96,Labor,485562.00,false,false,0.00,0.00,485562.00,true
+P083,Wasatch Renovation 83,Labor,278750.00,false,false,0.00,0.00,278750.00,true
+P001,Juniper Retail 01,Labor,357667.87,false,false,0.00,0.00,357667.87,true
+P019,Wasatch Center 19,Labor,130838.79,false,false,0.00,0.00,130838.79,true
+P038,Canyon Renovation 38,Labor,173804.56,false,false,0.00,0.00,173804.56,true
+P059,Aspen Residences 59,Labor,140535.00,false,false,0.00,0.00,140535.00,true
+P025,Aspen Medical 25,Labor,591801.49,false,false,0.00,0.00,591801.49,true
+P063,Summit Office 63,Labor,291896.73,false,false,0.00,0.00,291896.73,true

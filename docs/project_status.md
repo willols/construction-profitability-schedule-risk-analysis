@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: September 14, 2026
+Last updated: September 16, 2026
 
 ## Current Phase
 
@@ -91,14 +91,115 @@ The budget source has no effective date or version history.
 Its validity as of June 30, 2026 remains unverified.
 
 The report view stores a query definition, not a frozen snapshot.
-No CSV export or Excel workbook has been created.
 
-Labor entries, project updates, and change orders still require cleaning
-implementation.
+### CSV Export and Excel Report
 
-Latest confirmed commit: c43410a, pushed September 12.
-September 14 documentation and Git closeout are in progress.
-No new commit or push has been confirmed; working-tree status is unchecked.
+Section 6 in `sql/10_budget_vs_actual_report.sql` exports the saved
+report view with column headers to:
+
+`outputs/budget_vs_actual_2026-06-30.csv`
+
+Completed:
+
+- Confirmed the exported file contains 673 data rows and 10 columns.
+- Queried the CSV with read_csv_auto() and reconciled the three
+  monetary totals to the validated view to the cent.
+- Opened the CSV in Excel for the web on Mac and converted it into
+  an editable Excel workbook.
+- Confirmed the Excel import contains 673 data rows plus a header.
+- Independently reconciled revised budget, incurred cost, and
+  pending exposure using Excel SUM formulas.
+- Created an Excel Table covering A1:J674 on Budget vs Actual.
+- Added labeled import-validation totals outside the table.
+- Applied monetary formatting and a conditional-formatting rule
+  highlighting budget_remaining below zero in I2:I674.
+- Practiced filtering and sorting category overruns.
+- Created a Project Summary PivotTable grouped by project_id.
+- Added sums of revised_budget, incurred_cost, pending_exposure,
+  and budget_remaining.
+- Reconciled the PivotTable's revised budget, incurred cost, and
+  pending exposure grand totals.
+- Created a separate Report Notes sheet documenting budget remaining,
+  pending exposure treatment, and the budget effective-date limitation.
+
+Confirmed CSV, Excel import, and PivotTable totals:
+
+- Revised budget: 119564833.67.
+- Incurred cost: 80468439.22.
+- Pending exposure: 7961647.60.
+
+Selected findings:
+
+- P007 / Materials has revised budget 612380.57, incurred cost
+  732358.26, and budget remaining -119977.69.
+- Its incurred cost is approximately 19.59% above its category budget.
+- P007's total project budget remaining is positive at 336562.32.
+  Category overruns therefore do not establish an overall project
+  overrun or predict the final project outcome.
+
+Workbook closeout completed September 16:
+
+- Reviewed Report Notes wrapping, column width, and row heights.
+- Reviewed Project Summary formatting and row heights.
+- Added notes explaining P997's retained 42000.00 budget,
+  BUD-P057-04's missing original budget, and zero recorded costs.
+- Added an explicit P997 exception note above the Project Summary
+  PivotTable without changing its values.
+- Confirmed the workbook's saved indicator.
+- Downloaded `outputs/budget_vs_actual_2026-06-30.xlsx` and replaced
+  it with the updated copy after adding the Project Summary note.
+- Confirmed the exported-CSV validation query follows COPY in Section 6.
+
+### Labor Cleaning in Progress
+
+Implementation has started in `sql/11_labor_entries_cleaned.sql`,
+following the structure of `sql/09_cost_transactions_cleaned.sql`.
+
+Completed individual cleaning steps:
+
+1. Remove exact duplicate rows while preserving raw columns.
+2. Convert work_date to DATE using standard parsing followed by
+   the validated M/D/YYYY fallback.
+3. Convert regular_hours to DECIMAL(10,4).
+4. Convert overtime_hours to DECIMAL(10,2).
+5. Convert hourly_rate to DECIMAL(10,2), fill the missing rate only
+   for TE001843 with 38.96, and add hourly_rate_derived_flag.
+
+Confirmed results:
+
+- Deduplication: 18003 rows and 18003 distinct time_entry_id values.
+- Date output: 18003 rows; TE002542 converts to May 19, 2023.
+- TE016347 retains regular_hours of 16.5592.
+- TE000119 retains overtime_hours of 5.03.
+- TE001843 retains raw hourly_rate NULL, receives cleaned rate 38.96,
+  and has hourly_rate_derived_flag TRUE.
+
+Numeric types selected:
+
+- regular_hours_clean: DECIMAL(10,4).
+- overtime_hours_clean: DECIMAL(10,2).
+- hourly_rate_clean: DECIMAL(10,2).
+- labor_cost_clean: DECIMAL(10,2); conversion not yet implemented.
+
+Individual transformations receive spot-checks during implementation.
+Full-dataset checks belong in the validations section.
+
+Steps 2–5 have passed the documented spot-checks only.
+Remaining transformations, combined cleaning logic, full validations,
+and the reusable cleaned_labor_entries view are still pending.
+
+The Excel report's incurred costs come from cost_transactions,
+including eligible Labor-category transactions. Labor-entry costs
+have not been added separately. Their overlap must be investigated
+before combining costs.
+
+Project updates and change orders still require cleaning implementation.
+
+Latest confirmed commit: d4989d0, pushed September 14.
+The working tree was clean after that push.
+September 15–16 changes are under review; no new commit or push
+has been confirmed.
+
 
 ## Profiling File Structure
 
@@ -741,7 +842,9 @@ Confirmed cleaning rules:
 * Preserve `regular_hours` at four-decimal scale.
 * Preserve `overtime_hours`, `hourly_rate`, and `labor_cost` at two-decimal
   scale.
-* Select final DECIMAL widths during cleaned-schema implementation.
+* Use DECIMAL(10,4) for regular_hours_clean.
+* Use DECIMAL(10,2) for overtime_hours_clean, hourly_rate_clean,
+  and labor_cost_clean.
 * Impute TE001843's hourly rate as 38.96 and flag it as formula-derived.
 * Standardize `carpenter ` to `Carpenter`.
 * Preserve TE001216's `General Labor` value and flag it as unresolved.
@@ -1397,11 +1500,13 @@ No planned change-order profiling checks remain.
   which references unmatched project ID P997.
 * Preserve BUD-P057-04's original-budget NULL unless a stakeholder confirms the
   formula-derived candidate.
+* Confirm whether the supplied revised budgets were valid as of June 30,
+  2026. The source has no effective dates or version history; retain
+  this reporting limitation until authoritative confirmation is available.
 
 ### Labor Entries
 
-* Determine total DECIMAL precision when the cleaned labor schema is
-  implemented.
+
 * Obtain stakeholder clarification for TE001216's unresolved `General Labor`
   value.
 * Obtain stakeholder clarification for TE003191's unexplained 125.00
@@ -1436,25 +1541,29 @@ No planned change-order profiling checks remain.
 
 #### Cleaning Implementation
 
-- Implement documented transformations and exception treatments for
-  labor entries, project updates, and change orders.
-- Select remaining schema details, including labor DECIMAL precision.
-- Validate remaining cleaned row counts, identifiers, types,
-  relationships, and totals; save and verify reusable outputs.
+- Continue labor cleaning from step 6: convert labor_cost to
+  DECIMAL(10,2) while preserving the recorded values.
+- Implement remaining labor transformations and exception flags,
+  then combine the cleaning logic.
+- Implement documented cleaning for project updates and change orders.
+- Validate cleaned row counts, identifiers, conversions, value
+  preservation, flags, relationships, and totals.
+- Create and verify the remaining reusable cleaned views.
 - Investigate additional source issues only when implementation or
   analysis reveals a specific material concern.
 
+
 ### Analytical Reporting
 
-- Export the validated construction.budget_vs_actual_report view to CSV
-  and build the first Excel budget-versus-actual report.
-- Verify exported row counts and monetary totals.
-- Carry financial definitions, data-quality flags, and the budget-date
-  limitation into the Excel report.
-- Confirm whether the supplied revised budgets were valid on June 30,
-  2026; retain the documented limitation until confirmed.
+- Preserve the completed Excel report's definitions, exception notes,
+  and budget effective-date limitation in future reporting.
+- Reconcile change-order amounts with supplied revised budgets before
+  adding adjustments that could already be included.
 - Keep P997's orphan budget visible and separately accounted for in
-  project-level reporting.
+  project-level reporting. Current revised-budget totals include
+  its 42000.00.
+- Confirm the supplied revised budgets were valid on June 30, 2026;
+  retain the documented limitation until confirmed.
 - Confirm whether transaction costs already include labor before
   adding costs from labor_entries.
 - Align costs, progress, and forecasts to the same reporting date.
@@ -1463,33 +1572,48 @@ No planned change-order profiling checks remain.
 - Disclose the absence of dedicated commitment and accrual records.
   Pending transactions do not substitute for those records.
 - Keep budget remaining distinct from estimated cost to complete.
+  Pending exposure is shown separately and is not deducted from
+  budget remaining.
 
 ## Remaining Project Work
 
-1. Export the validated budget-versus-actual view to CSV, verify the
-   exported data, and build the first Excel report.
-2. Implement and validate cleaning for labor entries, project updates,
-   and change orders; save and verify their reusable outputs.
-3. Extend project-level analytical outputs as of June 30, 2026 with
+1. Complete labor cleaning from step 6 onward, combine transformations,
+   validate the results, and create and verify the reusable view.
+2. Implement and validate cleaning for project updates and change orders;
+   save and verify their reusable outputs.
+3. Investigate labor-cost overlap and reconcile change orders with
+   supplied budgets before combining financial amounts.
+4. Extend project-level analytical outputs as of June 30, 2026 with
    progress, forecast, and change-order information.
-4. Develop profitability, change-order-exposure, and schedule-risk
+5. Develop profitability, change-order-exposure, and schedule-risk
    metrics, Power BI visuals, and an executive summary.
-5. Complete final QA, repository documentation, and portfolio publication.
+6. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
-Begin Section 6: EXPORT FOR EXCEL at the bottom of
-`sql/10_budget_vs_actual_report.sql`, after the validation checks.
+Begin Cleaning step 6 in `sql/11_labor_entries_cleaned.sql`.
 
-1. Write a comment explaining the export's purpose.
-2. Export construction.budget_vs_actual_report to CSV with column headers.
-3. Use the existing outputs folder and the planned filename:
-   outputs/budget_vs_actual_2026-06-30.csv
-4. Verify 673 exported data rows and these monetary totals:
-   revised budget 119564833.67, pending exposure 7961647.60,
-   incurred cost 80468439.22.
-5. Begin the Excel report, preserving the documented definitions
-   and budget-date limitation.
+1. Write a comment explaining the conversion of labor_cost to
+   DECIMAL(10,2) while preserving recorded values.
+2. Use the deduplicated source CTE.
+3. Select time_entry_id and raw labor_cost.
+4. Add labor_cost_clean using TRY_CAST.
+5. Run the query and spot-check a recorded value.
+
+Do not replace recorded labor costs with formula-calculated amounts.
+Preserve the documented one-cent differences and TE003191's unexplained
+125.00 difference; implement the required exception flag in a later step.
+
+Follow the cost-transactions cleaning-file structure:
+individual transformations, combined logic, full validations,
+saved view, and saved-view verification.
+
+During cleaning steps, perform targeted spot-checks.
+Reserve full-dataset checks for the validations section.
+
+The CSV export, monetary checks, Excel import checks, initial PivotTable
+reconciliation, and workbook closeout are complete. Repeat checks only
+if a subsequent change affects the relevant data or calculations.
 
 Reconnect to construction.duckdb in VS Code if required:
 
@@ -1497,7 +1621,7 @@ ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
 USE construction;
 
 Continue in coaching mode: explain reasoning, write comments first,
-attempt the SQL, and use graduated hints when needed. Work one section,
+attempt the work, and use graduated hints when needed. Work one section,
 one change, and one check at a time. Identify exact insertion or
 replacement locations.
 
@@ -1505,17 +1629,34 @@ replacement locations.
 
 Latest confirmed commit:
 
-- Commit: c43410a.
-- Message: Complete cost transaction cleaning and validated DuckDB view.
-- Date: September 12, 2026.
+- Commit: d4989d0.
+- Message: Complete and validate budget-versus-actual report view.
+- Date: September 14, 2026.
 - Successfully pushed to origin/main.
 
-The working tree was confirmed clean after that push.
-No September 13 or September 14 commit or push has been confirmed.
+The working tree was confirmed clean and local main matched origin/main
+after that push.
 
-September 14 closeout is in progress. Review working-tree changes,
-finish documentation updates, then commit and push the report SQL
-and documentation. Update this section after successful Git closeout.
+September 15–16 closeout is in progress.
+No new commit or push has been confirmed.
+
+Items for final review and staging:
+
+- `sql/10_budget_vs_actual_report.sql`: CSV export and export validation;
+  placement of validation after COPY confirmed.
+- `sql/11_labor_entries_cleaned.sql`: opening documentation and
+  individual cleaning steps 1–5.
+- `outputs/budget_vs_actual_2026-06-30.csv`: created and validated.
+- `outputs/budget_vs_actual_2026-06-30.xlsx`: downloaded and updated
+  after workbook closeout.
+- `docs/project_notes.md`: September 15–16 work and decisions.
+- `docs/project_status.md`: current progress and exact next task.
+
+Save documentation edits, review the final SQL and output-file list,
+then stage the intended files, commit, and push.
+Confirm the resulting commit, remote synchronization, and working-tree
+status before recording Git closeout as complete.
+
 
 ## End-of-Session Update Routine
 

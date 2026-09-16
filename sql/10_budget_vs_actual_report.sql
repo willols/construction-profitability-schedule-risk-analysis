@@ -559,3 +559,27 @@ SELECT
     SUM(pending_exposure) AS pending_exposure_total,
     SUM(incurred_cost) AS incurred_cost_total
 FROM construction.budget_vs_actual_report;
+
+-- Passed: revised_budget_total 119564833.67, pending_exposure_total 7961647.6,
+-- incurred_cost_total 80468439.22
+
+
+-- SECTION 6: EXPORT FOR EXCEL
+
+-- Export the validated budget-versus-actual report to CSV
+-- for reviewing and presenting budget and cost comparisons in Excel.
+COPY construction.budget_vs_actual_report
+TO 'outputs/budget_vs_actual_2026-06-30.csv'
+(FORMAT CSV, HEADER);
+
+
+
+-- 6A: Validate the exported CSV totals.
+SELECT
+    SUM(revised_budget) AS revised_budget_total,
+    SUM(pending_exposure) AS pending_exposure_total,
+    SUM(incurred_cost) AS incurred_cost_total
+FROM read_csv_auto ('outputs/budget_vs_actual_2026-06-30.csv');
+
+-- Passed: revised_budget_total 119564833.67, pending_exposure_total 7961647.6,
+-- incurred_cost_total 80468439.22
