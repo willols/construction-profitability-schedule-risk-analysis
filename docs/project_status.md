@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: September 16, 2026
+Last updated: September 18, 2026
 
 ## Current Phase
 
@@ -13,6 +13,7 @@ Cleaning is complete for:
 - Projects: `sql/07_projects_cleaned.sql`.
 - Project budgets: `sql/08_project_budgets_cleaned.sql`.
 - Cost transactions: `sql/09_cost_transactions_cleaned.sql`.
+- Labor entries: `sql/11_labor_entries_cleaned.sql`.
 
 The following reusable views are saved in `construction.duckdb`:
 
@@ -21,6 +22,8 @@ The following reusable views are saved in `construction.duckdb`:
   budget-line IDs.
 - `construction.cleaned_cost_transactions`: 11203 rows and 11203
   distinct transaction IDs.
+- `construction.cleaned_labor_entries`: 18003 rows and 18003
+distinct time entry IDs.
 
 These views preserve raw columns and expose cleaned values and exception
 flags. They store query definitions and depend on access to the source
@@ -150,43 +153,81 @@ Workbook closeout completed September 16:
   it with the updated copy after adding the Project Summary note.
 - Confirmed the exported-CSV validation query follows COPY in Section 6.
 
-### Labor Cleaning in Progress
+### Labor Cleaning Complete
 
-Implementation has started in `sql/11_labor_entries_cleaned.sql`,
-following the structure of `sql/09_cost_transactions_cleaned.sql`.
+Individual cleaning steps 1–10, combined Cleaning step 11, and
+Validations 1–16 are complete in `sql/11_labor_entries_cleaned.sql`.
 
-Completed individual cleaning steps:
+The reusable view `construction.cleaned_labor_entries` is saved
+in construction.duckdb and verified.
+
+Implemented transformations:
 
 1. Remove exact duplicate rows while preserving raw columns.
 2. Convert work_date to DATE using standard parsing followed by
    the validated M/D/YYYY fallback.
 3. Convert regular_hours to DECIMAL(10,4).
 4. Convert overtime_hours to DECIMAL(10,2).
-5. Convert hourly_rate to DECIMAL(10,2), fill the missing rate only
-   for TE001843 with 38.96, and add hourly_rate_derived_flag.
+5. Convert hourly_rate to DECIMAL(10,2), fill TE001843's missing
+   rate with 38.96, and add hourly_rate_derived_flag.
+6. Convert labor_cost to DECIMAL(10,2), preserving recorded amounts.
+7. Standardize carpenter variants to Carpenter and trim trade values.
+8. Correct project_id to P003 only where time_entry_id is TE000408
+   and raw project_id is P996; add project_id_corrected_flag.
+9. Preserve TE001216's General Labor trade and add
+   trade_unresolved_flag.
+10. Preserve TE003191's recorded labor cost and add
+    labor_cost_unresolved_flag for its documented exception.
 
-Confirmed results:
+The saved view retains raw columns, cleaned columns, and four flags.
 
-- Deduplication: 18003 rows and 18003 distinct time_entry_id values.
-- Date output: 18003 rows; TE002542 converts to May 19, 2023.
+Completed validations:
+
+- Validation 1: 18003 rows and 18003 distinct time_entry_id values.
+- Validations 2–6: zero non-NULL source values failed conversion
+  across work_date and the four numeric fields.
+- Validation 7: TE001843 retains raw hourly_rate NULL, receives
+  38.96, and has hourly_rate_derived_flag TRUE.
+- Validation 8: TE000408 retains raw project_id P996, receives
+  P003, and has project_id_corrected_flag TRUE.
+- Validation 9: trade mappings are correct; the cleaned Carpenter
+  category contains 7160 entries.
+- Validation 10: TE001216 retains General Labor and has
+  trade_unresolved_flag TRUE.
+- Validation 11: TE003191 retains 1530.88 in both cost columns
+  and has labor_cost_unresolved_flag TRUE.
+- Validation 12: only the four expected entries are flagged,
+  each with only its intended flag TRUE.
+- Validation 13: zero detected differences across the four
+  non-NULL raw/cleaned numeric pairs.
+- Validation 14: deduplicated-source and cleaned labor-cost totals
+  reconcile to the cent at 30917634.47.
+- Validation 15: cleaned columns and flags have their intended types.
+- Validation 16: zero labor entries have unmatched cleaned project IDs.
+
+Additional individual-step spot-checks passed:
+
+- TE002542 converts to May 19, 2023.
 - TE016347 retains regular_hours of 16.5592.
 - TE000119 retains overtime_hours of 5.03.
-- TE001843 retains raw hourly_rate NULL, receives cleaned rate 38.96,
-  and has hourly_rate_derived_flag TRUE.
+- TE004869 retains labor_cost of 1653.
 
-Numeric types selected:
+Regular hours retain four decimal places because earlier profiling
+showed that two-decimal rounding would alter 94 values and
+three-decimal rounding would alter 82; four would alter none.
 
-- regular_hours_clean: DECIMAL(10,4).
-- overtime_hours_clean: DECIMAL(10,2).
-- hourly_rate_clean: DECIMAL(10,2).
-- labor_cost_clean: DECIMAL(10,2); conversion not yet implemented.
+The raw DOUBLE cost total of 30917634.470000047 contains a negligible
+floating-point artifact. The cleaned DECIMAL total is 30917634.47.
 
-Individual transformations receive spot-checks during implementation.
-Full-dataset checks belong in the validations section.
+Saved-view verification passed:
 
-Steps 2–5 have passed the documented spot-checks only.
-Remaining transformations, combined cleaning logic, full validations,
-and the reusable cleaned_labor_entries view are still pending.
+- 18003 rows and 18003 distinct time_entry_id values.
+- Total labor_cost_clean of 30917634.47.
+- Exactly the four expected flagged entries, each with only its
+  intended flag TRUE.
+
+TE001216's trade classification and TE003191's 125.00 cost difference
+remain unresolved. TE001843's derived hourly rate is not source-confirmed.
 
 The Excel report's incurred costs come from cost_transactions,
 including eligible Labor-category transactions. Labor-entry costs
@@ -195,11 +236,9 @@ before combining costs.
 
 Project updates and change orders still require cleaning implementation.
 
-Latest confirmed commit: d4989d0, pushed September 14.
-The working tree was clean after that push.
-September 15–16 changes are under review; no new commit or push
-has been confirmed.
-
+Latest confirmed commit: 75d48a5, pushed September 16.
+Local main matched origin/main and the working tree was clean then.
+September 17–18 work awaits end-of-session review, commit, and push.
 
 ## Profiling File Structure
 
@@ -854,6 +893,31 @@ Confirmed cleaning rules:
 * Do not reclassify regular or overtime hours without a confirmed reporting
   period and authoritative overtime rule.
 * Preserve raw source values unchanged.
+
+#### Cleaning Implementation
+
+Cleaning is complete in `sql/11_labor_entries_cleaned.sql`.
+
+Individual steps 1–10, combined Cleaning step 11, and
+Validations 1–16 passed.
+
+The reusable view `construction.cleaned_labor_entries` is saved
+in construction.duckdb. It preserves raw columns, adds cleaned
+columns and four flags, and retains recorded labor costs.
+
+Saved-view verification confirmed:
+
+- 18003 rows and 18003 distinct time_entry_id values.
+- Total labor_cost_clean of 30917634.47.
+- Only TE001843, TE000408, TE001216, and TE003191 are flagged,
+  each with only its intended flag TRUE.
+
+All cleaned labor project IDs match construction.cleaned_projects.
+Numeric value comparisons detected no differences among non-NULL
+raw/cleaned pairs, and source/cleaned cost totals reconcile to the cent.
+
+See Labor Cleaning Complete for detailed validation results.
+Documented business uncertainties remain unresolved.
 
 ### Project Updates
 
@@ -1539,19 +1603,14 @@ No planned change-order profiling checks remain.
   preserve the NULL and flag it in cleaned output.
 - Implement CO0119's reporting-cutoff treatment in the analytical layer.
 
-#### Cleaning Implementation
+ #### Cleaning Implementation
 
-- Continue labor cleaning from step 6: convert labor_cost to
-  DECIMAL(10,2) while preserving the recorded values.
-- Implement remaining labor transformations and exception flags,
-  then combine the cleaning logic.
 - Implement documented cleaning for project updates and change orders.
-- Validate cleaned row counts, identifiers, conversions, value
+- Validate their row counts, identifiers, conversions, value
   preservation, flags, relationships, and totals.
-- Create and verify the remaining reusable cleaned views.
+- Create and verify their reusable cleaned views.
 - Investigate additional source issues only when implementation or
   analysis reveals a specific material concern.
-
 
 ### Analytical Reporting
 
@@ -1577,83 +1636,79 @@ No planned change-order profiling checks remain.
 
 ## Remaining Project Work
 
-1. Complete labor cleaning from step 6 onward, combine transformations,
-   validate the results, and create and verify the reusable view.
-2. Implement and validate cleaning for project updates and change orders;
-   save and verify their reusable outputs.
-3. Investigate labor-cost overlap and reconcile change orders with
+1. Implement and validate cleaning for project updates and change orders;
+   save and verify their reusable views.
+2. Investigate labor-cost overlap and reconcile change orders with
    supplied budgets before combining financial amounts.
-4. Extend project-level analytical outputs as of June 30, 2026 with
+3. Extend project-level analytical outputs as of June 30, 2026 with
    progress, forecast, and change-order information.
-5. Develop profitability, change-order-exposure, and schedule-risk
+4. Develop profitability, change-order-exposure, and schedule-risk
    metrics, Power BI visuals, and an executive summary.
-6. Complete final QA, repository documentation, and portfolio publication.
+5. Complete final QA, repository documentation, and portfolio publication.
+
 
 ## Exact Next Task
 
-Begin Cleaning step 6 in `sql/11_labor_entries_cleaned.sql`.
+Begin the project-updates cleaning plan.
 
-1. Write a comment explaining the conversion of labor_cost to
-   DECIMAL(10,2) while preserving recorded values.
-2. Use the deduplicated source CTE.
-3. Select time_entry_id and raw labor_cost.
-4. Add labor_cost_clean using TRY_CAST.
-5. Run the query and spot-check a recorded value.
+1. Review the documented findings and cleaning decisions under
+   Dataset Status > Project Updates and in
+   sql/05_project_updates_profiling.sql.
+2. Explain the intended row grain and identify which fields need
+   transformation, preservation, or exception flags.
+3. Draft the opening purpose, grain, and cleaning-rule comments for
+   sql/12_project_updates_cleaned.sql.
+4. Review the plan before implementing the first transformation.
 
-Do not replace recorded labor costs with formula-calculated amounts.
-Preserve the documented one-cent differences and TE003191's unexplained
-125.00 difference; implement the required exception flag in a later step.
+Do not repeat completed profiling unless implementation reveals
+a specific unresolved issue.
 
-Follow the cost-transactions cleaning-file structure:
-individual transformations, combined logic, full validations,
-saved view, and saved-view verification.
-
-During cleaning steps, perform targeted spot-checks.
-Reserve full-dataset checks for the validations section.
-
-The CSV export, monetary checks, Excel import checks, initial PivotTable
-reconciliation, and workbook closeout are complete. Repeat checks only
-if a subsequent change affects the relevant data or calculations.
+Labor cleaning and saved-view verification are complete.
+The CSV export, Excel checks, PivotTable reconciliation, and workbook
+closeout are also complete. Repeat checks only if a subsequent change
+affects the relevant data or calculations.
 
 Reconnect to construction.duckdb in VS Code if required:
 
 ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
 USE construction;
 
-Continue in coaching mode: explain reasoning, write comments first,
-attempt the work, and use graduated hints when needed. Work one section,
-one change, and one check at a time. Identify exact insertion or
-replacement locations.
+Continue in coaching mode:
+
+- Ask the user to propose the next step or validation and explain why.
+- Let the user write purpose comments and make the first SQL attempt.
+- Give graduated hints when needed rather than supplying the solution.
+- Pause when the user cannot explain what the query is doing.
+- Work one section, one change, and one check at a time.
+- Identify exact insertion or replacement locations.
 
 ### Git Status
 
 Latest confirmed commit:
 
-- Commit: d4989d0.
-- Message: Complete and validate budget-versus-actual report view.
-- Date: September 14, 2026.
+- Commit: 75d48a5.
+- Message: Complete Excel budget report and begin labor cleaning.
+- Date: September 16, 2026.
 - Successfully pushed to origin/main.
 
-The working tree was confirmed clean and local main matched origin/main
-after that push.
+The September 16 handoff confirmed local main matched origin/main
+and the working tree was clean after that push.
 
-September 15–16 closeout is in progress.
-No new commit or push has been confirmed.
+September 17–18 work has not yet been confirmed committed or pushed.
+Review, commit, and push both days' work at the END of September 18's
+session.
 
-Items for final review and staging:
+Expected files for review and staging:
 
-- `sql/10_budget_vs_actual_report.sql`: CSV export and export validation;
-  placement of validation after COPY confirmed.
-- `sql/11_labor_entries_cleaned.sql`: opening documentation and
-  individual cleaning steps 1–5.
-- `outputs/budget_vs_actual_2026-06-30.csv`: created and validated.
-- `outputs/budget_vs_actual_2026-06-30.xlsx`: downloaded and updated
-  after workbook closeout.
-- `docs/project_notes.md`: September 15–16 work and decisions.
-- `docs/project_status.md`: current progress and exact next task.
+- sql/11_labor_entries_cleaned.sql: completed cleaning,
+  Validations 1–16, saved-view creation, and three view checks.
+- docs/project_notes.md: September 17–18 work, decisions, and results.
+- docs/project_status.md: completed labor stage and updated next task.
 
-Save documentation edits, review the final SQL and output-file list,
-then stage the intended files, commit, and push.
+Save edits and inspect git status and the diff to confirm the actual
+changed-file list, including any additional work completed today.
+Review and stage intended changes, commit, and push.
+
 Confirm the resulting commit, remote synchronization, and working-tree
 status before recording Git closeout as complete.
 

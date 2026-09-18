@@ -3,6 +3,195 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 18, 2026
+
+### Work Completed
+
+- Completed labor-cleaning Validations 11–16 in
+  `sql/11_labor_entries_cleaned.sql`.
+- Verified TE003191's preserved labor cost and unresolved flag.
+- Checked all four flags for expected entries and unintended targets.
+- Compared all four non-NULL raw/cleaned numeric pairs for changes.
+- Reconciled cleaned labor cost against the deduplicated source.
+- Verified cleaned column types and matching project IDs.
+- Created `construction.cleaned_labor_entries`, preserving raw
+  columns, cleaned columns, and all four flags.
+- Verified the saved view's row count, unique entry IDs, labor-cost
+  total, and flagged entries.
+
+### Decisions and Reasoning
+
+- Compare source and cleaned totals independently using scalar
+  subqueries. Taking both totals from the cleaned output could
+  hide rows accidentally removed or duplicated during cleaning.
+- Preserve regular_hours_clean as DECIMAL(10,4), as established
+  during profiling. Rounding to two decimal places would change
+  94 values; three would change 82; four would change none.
+- Use DECIMAL(10,2) for overtime hours, hourly rate, and labor cost.
+- Direct non-NULL numeric comparisons found no value differences.
+  These comparisons do not test NULL-to-value changes; the
+  intentionally derived hourly rate was validated separately.
+- Use a LEFT JOIN from labor entries to cleaned projects and
+  filter for a NULL project-side ID to identify unmatched entries.
+- Preserve recorded values for unresolved exceptions. A rare trade
+  or formula mismatch is not sufficient evidence to replace a value.
+- Existing profiling already investigated hours/rates versus
+  recorded labor cost; no repeat investigation was needed today.
+
+### Key Results
+
+- Validation 11: TE003191 retained 1530.88 in both cost columns,
+  with labor_cost_unresolved_flag = TRUE.
+- Validation 12: exactly four entries were flagged, each with only
+  its intended flag TRUE:
+  - TE001843: hourly_rate_derived_flag.
+  - TE000408: project_id_corrected_flag.
+  - TE001216: trade_unresolved_flag.
+  - TE003191: labor_cost_unresolved_flag.
+- Validation 13: zero rows had detected numeric differences across
+  the four non-NULL raw/cleaned pairs.
+- Validation 14: source and cleaned labor-cost totals reconciled
+  to the cent at 30917634.47.
+- The raw DOUBLE sum returned 30917634.470000047; the negligible
+  difference was a floating-point artifact.
+- Validation 15: cleaned text columns were VARCHAR, work date was
+  DATE, numeric columns used their intended DECIMAL types, and
+  all four flags were BOOLEAN.
+- Validation 16: zero unmatched labor entries; all cleaned project
+  IDs matched construction.cleaned_projects.
+- Saved view: 18003 rows, 18003 distinct time_entry_id values,
+  labor-cost total 30917634.47, and the four expected flagged entries.
+
+### Verification and Closeout
+
+- Combined-query Validations 11–16 passed.
+- All three saved-view checks passed.
+- Labor cleaning and saved-view verification are complete.
+- TE001216's General Labor classification remains unresolved.
+- TE003191's recorded cost remains 125.00 above the calculated
+  expected cost of 1405.88; the cause remains unresolved.
+- TE001843's derived hourly rate remains flagged as calculated,
+  not source-confirmed.
+- Labor/cost-transaction overlap must be resolved before combining
+  their costs in reporting.
+- Project updates and change orders still require cleaning.
+- Change-order/budget reconciliation remains unresolved.
+- Project-status documentation still needs updating.
+- Review, commit, and push September 17–18 work at the end of
+  today's session; Git closeout has not yet been completed.
+
+### Next Session
+
+Update `docs/project_status.md` to reflect the completed labor view.
+
+Next, review the documented project-updates profiling findings and
+write the cleaning plan before implementing transformations.
+
+Continue coaching with user reasoning and first attempts, comments
+before SQL, and one step at a time.
+
+## September 17, 2026
+
+### Work Completed
+
+- Continued `sql/11_labor_entries_cleaned.sql`.
+- Completed individual cleaning steps 6–10:
+  - Convert labor_cost to DECIMAL(10,2), preserving the raw value.
+  - Standardize 'carpenter ' to 'Carpenter' and trim trade values.
+  - Correct TE000408's project_id from P996 to P003 and flag it.
+  - Preserve TE001216's 'General Labor' trade and flag it as unresolved.
+  - Preserve TE003191's recorded labor cost and flag its unexplained
+    125.00 difference.
+- Completed Cleaning step 11, combining all transformations and
+  four flags while retaining raw source columns.
+- Completed Validations 1–10 against the combined cleaned result:
+  - Row count and unique time_entry_id count.
+  - Failed conversions for work_date, regular_hours, overtime_hours,
+    hourly_rate, and labor_cost.
+  - TE001843's derived hourly rate and flag.
+  - TE000408's project correction and flag.
+  - Raw-to-cleaned trade mappings.
+  - TE001216's preserved trade and unresolved flag.
+
+### Decisions and Reasoning
+
+- Preserve recorded labor costs rather than replacing them with
+  calculated amounts; a formula difference does not prove that the
+  recorded value is incorrect.
+- Apply TE000408's correction only when both its time_entry_id and
+  raw project_id match the documented error.
+- A rare trade value is not automatically incorrect. Preserve
+  'General Labor' until its classification can be confirmed.
+- Use TE003191's entry ID to identify its documented unresolved
+  labor-cost exception.
+- Validate known entries by filtering on time_entry_id rather than
+  their flags, so an incorrect flag cannot hide the entry.
+- Failed-conversion checks identify non-NULL raw values whose cleaned
+  values are NULL. They do not prove precision or value preservation.
+- Grouping by both raw and cleaned trade shows each mapping separately.
+  Two raw variants mapping to Carpenter therefore remain separate
+  rows in that validation output.
+- Results-viewer formatting may omit trailing decimal zeros; visual
+  formatting alone does not establish the underlying data type.
+- Continue creating the saved view only after remaining validations.
+- Adjust coaching so the user increasingly identifies the next step
+  or validation and explains its purpose before receiving guidance.
+  Continue comments first, user attempts first, and one step at a time.
+
+### Key Results
+
+- Combined output: 18003 rows and 18003 distinct time_entry_id values.
+- All five failed-conversion checks returned zero rows.
+- TE004869 retained recorded labor_cost of 1653 after conversion.
+- TE001843 retained raw hourly_rate NULL, received 38.96, and had
+  hourly_rate_derived_flag = TRUE.
+- TE000408 retained raw project_id P996, received P003, and had
+  project_id_corrected_flag = TRUE.
+- Trade mapping results:
+  - General Labor → General Labor: 1 entry.
+  - 'carpenter ' → Carpenter: 1 entry.
+  - Superintendent → Superintendent: 2568 entries.
+  - Finisher → Finisher: 3703 entries.
+  - Laborer → Laborer: 4571 entries.
+  - Carpenter → Carpenter: 7159 entries.
+- The cleaned Carpenter category contains 7160 entries in total.
+- TE001216 retained General Labor in both trade columns and had
+  trade_unresolved_flag = TRUE.
+- During the individual cleaning-step spot-check, TE003191 retained
+  labor_cost of 1530.88 and had labor_cost_unresolved_flag = TRUE.
+  Its validation in the combined result remains pending.
+
+### Verification and Closeout
+
+- Individual cleaning steps 6–10 passed their targeted spot-checks.
+- Combined-query Validations 1–10 passed.
+- Remaining checks include TE003191's exception, flag totals and
+  intended targets, numeric precision and value preservation,
+  labor-cost total reconciliation, and cleaned project matching.
+- No reusable cleaned_labor_entries view has been created.
+- Labor/cost-transaction overlap and change-order/budget reconciliation
+  remain unresolved.
+- The session handoff confirmed September 16 commit 75d48a5,
+  `Complete Excel budget report and begin labor cleaning`, was pushed.
+  Local main matched origin/main and the working tree was clean then.
+  This supersedes the pending Git closeout in the September 16 entry.
+- September 17 Git review, commit, and push have not been confirmed.
+
+### Next Session
+
+Begin Validation 11 in `sql/11_labor_entries_cleaned.sql`.
+
+Write the purpose comment, then query the combined cleaned result
+for TE003191 by time_entry_id. Inspect raw labor_cost,
+labor_cost_clean, and labor_cost_unresolved_flag.
+
+Expected: both cost fields retain 1530.88 and the flag is TRUE.
+Do not recalculate or replace the recorded cost.
+
+Then identify and complete the remaining validations before creating
+and verifying the reusable cleaned view. Continue asking the user
+to propose the next check and explain its purpose.
+
 ## September 16, 2026
 
 ### Work Completed
