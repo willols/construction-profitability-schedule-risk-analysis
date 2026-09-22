@@ -3,6 +3,238 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+
+## September 22, 2026
+
+### Work Completed
+
+- Finished combined-output validation in
+  `sql/12_project_updates_cleaned.sql`.
+- Created construction.cleaned_project_updates and confirmed its
+  saved-view counts: 725 rows and 725 distinct update IDs.
+- Implemented change-order cleaning in
+  `sql/13_change_orders_cleaned.sql`.
+- Completed change-order Validations 1–7.
+- Created construction.cleaned_change_orders and verified
+  145 rows and 145 distinct change-order IDs.
+
+### Decisions and Reasoning
+
+- Adopt a more efficient cleaning workflow: document rules, implement
+  familiar transformations together, validate in batches, then save
+  and briefly verify the reusable view.
+- Validate the final joined output so checks include any effects
+  introduced by joins.
+- Preserve raw columns alongside cleaned values and exception flags.
+- Change-order dates are already inferred as DATE and require no
+  additional conversion.
+- Standardize change-order status with LOWER(TRIM(status)).
+- Remove dollar signs and commas from requested revenue before
+  conversion; use DECIMAL(10,2) for all four monetary fields.
+- Preserve change_order_type, reason, negative amounts, zeros,
+  and source NULLs.
+- Preserve CO9999/P994 and identify it through an unmatched-project
+  flag rather than assigning a replacement project ID.
+- Preserve CO0001's missing approval date and flag approved changes
+  with no approval date.
+- Keep CO0119's post-cutoff billing date and amount unchanged.
+  Apply reporting-cutoff treatment in the analytical layer.
+- Compare cleaned monetary totals with the deduplicated source,
+  because removing exact duplicates intentionally changes raw totals.
+- Parsing formatted source amounts enables numeric comparison without
+  modifying the raw CSV.
+- Reconciliation using the same parsing rules does not independently
+  prove those rules are correct or prove every row is unchanged.
+- Check NULL and zero preservation separately because matching sums
+  cannot distinguish a NULL from a zero.
+- Continue coaching with comments and user attempts first, batching
+  familiar work and pausing for concepts that need explanation.
+
+### Key Results
+
+Project updates:
+
+- Combined output: 725 rows and 725 distinct update IDs.
+- Confirmed flag counts:
+  - Missing forecast: 1.
+  - Out-of-range actual percentage: 1.
+  - Unmatched project: 1.
+  - Unknown submitter: 1.
+  - Progress decrease: 14.
+  - Forecast before report date: 40.
+- UPD99999/P995/Unknown is the record identified by both the
+  unmatched-project and unknown-submitter flags.
+- Output types matched the intended date, decimal, and Boolean types.
+- Zero violations were returned by the recorded-zero preservation
+  check across actual completion, planned completion, and ETC.
+- Source and cleaned ETC totals reconciled with a difference of 0.00.
+- Saved view confirmed at 725 rows and 725 distinct update IDs.
+
+Change orders:
+
+- Validation 1: 145 rows and 145 distinct change-order IDs.
+- Validation 2: zero populated source values failed conversion across
+  the four monetary fields; each exception flag identified one row.
+- Validation 3:
+  - CO0001/P001/approved retains approval_date NULL and only the
+    approved_missing_approval_date_flag.
+  - CO9999/P994/pending retains its unmatched project ID and only
+    the unmatched_project_id_flag.
+- Validation 4: raw status variants mapped correctly:
+  - approved: 102.
+  - pending: 14.
+  - withdrawn: 16.
+  - rejected: 13.
+  - Total: 145.
+- Validation 5: cleaned monetary fields use DECIMAL(10,2),
+  status_clean uses VARCHAR, and both flags use BOOLEAN.
+- Validation 6: all four deduplicated-source and cleaned totals match:
+  - Requested revenue: 6974614.34.
+  - Estimated cost: 4949215.55.
+  - Approved revenue: 4481858.73.
+  - Billed amount: 3129442.88.
+  - All four differences: 0.00.
+- Validation 7: zero source-NULL or recorded-zero preservation violations.
+- Saved view confirmed at 145 rows and 145 distinct change-order IDs.
+
+### Verification and Closeout
+
+- Both cleaned views were created and their saved row/key counts verified.
+- Validation results above were reported during the session.
+- No separate project/date uniqueness check or explicit comparison-flag
+  NULL-behavior check was reported today for project updates.
+- Git review, commit, and push have not yet been confirmed.
+- Latest confirmed pushed commit remains 81aed56 from September 18.
+- Labor/cost-transaction overlap and change-order/budget reconciliation
+  remain unresolved.
+
+### Next Session
+
+Begin investigating whether labor costs in labor_entries overlap with
+Labor-category amounts in cost_transactions.
+
+First explain the double-counting risk, then review existing profiling
+findings and relevant fields before choosing a comparison grain.
+Do not add the two cost sources together without supporting evidence.
+Matching aggregate totals alone would not establish record-level overlap.
+
+After the labor investigation, reconcile change orders with supplied
+budget adjustments before incorporating additional financial amounts.
+
+## September 21, 2026
+
+### Work Completed
+
+- Began `sql/12_project_updates_cleaned.sql` using the documented
+  profiling findings and cleaning rules.
+- Wrote purpose, grain, source-preservation, and exception-handling comments.
+- Implemented individual cleaning steps 1–6:
+  - Remove exact duplicate rows while preserving raw columns.
+  - Convert report_date to DATE using standard parsing followed by
+    the validated M/D/YYYY fallback.
+  - Convert forecast_completion_date to DATE and flag missing source values.
+  - Remove percentage symbols from actual_pct_complete, convert to
+    DECIMAL(4,1), and flag values outside 0–100.
+  - Convert planned_pct_complete directly to DECIMAL(4,1).
+  - Convert estimated_cost_to_complete to DECIMAL(10,2).
+- Wrote individual conversion validations and targeted exception checks.
+- Drafted Cleaning step 7 to combine transformations and exception flags.
+- Used LAG() to retrieve previous actual completion within each project's
+  chronological update history.
+- Added a LEFT JOIN to construction.cleaned_projects to identify
+  unmatched project IDs while retaining all updates.
+- Added unknown-submitter, progress-decrease, and
+  forecast-before-report comparisons.
+
+### Decisions and Reasoning
+
+- Preserve raw columns alongside cleaned values and exception flags.
+- Retain the established grain: one update per project and standardized
+  report date, identified by update_id after exact duplicate removal.
+- Use DECIMAL(4,1) for both percentage fields and DECIMAL(10,2) for ETC,
+  following the precision decisions established during profiling.
+- Keep percentages on their existing scale: 89.7% becomes 89.7.
+- Preserve UPD00313's actual completion of 105 and flag the range
+  violation rather than guessing a replacement.
+- Define exception flags through business conditions where possible,
+  rather than hardcoding known record IDs.
+- Base the missing-forecast flag on the raw column so it represents
+  source missingness.
+- Preserve recorded ETC values, including zeros.
+- Preserve project IDs, delay-reason labels, and submitter values,
+  including P995, None, and Unknown.
+- Compare current actual completion with the previous actual value
+  for the same project when detecting progress decreases.
+  This is separate from comparing actual progress with planned progress.
+- Leave progress_decrease_flag NULL when no previous update exists.
+  Leave the forecast comparison NULL when the forecast is missing.
+- A forecast preceding its report date identifies a concern without
+  establishing the cause or justifying an automatic correction.
+- Keep individual cleaning steps and validations, followed by one
+  combined query and its final validations.
+- Continue coaching with user reasoning and first attempts, comments
+  before SQL, and questions about the next step before instructions.
+  Batch familiar work and avoid repeating settled profiling.
+
+### Key Results
+
+- Validation 2: zero populated report dates failed conversion.
+- Validation 3: zero populated forecast dates became NULL after conversion.
+- Validation 3A: only UPD00664 returned; raw and cleaned forecast dates
+  were NULL, and forecast_completion_date_missing_flag was TRUE.
+- Validation 4: zero populated actual percentages failed conversion.
+- Validation 4A: only UPD00313 returned; raw actual completion was '105',
+  cleaned actual completion was 105.0, and the out-of-range flag was TRUE.
+- Validation 5: zero populated planned percentages failed conversion.
+- Validation 6: zero populated ETC values failed conversion after
+  correcting the filter to check the cleaned column for NULL.
+- Validation 1 was corrected to use COUNT(DISTINCT update_id);
+  its result was not explicitly confirmed during the session.
+- Expected combined output remains 725 rows and 725 distinct update IDs.
+  These counts have not yet been verified against the final joined query.
+
+### Verification and Closeout
+
+- Individual validation results above were reported during the session.
+- The combined cleaning query was drafted and reviewed;
+  execution and combined-output validation remain pending.
+- Rename forecast_before_report_date to forecast_before_report_flag
+  if the final alias correction has not yet been applied.
+- Combined row counts, project/date uniqueness, flag targets and counts,
+  column types, and numeric value preservation still require validation.
+- No construction.cleaned_project_updates view has been created.
+- Project-status documentation and September 21 Git closeout remain pending.
+- The September 18 handoff confirmed commit 81aed56,
+  `Complete and validate cleaned labor entries view`, was pushed.
+  Local main matched origin/main and the working tree was clean then.
+  This supersedes the pending closeout wording in the September 18 entry.
+- Labor/cost-transaction overlap, change-order/budget reconciliation,
+  and change-order cleaning remain unresolved.
+
+### Next Session
+
+Begin by validating total rows and distinct update_id values in the
+final joined output of Cleaning step 7. Both should equal 725.
+Have the user propose and attempt the validation first.
+
+Then validate the combined exception flags against the documented
+profiling expectations:
+
+- One missing forecast: UPD00664.
+- One out-of-range actual percentage: UPD00313, preserving 105.0.
+- One unmatched project and unknown submitter: UPD99999 / P995.
+- Fourteen progress decreases.
+- Forty forecasts preceding their report dates.
+
+These are expected results, not confirmed combined-query passes.
+Also check the intentional NULL behavior of comparison flags.
+
+Complete focused checks of grain, types, conversions, numeric value
+preservation, and ETC reconciliation. Create and verify
+construction.cleaned_project_updates only after validation passes.
+
+Update project status and complete Git review, commit, and push.
+
 ## September 18, 2026
 
 ### Work Completed

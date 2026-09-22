@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: September 18, 2026
+Last updated: September 22, 2026
 
 ## Current Phase
 
@@ -14,6 +14,8 @@ Cleaning is complete for:
 - Project budgets: `sql/08_project_budgets_cleaned.sql`.
 - Cost transactions: `sql/09_cost_transactions_cleaned.sql`.
 - Labor entries: `sql/11_labor_entries_cleaned.sql`.
+- Project updates: `sql/12_project_updates_cleaned.sql`.
+- Change orders: `sql/13_change_orders_cleaned.sql`.
 
 The following reusable views are saved in `construction.duckdb`:
 
@@ -24,6 +26,8 @@ The following reusable views are saved in `construction.duckdb`:
   distinct transaction IDs.
 - `construction.cleaned_labor_entries`: 18003 rows and 18003
 distinct time entry IDs.
+- `construction.cleaned_project_updates`: 725 rows and 725 distinct update IDs.
+- `construction.cleaned_change_orders`: 145 rows and 145 distinct change-order IDs.
 
 These views preserve raw columns and expose cleaned values and exception
 flags. They store query definitions and depend on access to the source
@@ -234,11 +238,32 @@ including eligible Labor-category transactions. Labor-entry costs
 have not been added separately. Their overlap must be investigated
 before combining costs.
 
-Project updates and change orders still require cleaning implementation.
+Project-update cleaning is complete in
+`sql/12_project_updates_cleaned.sql`.
+construction.cleaned_project_updates is saved and verified at
+725 rows and 725 distinct update IDs.
 
-Latest confirmed commit: 75d48a5, pushed September 16.
-Local main matched origin/main and the working tree was clean then.
-September 17–18 work awaits end-of-session review, commit, and push.
+Combined-output checks passed for row/key counts, expected flag counts,
+the orphan/unknown-submitter record, intended types, recorded-zero
+preservation, and ETC reconciliation.
+
+Change-order cleaning is complete in
+`sql/13_change_orders_cleaned.sql`.
+construction.cleaned_change_orders is saved and verified at
+145 rows and 145 distinct change-order IDs.
+
+Change-order Validations 1–7 passed: grain, conversion failures,
+exception flags, status mappings, types, monetary reconciliation,
+and NULL/zero preservation.
+
+Next: investigate labor/cost-transaction overlap, then reconcile
+change orders with supplied budget adjustments before combining amounts.
+
+Latest confirmed commit: 81aed56, pushed September 18.
+Message: Complete and validate cleaned labor entries view.
+The September 18 handoff confirmed local main matched origin/main
+and the working tree was clean then.
+September 21–22 work has not yet been confirmed committed or pushed.
 
 ## Profiling File Structure
 
@@ -1190,6 +1215,7 @@ Decision:
   preserved P040 anomaly.
 - Preserve the thirteen cutoff-date decreases pending the complete-history and
   project-timeline findings from Investigations 55A and 57.
+
 #### Cutoff-Date Actual-Completion Histories
 
 Investigation 55A dynamically identified the 13 projects whose standardized
@@ -1440,6 +1466,61 @@ Decision:
 - Do not infer or assign a replacement submitter without authoritative
   evidence.
 
+#### Cleaning Implementation
+
+#### Cleaning Implementation
+
+Cleaning is complete in `sql/12_project_updates_cleaned.sql`.
+The reusable view construction.cleaned_project_updates is saved
+and verified at 725 rows and 725 distinct update IDs.
+
+Implemented transformations:
+
+- Remove exact duplicate rows and preserve raw columns.
+- Convert report_date to DATE with the validated M/D/YYYY fallback.
+- Convert forecast_completion_date to DATE and flag missing forecasts.
+- Remove percentage symbols from actual_pct_complete and convert both
+  percentage fields to DECIMAL(4,1).
+- Preserve actual percentages outside 0–100 and flag them.
+- Convert estimated_cost_to_complete to DECIMAL(10,2).
+- Use LAG() to retrieve previous actual completion by project,
+  ordered by cleaned report date.
+- LEFT JOIN to cleaned_projects to preserve and flag unmatched updates.
+- Add unknown-submitter, progress-decrease, and forecast-before-report flags.
+
+Earlier individual checks confirmed zero populated values failed
+conversion, UPD00664 retains its missing forecast, and UPD00313
+retains actual completion of 105.0 with its out-of-range flag.
+
+Confirmed September 22 results:
+
+- Combined output: 725 rows and 725 distinct update IDs.
+- Missing-forecast flags: 1.
+- Out-of-range-percentage flags: 1.
+- Unmatched-project flags: 1.
+- Unknown-submitter flags: 1.
+- Progress-decrease flags: 14.
+- Forecast-before-report flags: 40.
+- UPD99999/P995/Unknown receives both the unmatched-project and
+  unknown-submitter flags.
+- Cleaned column types match the intended DATE, DECIMAL, and BOOLEAN types.
+- Zero recorded-zero preservation violations were returned across
+  actual completion, planned completion, and ETC.
+- Deduplicated-source and cleaned ETC totals match; difference = 0.00.
+- Saved-view verification: 725 rows and 725 distinct update IDs.
+
+Progress decreases compare current actual completion with previous
+actual completion, not planned completion. The comparison is designed
+to remain NULL when no previous update exists. Forecast comparisons
+remain NULL when the forecast is missing.
+
+Raw project IDs, delay-reason labels, and submitter values remain
+unchanged, including P995, None, and Unknown.
+
+Separate combined-output checks for project/date uniqueness and
+comparison-flag NULL behavior were not reported during this session.
+
+
 ### Change Orders
 
 Planned standalone and relationship profiling is complete through
@@ -1550,6 +1631,61 @@ calculation while preserving the source amount and date.
 
 No planned change-order profiling checks remain.
 
+#### Cleaning Implementation
+
+Cleaning is complete in `sql/13_change_orders_cleaned.sql`.
+The reusable view construction.cleaned_change_orders is saved
+and verified at 145 rows and 145 distinct change-order IDs.
+
+Implemented transformations:
+
+- Remove exact duplicates, retaining one CO0013 record.
+- Preserve raw columns alongside cleaned values and exception flags.
+- Standardize status using LOWER(TRIM(status)).
+- Remove dollar signs and commas from requested_revenue_change
+  before numeric conversion.
+- Convert all four monetary fields to DECIMAL(10,2).
+- Retain the three date fields, already inferred as DATE.
+- Preserve change_order_type, reason, negative amounts, zeros, and NULLs.
+- LEFT JOIN to cleaned_projects and flag unmatched project IDs.
+- Flag approved change orders with missing approval dates.
+
+Validation results:
+
+- Validation 1: 145 rows and 145 distinct change-order IDs.
+- Validation 2: zero populated monetary values failed conversion;
+  one unmatched-project flag and one missing-approval-date flag.
+- Validation 3: CO9999/P994 has only the unmatched-project flag;
+  CO0001/P001 retains approval_date NULL and has only the
+  approved_missing_approval_date_flag.
+- Validation 4: raw status variants map correctly to approved,
+  pending, withdrawn, and rejected.
+- Cleaned status counts: approved 102, pending 14, withdrawn 16,
+  rejected 13; total 145.
+- Validation 5: all four cleaned monetary fields are DECIMAL(10,2),
+  status_clean is VARCHAR, and both flags are BOOLEAN.
+- Validation 6: all four monetary totals reconcile to the
+  deduplicated source with differences of 0.00.
+- Validation 7: zero source-NULL or recorded-zero preservation violations.
+
+Reconciled source and cleaned totals:
+
+| Monetary field | Total |
+| --- | ---: |
+| requested_revenue_change | 6974614.34 |
+| estimated_cost_change | 4949215.55 |
+| approved_revenue_change | 4481858.73 |
+| billed_amount | 3129442.88 |
+
+The preceding profiling results describe 146 raw rows, including
+the duplicate. Cleaned results describe 145 rows.
+
+CO0119's billed amount and post-cutoff billing date remain unchanged.
+The billed total above includes that record and is not a June 30
+cutoff-based billed total.
+
+Saved-view verification passed: 145 rows and 145 distinct change-order IDs.
+
 ## Unresolved Items
 
 ### Projects
@@ -1603,12 +1739,12 @@ No planned change-order profiling checks remain.
   preserve the NULL and flag it in cleaned output.
 - Implement CO0119's reporting-cutoff treatment in the analytical layer.
 
- #### Cleaning Implementation
+#### Cleaning Implementation
 
-- Implement documented cleaning for project updates and change orders.
-- Validate their row counts, identifiers, conversions, value
-  preservation, flags, relationships, and totals.
-- Create and verify their reusable cleaned views.
+- All six cleaned views have been created and their row/key counts verified.
+- Separate combined-output checks for project-update project/date
+  uniqueness and comparison-flag NULL behavior were not reported
+  during September 22.
 - Investigate additional source issues only when implementation or
   analysis reveals a specific material concern.
 
@@ -1636,37 +1772,33 @@ No planned change-order profiling checks remain.
 
 ## Remaining Project Work
 
-1. Implement and validate cleaning for project updates and change orders;
-   save and verify their reusable views.
-2. Investigate labor-cost overlap and reconcile change orders with
+1. Investigate labor-cost overlap and reconcile change orders with
    supplied budgets before combining financial amounts.
-3. Extend project-level analytical outputs as of June 30, 2026 with
+2. Extend project-level analytical outputs as of June 30, 2026 with
    progress, forecast, and change-order information.
-4. Develop profitability, change-order-exposure, and schedule-risk
+3. Develop profitability, change-order-exposure, and schedule-risk
    metrics, Power BI visuals, and an executive summary.
-5. Complete final QA, repository documentation, and portfolio publication.
-
+4. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
-Begin the project-updates cleaning plan.
+Begin investigating labor/cost-transaction overlap.
 
-1. Review the documented findings and cleaning decisions under
-   Dataset Status > Project Updates and in
-   sql/05_project_updates_profiling.sql.
-2. Explain the intended row grain and identify which fields need
-   transformation, preservation, or exception flags.
-3. Draft the opening purpose, grain, and cleaning-rule comments for
-   sql/12_project_updates_cleaned.sql.
-4. Review the plan before implementing the first transformation.
+First have the user explain why adding labor_entries costs to
+cost_transactions costs could double-count expenses.
 
-Do not repeat completed profiling unless implementation reveals
-a specific unresolved issue.
+Review existing profiling findings and available linking fields.
+Have the user propose the comparison grain and write investigation
+comments before attempting SQL.
 
-Labor cleaning and saved-view verification are complete.
-The CSV export, Excel checks, PivotTable reconciliation, and workbook
-closeout are also complete. Repeat checks only if a subsequent change
-affects the relevant data or calculations.
+Do not assume matching aggregate totals prove overlap or differing
+totals prove independence. Keep the costs separate until evidence
+supports their treatment.
+
+After the labor investigation, reconcile change orders with supplied
+budget adjustments before adding amounts that may already be included.
+
+Do not repeat completed profiling without a specific unresolved question.
 
 Reconnect to construction.duckdb in VS Code if required:
 
@@ -1675,39 +1807,40 @@ USE construction;
 
 Continue in coaching mode:
 
-- Ask the user to propose the next step or validation and explain why.
-- Let the user write purpose comments and make the first SQL attempt.
-- Give graduated hints when needed rather than supplying the solution.
-- Pause when the user cannot explain what the query is doing.
-- Work one section, one change, and one check at a time.
+- User explains the approach and makes the first attempt.
+- Comments and documentation come before SQL.
+- Give graduated hints before complete solutions.
+- Pause when the user cannot explain a concept.
+- Batch familiar transformations and validations.
+- Provide documentation text with exact insertion or replacement locations.eable.
 - Identify exact insertion or replacement locations.
 
 ### Git Status
 
 Latest confirmed commit:
 
-- Commit: 75d48a5.
-- Message: Complete Excel budget report and begin labor cleaning.
-- Date: September 16, 2026.
+- Commit: 81aed56.
+- Message: Complete and validate cleaned labor entries view.
+- Date: September 18, 2026.
 - Successfully pushed to origin/main.
 
-The September 16 handoff confirmed local main matched origin/main
+The September 18 handoff confirmed local main matched origin/main
 and the working tree was clean after that push.
 
-September 17–18 work has not yet been confirmed committed or pushed.
-Review, commit, and push both days' work at the END of September 18's
-session.
+September 21–22 work has not yet been confirmed committed or pushed.
 
 Expected files for review and staging:
 
-- sql/11_labor_entries_cleaned.sql: completed cleaning,
-  Validations 1–16, saved-view creation, and three view checks.
-- docs/project_notes.md: September 17–18 work, decisions, and results.
-- docs/project_status.md: completed labor stage and updated next task.
+- sql/12_project_updates_cleaned.sql.
+- sql/13_change_orders_cleaned.sql.
+- docs/project_notes.md.
+- docs/project_status.md.
 
 Save edits and inspect git status and the diff to confirm the actual
-changed-file list, including any additional work completed today.
-Review and stage intended changes, commit, and push.
+changed-file list. Review and stage intended changes, commit, and push.
+
+Suggested commit message:
+Complete project update and change order cleaning views
 
 Confirm the resulting commit, remote synchronization, and working-tree
 status before recording Git closeout as complete.
