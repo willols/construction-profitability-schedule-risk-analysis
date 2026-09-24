@@ -3,6 +3,261 @@
 This file is the chronological record of important work, decisions, reasoning,
 and lessons. Add each new dated entry directly below this introduction.
 
+## September 24, 2026
+
+### Work Completed
+
+- Confirmed the final change-order/budget reconciliation file is saved
+  and executed successfully: 0 nonzero differences and 38 unmatched
+  projects with zero budget adjustments.
+- Confirmed `analysis_plan.md` is saved in `docs/`.
+- Began `sql/15_project_analytical_layer.sql`, documenting purpose,
+  grain, reporting cutoff, and cost-source treatment.
+- Built separate project-level summaries for:
+  - Non-payroll incurred costs.
+  - Employee labor costs.
+  - Supplied revised budgets.
+- Anchored the analytical query on `construction.cleaned_projects`
+  and LEFT JOINed each summary by project ID.
+- Added total_incurred_cost as non-payroll incurred cost plus
+  employee labor incurred cost.
+- Checked whether active projects have June 30 updates and populated
+  estimated costs to complete.
+- Wrote a standalone selection of June 30 project updates and a
+  separate check for multiple updates per project on that date.
+
+### Decisions and Reasoning
+
+- Retain one row per authoritative project in the analytical layer.
+  Filter to active projects when answering the first business question.
+- Aggregate each cost source separately before joining. Separate
+  business costs can still be duplicated by a many-to-many join.
+- Include non-payroll transactions with payment statuses of paid,
+  approved, or applied and transaction dates on or before June 30.
+- Keep pending transaction exposure separate from incurred cost.
+- Include employee labor with work dates on or before June 30.
+- Use transaction_date for cost transactions and work_date_clean
+  for labor; no transaction_date_clean column exists in the view.
+- Sum revised_budget_amount_clean by project without adding approved
+  change-order estimated costs again.
+- Current spending below budget does not establish that a project
+  will finish within budget. Forecast final cost requires an estimate
+  of the remaining work.
+- ETC updates are successive estimates, not additive transactions.
+  Do not sum a project's estimates across reporting dates.
+- Align incurred costs and ETC to the same reporting date.
+  An older ETC may include work already captured in later incurred
+  costs, creating double counting.
+- All active projects have June 30 updates, supporting exact-cutoff
+  ETC selection for the active-project question.
+- Keep the update-date condition in the LEFT JOIN's ON clause when
+  checking coverage, so projects without matching updates remain visible.
+- A missing cutoff update must remain distinguishable from zero
+  remaining cost.
+
+### Key Results
+
+- Non-payroll summary returned 96 project rows.
+- Labor summary returned 96 project rows.
+- Joining both summaries to authoritative projects returned 96 rows,
+  with no NULL non-payroll or labor totals.
+- Adding revised budgets retained 96 rows, with no NULL revised-budget
+  totals.
+- Active-project update coverage returned 18 rows:
+  - No NULL update IDs.
+  - Every matched report date was June 30, 2026.
+  - No NULL estimated_cost_to_complete_clean values.
+- The separate June 30 duplicate check returned 0 rows:
+  no project had more than one update on that date.
+
+### Assumptions and Limitations
+
+- Forecast calculations will use the documented fictional-case
+  assumption that ETC includes all remaining project costs, including
+  employee labor, and excludes costs already incurred at its update date.
+- Matching dates and populated estimates establish availability and
+  date alignment, not estimate accuracy.
+- Exact-cutoff ETC coverage was confirmed for active projects.
+  Treatment of other projects without cutoff updates remains unresolved.
+- Supplied revised-budget effective dates remain unavailable.
+- The authoritative-project anchor excludes unmatched source IDs from
+  the analytical output. Orphan amounts require separate reconciliation.
+- Existing budget-versus-actual SQL, CSV, and Excel corrections remain
+  deferred until project closeout.
+
+### Verification and Closeout
+
+- Query results were reported during the session; the full final SQL
+  file has not been independently executed or reviewed end to end.
+- Checks covered row counts, reported NULL coverage, and June 30
+  update uniqueness.
+- Monetary reconciliation of the new analytical output remains pending.
+- The June 30 update selection remains standalone; it has not been
+  added to the main query as a CTE or joined to the analytical output.
+- No forecast-final-cost or forecast-budget-variance calculation
+  has been added.
+- No persistent analytical-layer table or view has been created.
+- Saving the final September 24 SQL file is not yet confirmed.
+- No Git commit or push was confirmed during this session.
+
+### Next Session
+
+Continue in `sql/15_project_analytical_layer.sql` immediately after
+Step 7:
+
+1. Put the June 30 update selection into a `cutoff_updates` CTE.
+2. LEFT JOIN it to cleaned_projects by project ID.
+3. Select report_date_clean and estimated_cost_to_complete_clean.
+4. Keep the duplicate-update validation as a separate query.
+5. Check that the join retains 96 authoritative project rows and
+   preserves the confirmed ETC coverage for all 18 active projects.
+6. Then attempt forecast final cost and comparison with revised budget,
+   preserving missing estimates as NULL.
+
+Continue coaching mode: user reasoning and first attempts, comments
+before SQL, graduated hints, and pauses when concepts are unclear.
+
+## September 23, 2026
+
+### Work Completed
+
+- Investigated the relationship between employee labor costs and
+  cost transactions using the raw exports and client handoff.
+- Developed `sql/14_change_order_budget_reconciliation.sql`:
+  - Aggregated supplied approved budget adjustments by project.
+  - Aggregated estimated costs of approved change orders by project.
+  - Used a FULL OUTER JOIN to compare totals and retain unmatched projects.
+  - Calculated budget adjustments minus change-order estimated costs.
+  - Checked nonzero differences and unmatched projects separately.
+- Prepared the complete SQL file with separate validation queries,
+  findings, analytical decisions, and reporting limitations.
+- Reviewed `client_handoff.md` to align the analysis with the client request.
+- Created `analysis_plan.md` for placement at `docs/analysis_plan.md`,
+  covering business questions, metrics, assumptions, analytical structure,
+  validation, and portfolio deliverables.
+
+### Key Results
+
+- The nonzero-difference query returned 0 rows: all comparable project
+  totals matched.
+- The unmatched-project query returned 38 rows.
+- All 38 unmatched projects had zero supplied budget adjustments and
+  no matching approved-change-order total.
+- These results support treating approved change-order estimated costs
+  as already reflected in supplied budget adjustments.
+- This was an all-records comparison without an approval-date cutoff.
+  It does not establish budget validity as of June 30, 2026 or prove
+  individual change-order allocation across cost categories.
+
+### Labor Source Clarification and Report Correction
+
+- Earlier guidance incorrectly stated that cost transactions contained
+  a Labor category. The distinct-category query and raw-file inspection
+  confirmed that no Labor category exists in cost transactions.
+- The client handoff explicitly defines:
+  - `cost_transactions.csv`: non-payroll job-cost transactions.
+  - `labor_entries.csv`: project labor and payroll-cost detail.
+- Include both sources once when calculating project costs.
+  Their treatment as separate sources is supported by the handoff.
+- The existing budget-versus-actual report includes transaction costs
+  but excludes employee labor costs.
+- Its transaction totals reconcile correctly, but it is incomplete for
+  total project costs. Budget remaining is overstated where omitted
+  employee labor costs apply.
+- Defer correction of the existing SQL report, CSV export, and Excel
+  workbook until final project closeout.
+- Include employee labor in the new analytical layer from the start.
+- Supersede earlier documentation claiming that transaction costs
+  include Labor-category expenses.
+- The abandoned labor-overlap investigation was replaced by the
+  change-order/budget reconciliation work.
+
+### Decisions and Reasoning
+
+- Use supplied revised budgets without adding approved change-order
+  estimated costs again; doing so would duplicate those adjustments.
+- Compare estimated cost changes with cost-budget adjustments.
+  Approved revenue changes affect contract revenue and are a separate
+  measure.
+- Aggregate each source to one row per project before joining to avoid
+  multiplying rows and monetary amounts.
+- Use COALESCE for the output project ID after a FULL OUTER JOIN.
+- Preserve unmatched monetary totals as NULL during reconciliation;
+  missing matches and recorded zeros are different conditions.
+- A nonzero-difference filter excludes NULL comparisons, so unmatched
+  projects require a separate check.
+- Continue toward the analytical layer without reopening completed
+  profiling unless a specific material issue arises.
+
+### Analysis and Portfolio Direction
+
+The analysis will answer three client-aligned questions:
+
+1. Which active projects need management attention because of
+   profitability or schedule concerns?
+2. What appears to contribute to those concerns?
+3. Which problems recur across projects and should inform future
+   estimating and planning?
+
+- Build an initial analytical output with one row per authoritative
+  project as of June 30, 2026.
+- Keep all projects available for comparison, while prioritizing active
+  projects in the management review.
+- Retain cost-category detail and relevant source history for drill-down.
+- Keep orphan records visible and reconcile their amounts separately.
+- Prioritize defensible findings, recommendations, Power BI, and a concise
+  executive summary over additional Excel expansion.
+- Clearly label the dataset as fictional. Findings must come from the
+  data, while missing business definitions may use explicit case-study
+  assumptions.
+- Distinguish budget performance from profitability, contract value from
+  recognized revenue, and observed associations from proven causes.
+
+### Planned Assumptions and Limitations
+
+The analysis plan records these rules for implementation and review:
+
+- Treat supplied project status as cutoff status because status history
+  is unavailable; flag apparent conflicts.
+- For forecast calculations, assume ETC includes all remaining project
+  costs, including employee labor, and excludes costs already incurred
+  at the update date.
+- Do not automatically add stale ETC to cutoff incurred costs.
+  Preserve the update date and flag unavailable or stale forecasts.
+- Keep CO0001's undated approved revenue change separate from confirmed
+  cutoff-approved revenue adjustments.
+- Preserve the supplied-budget effective-date limitation.
+- Pending transactions do not establish complete commitments or accruals.
+- These are modeling rules, not newly verified source facts.
+
+### Verification and Closeout
+
+- The two investigation checks were executed and their results reviewed:
+  0 nonzero differences and 38 unmatched projects with zero adjustments.
+- Execution of the final consolidated SQL file after formatting and
+  adding separate validation sections has not been confirmed.
+- No analytical-layer table or view was created during this session.
+- No changes were made to the existing budget-versus-actual report or
+  its Excel output.
+- Placement of `analysis_plan.md` in the repository has not been confirmed.
+- No September 23 Git commit or push has been confirmed.
+- The latest confirmed commit remains `81aed56`, pushed September 18.
+
+### Next Session
+
+Confirm the final reconciliation file is saved and its checks reproduce
+the reviewed results, if this has not already been done.
+
+Then begin designing the project-level analytical output:
+
+- List the fields needed to identify active projects requiring attention.
+- Identify the source and calculation for each field.
+- Define cutoff treatment, exception handling, and join grain.
+- Write comments before attempting SQL.
+
+Continue coaching mode: user reasoning and first attempts, graduated
+hints, and pauses when a concept is unclear. Keep the existing
+budget-versus-actual correction deferred until project closeout.
 
 ## September 22, 2026
 

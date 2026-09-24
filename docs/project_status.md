@@ -1,269 +1,77 @@
 # Project Status
 
-Last updated: September 22, 2026
+Last updated: September 24, 2026
 
 ## Current Phase
 
-Planned profiling and required relationship validation are complete for all
-six source datasets. Profiling remains frozen unless cleaning or analysis
-reveals a specific unresolved issue.
+The comparison used all supplied approved change orders without an
+approval-date cutoff. On September 24, the final reconciliation file
+was confirmed saved and executed, reproducing 0 nonzero differences
+and 38 unmatched projects with zero budget adjustments.
 
-Cleaning is complete for:
+The analysis plan is confirmed saved at docs/analysis_plan.md.
+It defines three business questions:
 
-- Projects: `sql/07_projects_cleaned.sql`.
-- Project budgets: `sql/08_project_budgets_cleaned.sql`.
-- Cost transactions: `sql/09_cost_transactions_cleaned.sql`.
-- Labor entries: `sql/11_labor_entries_cleaned.sql`.
-- Project updates: `sql/12_project_updates_cleaned.sql`.
-- Change orders: `sql/13_change_orders_cleaned.sql`.
+1. Which active projects need attention?
+2. What appears to contribute to their profitability and schedule risk?
+3. Which recurring problems should inform estimating and planning?
 
-The following reusable views are saved in `construction.duckdb`:
+### Project-Level Analytical Layer — In Progress
 
-- `construction.cleaned_projects`: 96 rows and 96 distinct project IDs.
-- `construction.cleaned_project_budgets`: 673 rows and 673 distinct
-  budget-line IDs.
-- `construction.cleaned_cost_transactions`: 11203 rows and 11203
-  distinct transaction IDs.
-- `construction.cleaned_labor_entries`: 18003 rows and 18003
-distinct time entry IDs.
-- `construction.cleaned_project_updates`: 725 rows and 725 distinct update IDs.
-- `construction.cleaned_change_orders`: 145 rows and 145 distinct change-order IDs.
+Work has begun in sql/15_project_analytical_layer.sql.
 
-These views preserve raw columns and expose cleaned values and exception
-flags. They store query definitions and depend on access to the source
-CSVs. Saved-view row counts and identifier counts have been verified.
+Target grain: one row per authoritative project as of June 30, 2026.
+Retain all projects; prioritize active projects for the first question.
 
-Cost-transactions Validations 1–10 are complete. Incurred cost is
-80468439.22 and pending exposure is 7961647.60. Together they reconcile
-to the full cleaned total of 88430086.82, with a difference of 0.00.
+Implemented in the working query:
 
-### First Budget-Versus-Actual Report
+- Aggregate non-payroll incurred costs by cleaned project ID.
+- Include paid, approved, and applied transactions dated on or before
+  June 30. Exclude pending transactions from incurred cost.
+- Aggregate employee labor costs by cleaned project ID, including
+  work dated on or before June 30.
+- Anchor on cleaned_projects and LEFT JOIN both cost summaries.
+- Add the two components as total_incurred_cost.
+- Aggregate supplied revised budgets by project and LEFT JOIN them
+  to the analytical query.
 
-Report SQL is complete in `sql/10_budget_vs_actual_report.sql`.
-The reusable view `construction.budget_vs_actual_report` is saved
-in construction.duckdb and has been verified.
+Reported query checks:
 
-The report compares supplied revised budgets with recorded incurred
-cost and pending exposure at one row per project and cost category.
+- Non-payroll summary: 96 project rows.
+- Labor summary: 96 project rows.
+- Joined cost output: 96 rows, with no NULL cost-component totals.
+- Adding revised budgets retained 96 rows, with no NULL budget totals.
 
-Completed:
+Cutoff-update checks:
 
-- Aggregated budgets and costs separately before a FULL OUTER JOIN.
-- Used COALESCE to produce one project ID and cost category.
-- Preserved missing-original-budget and orphan-project flags.
-- Displayed zero recorded costs when no transaction group matches,
-  with a separate no_matching_transactions_flag.
-- Calculated budget_remaining as revised budget minus recorded
-  incurred cost; pending exposure remains separate.
-- Added project_name through a LEFT JOIN to cleaned_projects,
-  retaining orphan report rows.
-- Enforced transaction_date <= DATE '2026-06-30' before aggregation.
-- Documented the unverified effective date of the supplied budgets.
-- Validated report totals, unique project/category pairs, flag counts,
-  selected exception rows, and budget-remaining calculations.
-- Created the reusable report view and verified its row count and totals.
+- All 18 active projects have a June 30 update.
+- All 18 matching updates have populated estimated costs to complete.
+- The June 30 duplicate-update check returned 0 rows: no project has
+  more than one update on that date.
 
-Confirmed results:
+Step 7 selects project_id, report_date_clean, and
+estimated_cost_to_complete_clean for June 30 as a standalone query.
+Its duplicate check remains a separate validation.
 
-- Budget groups: 673.
-- Cost groups: 576.
-- Report rows: 673.
-- Matched groups: 576.
-- Budget-only groups: 97.
-- Cost-only groups: 0.
-- Duplicate project/category groups: 0.
-- Transactions after the cutoff or with NULL dates: 0.
-- Missing-original-budget flag TRUE: 1.
-- Orphan-project flag TRUE: 1.
-- No-matching-transactions flag TRUE: 97.
+The cutoff-update selection has not yet been added as a CTE or joined
+to the main query. Forecast final cost, forecast budget variance,
+schedule metrics, and revenue adjustments remain unimplemented.
 
-Confirmed report and saved-view monetary totals:
+Date alignment and populated ETC values do not establish estimate
+accuracy. Forecast calculations will rely on the documented assumption
+that ETC covers all remaining costs, including employee labor, and
+excludes costs already incurred at the update date.
 
-- Revised budget: 119564833.67.
-- Pending exposure: 7961647.60.
-- Incurred cost: 80468439.22.
-- All three match the previously validated totals.
-
-P053 Labor retains revised budget and budget remaining of 379995.00,
-zero recorded costs, and no_matching_transactions_flag TRUE.
-
-P997 Labor remains visible with project_name NULL, revised budget and
-budget remaining of 42000.00, and orphan_project_flag TRUE.
-
-Zero recorded costs do not prove no real spending occurred.
-Reconciliation establishes preservation of supplied amounts, not
-source completeness. Budget remaining is not estimated cost to complete.
-
-The budget source has no effective date or version history.
-Its validity as of June 30, 2026 remains unverified.
-
-The report view stores a query definition, not a frozen snapshot.
-
-### CSV Export and Excel Report
-
-Section 6 in `sql/10_budget_vs_actual_report.sql` exports the saved
-report view with column headers to:
-
-`outputs/budget_vs_actual_2026-06-30.csv`
-
-Completed:
-
-- Confirmed the exported file contains 673 data rows and 10 columns.
-- Queried the CSV with read_csv_auto() and reconciled the three
-  monetary totals to the validated view to the cent.
-- Opened the CSV in Excel for the web on Mac and converted it into
-  an editable Excel workbook.
-- Confirmed the Excel import contains 673 data rows plus a header.
-- Independently reconciled revised budget, incurred cost, and
-  pending exposure using Excel SUM formulas.
-- Created an Excel Table covering A1:J674 on Budget vs Actual.
-- Added labeled import-validation totals outside the table.
-- Applied monetary formatting and a conditional-formatting rule
-  highlighting budget_remaining below zero in I2:I674.
-- Practiced filtering and sorting category overruns.
-- Created a Project Summary PivotTable grouped by project_id.
-- Added sums of revised_budget, incurred_cost, pending_exposure,
-  and budget_remaining.
-- Reconciled the PivotTable's revised budget, incurred cost, and
-  pending exposure grand totals.
-- Created a separate Report Notes sheet documenting budget remaining,
-  pending exposure treatment, and the budget effective-date limitation.
-
-Confirmed CSV, Excel import, and PivotTable totals:
-
-- Revised budget: 119564833.67.
-- Incurred cost: 80468439.22.
-- Pending exposure: 7961647.60.
-
-Selected findings:
-
-- P007 / Materials has revised budget 612380.57, incurred cost
-  732358.26, and budget remaining -119977.69.
-- Its incurred cost is approximately 19.59% above its category budget.
-- P007's total project budget remaining is positive at 336562.32.
-  Category overruns therefore do not establish an overall project
-  overrun or predict the final project outcome.
-
-Workbook closeout completed September 16:
-
-- Reviewed Report Notes wrapping, column width, and row heights.
-- Reviewed Project Summary formatting and row heights.
-- Added notes explaining P997's retained 42000.00 budget,
-  BUD-P057-04's missing original budget, and zero recorded costs.
-- Added an explicit P997 exception note above the Project Summary
-  PivotTable without changing its values.
-- Confirmed the workbook's saved indicator.
-- Downloaded `outputs/budget_vs_actual_2026-06-30.xlsx` and replaced
-  it with the updated copy after adding the Project Summary note.
-- Confirmed the exported-CSV validation query follows COPY in Section 6.
-
-### Labor Cleaning Complete
-
-Individual cleaning steps 1–10, combined Cleaning step 11, and
-Validations 1–16 are complete in `sql/11_labor_entries_cleaned.sql`.
-
-The reusable view `construction.cleaned_labor_entries` is saved
-in construction.duckdb and verified.
-
-Implemented transformations:
-
-1. Remove exact duplicate rows while preserving raw columns.
-2. Convert work_date to DATE using standard parsing followed by
-   the validated M/D/YYYY fallback.
-3. Convert regular_hours to DECIMAL(10,4).
-4. Convert overtime_hours to DECIMAL(10,2).
-5. Convert hourly_rate to DECIMAL(10,2), fill TE001843's missing
-   rate with 38.96, and add hourly_rate_derived_flag.
-6. Convert labor_cost to DECIMAL(10,2), preserving recorded amounts.
-7. Standardize carpenter variants to Carpenter and trim trade values.
-8. Correct project_id to P003 only where time_entry_id is TE000408
-   and raw project_id is P996; add project_id_corrected_flag.
-9. Preserve TE001216's General Labor trade and add
-   trade_unresolved_flag.
-10. Preserve TE003191's recorded labor cost and add
-    labor_cost_unresolved_flag for its documented exception.
-
-The saved view retains raw columns, cleaned columns, and four flags.
-
-Completed validations:
-
-- Validation 1: 18003 rows and 18003 distinct time_entry_id values.
-- Validations 2–6: zero non-NULL source values failed conversion
-  across work_date and the four numeric fields.
-- Validation 7: TE001843 retains raw hourly_rate NULL, receives
-  38.96, and has hourly_rate_derived_flag TRUE.
-- Validation 8: TE000408 retains raw project_id P996, receives
-  P003, and has project_id_corrected_flag TRUE.
-- Validation 9: trade mappings are correct; the cleaned Carpenter
-  category contains 7160 entries.
-- Validation 10: TE001216 retains General Labor and has
-  trade_unresolved_flag TRUE.
-- Validation 11: TE003191 retains 1530.88 in both cost columns
-  and has labor_cost_unresolved_flag TRUE.
-- Validation 12: only the four expected entries are flagged,
-  each with only its intended flag TRUE.
-- Validation 13: zero detected differences across the four
-  non-NULL raw/cleaned numeric pairs.
-- Validation 14: deduplicated-source and cleaned labor-cost totals
-  reconcile to the cent at 30917634.47.
-- Validation 15: cleaned columns and flags have their intended types.
-- Validation 16: zero labor entries have unmatched cleaned project IDs.
-
-Additional individual-step spot-checks passed:
-
-- TE002542 converts to May 19, 2023.
-- TE016347 retains regular_hours of 16.5592.
-- TE000119 retains overtime_hours of 5.03.
-- TE004869 retains labor_cost of 1653.
-
-Regular hours retain four decimal places because earlier profiling
-showed that two-decimal rounding would alter 94 values and
-three-decimal rounding would alter 82; four would alter none.
-
-The raw DOUBLE cost total of 30917634.470000047 contains a negligible
-floating-point artifact. The cleaned DECIMAL total is 30917634.47.
-
-Saved-view verification passed:
-
-- 18003 rows and 18003 distinct time_entry_id values.
-- Total labor_cost_clean of 30917634.47.
-- Exactly the four expected flagged entries, each with only its
-  intended flag TRUE.
-
-TE001216's trade classification and TE003191's 125.00 cost difference
-remain unresolved. TE001843's derived hourly rate is not source-confirmed.
-
-The Excel report's incurred costs come from cost_transactions,
-including eligible Labor-category transactions. Labor-entry costs
-have not been added separately. Their overlap must be investigated
-before combining costs.
-
-Project-update cleaning is complete in
-`sql/12_project_updates_cleaned.sql`.
-construction.cleaned_project_updates is saved and verified at
-725 rows and 725 distinct update IDs.
-
-Combined-output checks passed for row/key counts, expected flag counts,
-the orphan/unknown-submitter record, intended types, recorded-zero
-preservation, and ETC reconciliation.
-
-Change-order cleaning is complete in
-`sql/13_change_orders_cleaned.sql`.
-construction.cleaned_change_orders is saved and verified at
-145 rows and 145 distinct change-order IDs.
-
-Change-order Validations 1–7 passed: grain, conversion failures,
-exception flags, status mappings, types, monetary reconciliation,
-and NULL/zero preservation.
-
-Next: investigate labor/cost-transaction overlap, then reconcile
-change orders with supplied budget adjustments before combining amounts.
+Source-to-output monetary reconciliation and separate orphan accounting
+remain pending. No persistent analytical-layer table or view exists.
+Saving the final September 24 SQL file and end-to-end execution of that
+file have not yet been confirmed.
 
 Latest confirmed commit: 81aed56, pushed September 18.
 Message: Complete and validate cleaned labor entries view.
 The September 18 handoff confirmed local main matched origin/main
 and the working tree was clean then.
-September 21–22 work has not yet been confirmed committed or pushed.
+September 21–24 work has not yet been confirmed committed or pushed.
 
 ## Profiling File Structure
 
@@ -1688,6 +1496,12 @@ Saved-view verification passed: 145 rows and 145 distinct change-order IDs.
 
 ## Unresolved Items
 
+This is a fictional case study. Stakeholder-clarification items below
+represent limitations and information requests that would apply in a
+real engagement; they are not blockers requiring a fictional response.
+Preserve unresolved source exceptions. Where necessary, use explicitly
+documented modeling assumptions without presenting them as source facts.
+
 ### Projects
 
 * Confirm P013's intended baseline date format.
@@ -1750,55 +1564,95 @@ Saved-view verification passed: 145 rows and 145 distinct change-order IDs.
 
 ### Analytical Reporting
 
-- Preserve the completed Excel report's definitions, exception notes,
-  and budget effective-date limitation in future reporting.
-- Reconcile change-order amounts with supplied revised budgets before
-  adding adjustments that could already be included.
-- Keep P997's orphan budget visible and separately accounted for in
-  project-level reporting. Current revised-budget totals include
-  its 42000.00.
-- Confirm the supplied revised budgets were valid on June 30, 2026;
-  retain the documented limitation until confirmed.
-- Confirm whether transaction costs already include labor before
-  adding costs from labor_entries.
-- Align costs, progress, and forecasts to the same reporting date.
-- Confirm the scope of estimated cost to complete before combining it
-  with incurred cost to calculate forecast final cost.
+- Build one row per authoritative project as of June 30, 2026.
+  Retain all projects, with active projects prioritized for review.
+- Include eligible non-payroll transaction costs and employee labor
+  costs once, consistent with the client handoff.
+- Use supplied revised budgets without adding approved change-order
+  estimated costs again, based on the completed reconciliation.
+- Retain the budget effective-date limitation. The reconciliation
+  does not establish June 30 budget validity.
+- Keep P997's orphan budget visible and separately accounted for.
+  Current supplied revised-budget totals include its 42000.00.
+- June 30 updates with populated ETC were confirmed for all 18 active
+  projects. No project has multiple updates on that date.
+- Add the exact-cutoff update selection to the analytical query.
+  Preserve projects without cutoff updates and retain missing ETC
+  as NULL, not zero.
+- Define update selection and forecast treatment for other projects
+  before extending forecast analysis beyond active projects.
+  Do not automatically combine older ETC with cutoff incurred costs.
+- Apply and disclose the analysis plan's case-study assumptions.
+  ETC-based forecast calculations have not yet been implemented.
+- For forecast metrics, assume ETC includes all remaining project
+  costs, including labor, and excludes already-incurred costs at
+  the update date.
+- Do not automatically combine stale ETC with cutoff incurred costs.
+  Preserve update dates and flag unavailable or stale forecasts.
+- Treat supplied project status as cutoff status because status
+  history is unavailable; review apparent conflicts.
+- Keep CO0001's undated approved revenue change separate from
+  confirmed cutoff-approved revenue adjustments.
+- Apply CO0119's post-cutoff billing exclusion to cutoff-based
+  billed totals.
+- Preserve exceptions affecting progress, baseline dates, and
+  forecasts. Retain projects even when individual metrics cannot
+  be calculated reliably.
 - Disclose the absence of dedicated commitment and accrual records.
   Pending transactions do not substitute for those records.
-- Keep budget remaining distinct from estimated cost to complete.
-  Pending exposure is shown separately and is not deducted from
-  budget remaining.
+- Keep budget remaining distinct from ETC. Show pending exposure
+  separately from incurred costs and budget remaining.
+- Defer the existing budget-versus-actual SQL, CSV, and Excel
+  correction until project closeout. Preserve valid exception notes
+  and update the report's cost coverage and limitations then.
 
 ## Remaining Project Work
 
-1. Investigate labor-cost overlap and reconcile change orders with
-   supplied budgets before combining financial amounts.
-2. Extend project-level analytical outputs as of June 30, 2026 with
-   progress, forecast, and change-order information.
-3. Develop profitability, change-order-exposure, and schedule-risk
-   metrics, Power BI visuals, and an executive summary.
-4. Complete final QA, repository documentation, and portfolio publication.
+1. Continue sql/15_project_analytical_layer.sql. Cost and revised-budget
+   summaries are joined; next add cutoff ETC, forecast calculations,
+   project status, schedule metrics, eligible change-order revenue,
+   and relevant exception flags.
+2. Validate grain, source-to-output totals, cutoff treatment,
+   orphan accounting, and exception handling during implementation.
+3. Investigate active-project priorities, contributing factors,
+   and recurring patterns across projects.
+4. Develop focused Power BI visuals and an executive summary with
+   evidence-backed findings, recommendations, and limitations.
+5. At closeout, correct the existing budget-versus-actual SQL report
+   to include employee labor and refresh its CSV and Excel outputs.
+6. Complete final QA, repository documentation, and portfolio publication.
 
 ## Exact Next Task
 
-Begin investigating labor/cost-transaction overlap.
+Continue in sql/15_project_analytical_layer.sql after Step 7.
 
-First have the user explain why adding labor_entries costs to
-cost_transactions costs could double-count expenses.
+Completed prerequisites:
 
-Review existing profiling findings and available linking fields.
-Have the user propose the comparison grain and write investigation
-comments before attempting SQL.
+- Final reconciliation file saved and run: 0 nonzero differences and
+  38 unmatched projects with zero budget adjustments.
+- Analysis plan saved at docs/analysis_plan.md.
+- Cost and revised-budget summaries joined to authoritative projects.
+- June 30 ETC coverage confirmed for all 18 active projects.
+- June 30 duplicate-update check returned 0 rows.
 
-Do not assume matching aggregate totals prove overlap or differing
-totals prove independence. Keep the costs separate until evidence
-supports their treatment.
+Next steps:
 
-After the labor investigation, reconcile change orders with supplied
-budget adjustments before adding amounts that may already be included.
+1. Put the Step 7 June 30 update selection into a cutoff_updates CTE.
+2. LEFT JOIN cutoff_updates to cleaned_projects by project ID.
+3. Select report_date_clean and estimated_cost_to_complete_clean.
+4. Keep the duplicate-update check as a separate validation query.
+5. Confirm the join retains 96 authoritative project rows and preserves
+   the established ETC coverage for all 18 active projects.
+6. Then attempt forecast final cost and comparison with revised budget.
+   Preserve missing ETC as NULL; do not substitute zero.
 
-Do not repeat completed profiling without a specific unresolved question.
+Write a comment and make the first SQL attempt before receiving a
+complete solution.
+
+Keep the existing budget-versus-actual correction deferred until
+project closeout. Do not restart the resolved labor-overlap inquiry
+or repeat completed profiling without a specific material concern.
+
 
 Reconnect to construction.duckdb in VS Code if required:
 
@@ -1812,39 +1666,38 @@ Continue in coaching mode:
 - Give graduated hints before complete solutions.
 - Pause when the user cannot explain a concept.
 - Batch familiar transformations and validations.
-- Provide documentation text with exact insertion or replacement locations.eable.
-- Identify exact insertion or replacement locations.
+- Provide documentation text with exact insertion or replacement locations.
 
 ### Git Status
 
-Latest confirmed commit:
-
-- Commit: 81aed56.
-- Message: Complete and validate cleaned labor entries view.
-- Date: September 18, 2026.
-- Successfully pushed to origin/main.
-
-The September 18 handoff confirmed local main matched origin/main
-and the working tree was clean after that push.
-
-September 21–22 work has not yet been confirmed committed or pushed.
+September 21–24 work has not yet been confirmed committed or pushed.
 
 Expected files for review and staging:
 
 - sql/12_project_updates_cleaned.sql.
 - sql/13_change_orders_cleaned.sql.
+- sql/14_change_order_budget_reconciliation.sql.
+- sql/15_project_analytical_layer.sql.
+- docs/analysis_plan.md.
 - docs/project_notes.md.
 - docs/project_status.md.
 
-Save edits and inspect git status and the diff to confirm the actual
-changed-file list. Review and stage intended changes, commit, and push.
+The reconciliation file is confirmed saved and executed, and the
+analysis plan is confirmed placed in docs/.
+Confirm the current analytical-layer SQL and documentation edits
+are saved before staging.
+
+If the abandoned sql/14_labor_cost_reconciliation.sql still exists,
+review and remove it if it contains only the superseded investigation.
+
+Inspect git status and the diff to confirm the actual changed-file list.
+Review and stage intended changes, commit, and push.
 
 Suggested commit message:
-Complete project update and change order cleaning views
+Complete cleaning and reconciliation; begin project analytical layer
 
 Confirm the resulting commit, remote synchronization, and working-tree
 status before recording Git closeout as complete.
-
 
 ## End-of-Session Update Routine
 

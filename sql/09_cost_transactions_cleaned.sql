@@ -680,3 +680,8 @@ SELECT
 FROM construction.cleaned_cost_transactions;
 
 -- PASS: Saved view returns 11,203 rows and 11,203 unique transactio IDs.
+
+SELECT
+    payment_status_clean
+FROM construction.cleaned_cost_transactions
+GROUP BY payment_status_clean;
