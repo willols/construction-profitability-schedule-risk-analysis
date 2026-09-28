@@ -44,6 +44,25 @@
 -- A zero revised budget returns NULL because the percentage is undefined.
 -- Missing inputs also leave the percentage NULL.
 
+-- Original contract value (original_contract_value_clean):
+-- Cleaned contract value before change-order revenue adjustments.
+--
+-- Total revenue change (total_revenue_change):
+-- Sum of revenue changes approved on or before June 30, 2026.
+-- Zero when no qualifying changes exist; missing approval dates are excluded.
+--
+-- Revised contract revenue (revised_contract_revenue):
+-- Original contract value plus total qualifying approved revenue changes.
+--
+-- Forecast profit (forecast_profit):
+-- Revised contract revenue minus forecast final cost.
+-- Positive means forecast profit; negative means forecast loss.
+-- NULL means the forecast cannot be calculated from available inputs.
+--
+-- Approved change missing date flag (approved_change_missing_date_flag):
+-- TRUE when a project has an approved change order with no approval date.
+-- That change is excluded from cutoff revenue and needs review.
+
 
 -- Attach the project database and set it as the active database.
 ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
@@ -952,5 +971,610 @@ SELECT
            OR total_incurred_cost IS NULL
     ) AS projects_missing_cost_components
 FROM project_summary;
+
 -- Expected: combined_incurred_total = 111,386,073.69;
 -- both differences = 0.00; projects_missing_cost_components = 0.
+
+
+-- Schedule metrics plan
+-- Assess active projects as of June 30, 2026.
+
+-- Progress gap:
+-- Calculate planned_pct_complete_clean - actual_pct_complete_clean.
+-- Positive = behind plan; negative = ahead; zero = matches planned progress.
+-- Measure the difference in percentage points.
+-- Return NULL if either percentage is missing or outside 0–100.
+
+-- Forecast completion delay:
+-- Calculate forecast_completion_date_clean - baseline_completion_date_clean.
+-- Use the forecast reported on June 30, 2026.
+-- Positive = late; negative = early; zero = matches the baseline finish date.
+-- Measure the difference in days.
+-- Return NULL if either date is missing or the baseline date is unresolved.
+-- Return NULL for forecast delay when the forecast finish is before the report date.
+
+-- Preserve source values and data-quality flags.
+-- Assess each metric independently using its required inputs.
+-- Retain one row per project, even when a metric is NULL.
+
+
+-- Step 13: Build one row per project with cost forecasts and schedule metrics
+-- as of June 30, 2026, to support analysis of budget overruns and
+-- schedule risk for active projects.
+-- Include source values and data-quality flags to make the results
+-- traceable, and return NULL when schedule inputs are missing or invalid.
+WITH non_payroll_costs AS (
+    SELECT
+        project_id_clean,
+        SUM(amount_clean) AS non_payroll_incurred_cost
+    FROM construction.cleaned_cost_transactions
+    WHERE payment_status_clean IN ('paid', 'approved', 'applied')
+    AND transaction_date <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+),
+
+labor_cost AS (
+    SELECT
+        project_id_clean,
+        SUM(labor_cost_clean) AS labor_incurred_cost
+    FROM construction.cleaned_labor_entries
+    WHERE work_date_clean <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+),
+
+project_budget AS (
+    SELECT
+        project_id,
+        SUM(revised_budget_amount_clean) AS revised_budget_total
+    FROM construction.cleaned_project_budgets
+    GROUP BY project_id
+),
+
+cutoff_updates AS (
+    SELECT
+        project_id,
+        report_date_clean,
+        estimated_cost_to_complete_clean,
+        planned_pct_complete_clean,
+        actual_pct_complete_clean,
+        forecast_completion_date_clean,
+        actual_pct_complete_out_of_range_flag,
+        forecast_completion_date_missing_flag,
+        forecast_before_report_flag
+    FROM construction.cleaned_project_updates
+    WHERE report_date_clean = DATE '2026-06-30'
+)
+
+SELECT
+    cp.project_id,
+    cp.project_status_clean,
+    npc.non_payroll_incurred_cost,
+    lc.labor_incurred_cost,
+    npc.non_payroll_incurred_cost +
+    lc.labor_incurred_cost AS total_incurred_cost,
+    pb.revised_budget_total,
+    cu.report_date_clean,
+    cu.estimated_cost_to_complete_clean,
+    cu.planned_pct_complete_clean,
+    cu.actual_pct_complete_clean,
+    cu.forecast_completion_date_clean,
+    cp.baseline_completion_date_clean,
+    cu.actual_pct_complete_out_of_range_flag,
+    cu.forecast_completion_date_missing_flag,
+    cp.baseline_completion_date_unresolved_flag,
+    cu.forecast_before_report_flag,
+    total_incurred_cost + estimated_cost_to_complete_clean
+    AS forecast_final_cost,
+    forecast_final_cost - revised_budget_total
+    AS forecast_budget_variance,
+    ROUND(
+        forecast_budget_variance / NULLIF(pb.revised_budget_total, 0) * 100,
+        2
+    ) AS forecast_budget_variance_pct,
+    CASE
+        WHEN cu.planned_pct_complete_clean IS NULL
+        OR cu.actual_pct_complete_clean IS NULL
+        OR cu.planned_pct_complete_clean < 0
+        OR cu.planned_pct_complete_clean > 100
+        OR cu.actual_pct_complete_clean < 0
+        OR cu.actual_pct_complete_clean > 100 THEN NULL
+        ELSE cu.planned_pct_complete_clean - cu.actual_pct_complete_clean
+    END AS progress_gap_pp,
+    CASE
+        WHEN cu.forecast_completion_date_clean IS NULL
+        OR cp.baseline_completion_date_clean IS NULL
+        OR cp.baseline_completion_date_unresolved_flag = TRUE
+        OR cu.forecast_before_report_flag = TRUE THEN NULL
+        ELSE cu.forecast_completion_date_clean - cp.baseline_completion_date_clean
+    END AS forecast_delay_days
+FROM construction.cleaned_projects AS cp
+LEFT JOIN non_payroll_costs AS npc
+    ON cp.project_id = npc.project_id_clean
+LEFT JOIN labor_cost AS lc
+    ON cp.project_id = lc.project_id_clean
+LEFT JOIN project_budget AS pb
+    ON cp.project_id = pb.project_id
+LEFT JOIN cutoff_updates AS cu
+    ON cp.project_id = cu.project_id;
+
+
+-- Step 13A: Validate that the analytical output retains one row per project.
+-- Expected: 96 total rows and 96 distinct project IDs
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(DISTINCT project_id) AS unique_projects
+FROM construction.project_summary;
+
+-- PASS: Expected returned.
+
+
+-- Step 13B: Check for missing or invalid progress inputs that produced a non-NULL gap.
+-- Expected: 0 rows.
+SELECT *
+FROM construction.project_summary
+WHERE (
+    planned_pct_complete_clean < 0
+    OR planned_pct_complete_clean > 100
+    OR planned_pct_complete_clean IS NULL
+    OR actual_pct_complete_clean < 0
+    OR actual_pct_complete_clean > 100
+    OR actual_pct_complete_clean IS NULL
+)
+AND progress_gap_pp IS NOT NULL;
+
+-- PASS: Expected returned.
+
+
+-- Step 13C: Check for missing or incorrect progress gaps when both inputs are valid.
+-- Expected: 0 rows.
+SELECT *
+FROM construction.project_summary
+WHERE (
+    planned_pct_complete_clean BETWEEN 0 AND 100
+    AND actual_pct_complete_clean BETWEEN 0 AND 100
+) AND (
+    progress_gap_pp IS NULL
+    OR progress_gap_pp <>
+    planned_pct_complete_clean - actual_pct_complete_clean
+);
+
+-- PASS: Expected returned.
+
+
+-- Seto 13D: Check for unusable date inputs taht produce a non-NULL forecast delay.
+-- Expected: 0 rows.
+SELECT *
+FROM construction.project_summary
+WHERE (
+    forecast_completion_date_clean IS NULL
+    OR baseline_completion_date_clean IS NULL
+    OR baseline_completion_date_unresolved_flag = TRUE
+    OR forecast_before_report_flag = TRUE
+)
+AND forecast_delay_days IS NOT NULL;
+
+-- PASS: Expected returned.
+
+
+-- Step 13E: Check for missing or inconsistent forecast_delay_days
+-- when both inputs and flags are valid.
+-- Expected: 0 rows.
+SELECT *
+FROM construction.project_summary
+WHERE (
+    forecast_completion_date_clean IS NOT NULL
+    AND baseline_completion_date_clean IS NOT NULL
+    AND baseline_completion_date_unresolved_flag = FALSE
+    AND forecast_before_report_flag = FALSE
+)
+AND (
+    forecast_delay_days IS NULL
+    OR forecast_delay_days <> forecast_completion_date_clean -
+    baseline_completion_date_clean
+);
+
+-- PASS: Expected returned.
+
+
+-- Step 13F: Check schedule data coverage for the active projects.
+SELECT
+    COUNT(*) FILTER (
+        WHERE project_status_clean = 'active'
+    ) AS active_project_count,
+    COUNT(*) FILTER (
+        WHERE project_status_clean = 'active'
+        AND progress_gap_pp IS NOT NULL
+    ) AS active_with_progress_gap_pp,
+    COUNT(*) FILTER (
+        WHERE project_status_clean = 'active'
+        AND forecast_delay_days IS NOT NULL
+    ) AS active_with_forecast_delay_days
+FROM construction.project_summary;
+
+-- Results:
+-- 18 active projects all 18 contain usable progress gaps and 9 contain
+-- usable forecast delays.
+
+
+-- Step 13G: Inspect the 9 projects without usable forecast delays.
+SELECT
+    project_id,
+    forecast_completion_date_clean,
+    baseline_completion_date_clean,
+    report_date_clean,
+    baseline_completion_date_unresolved_flag,
+    forecast_before_report_flag
+FROM construction.project_summary
+WHERE
+    project_status_clean = 'active'
+    AND forecast_delay_days IS NULL;
+
+-- Results:
+-- 8 outdated forecasts: completion dates earlier than the June 30 report date.
+-- 1 missing forecast: P088 has no forecast completion date.
+-- This explains why the 9 projects are null.
+
+
+-- Step 13H: Check active projects for missing cleaned project records,
+-- missing June 30 updates, or mismatched baseline completion dates.
+SELECT
+    ps.project_id,
+    ps.baseline_completion_date_clean AS baseline_completion_project_summary,
+    pc.baseline_completion_date_clean AS baseline_completion_cleaned_projects
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS cpu
+    ON ps.project_id = cpu.project_id
+    AND cpu.report_date_clean = DATE '2026-06-30'
+LEFT JOIN construction.cleaned_projects AS pc
+    ON ps.project_id = pc.project_id
+WHERE ps.project_status_clean = 'active'
+  AND (
+      pc.project_id IS NULL
+      OR cpu.project_id IS NULL
+      OR ps.baseline_completion_date_clean
+          IS DISTINCT FROM pc.baseline_completion_date_clean
+  );
+
+-- PASS: No missing source matches or baseline completion date differences
+-- found for active projects.
+
+
+-- Step 13I: Compare active-project forecast completion dates
+-- in project_summary against their June 30 cleaned updates.
+SELECT
+    ps.project_id,
+    ps.forecast_completion_date_clean AS forecast_date_project_summary,
+    cpu.forecast_completion_date_clean AS forecast_date_cleaned_project_updates
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS cpu
+    ON ps.project_id = cpu.project_id
+    AND cpu.report_date_clean = DATE '2026-06-30'
+WHERE
+ps.project_status_clean = 'active'
+    AND ps.forecast_completion_date_clean
+    IS DISTINCT FROM cpu.forecast_completion_date_clean;
+
+-- PASS: No missing source matches or forecast completion date differences
+-- found for active projects.
+
+
+-- Step 13J: Compare active-project planned and actual pct complete
+-- in project_summary against their June 30 cleaned updates.
+SELECT
+    ps.project_id,
+    ps.actual_pct_complete_clean AS project_summary_actual_pct,
+    ps.planned_pct_complete_clean AS project_summary_planned_pct,
+    cpu.actual_pct_complete_clean AS project_updates_actual_pct,
+    cpu.planned_pct_complete_clean AS project_updates_planned_pct
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS cpu
+    ON ps.project_id = cpu.project_id
+    AND cpu.report_date_clean = DATE '2026-06-30'
+WHERE
+ps.project_status_clean = 'active'
+    AND (ps.actual_pct_complete_clean
+    IS DISTINCT FROM cpu.actual_pct_complete_clean
+    OR ps.planned_pct_complete_clean
+    IS DISTINCT FROM cpu.planned_pct_complete_clean
+    );
+
+-- PASS: No missing source matches or pct complete differences
+-- found for active projects.
+
+
+-- Step 13K: Compare active-project report_date and 4 schedule flags
+-- in project_summary against their June 30 cleaned updates and cleaned projects.
+SELECT
+    ps.project_id,
+    ps.report_date_clean,
+    cpu.report_date_clean,
+    ps.actual_pct_complete_out_of_range_flag,
+    cpu.actual_pct_complete_out_of_range_flag,
+    ps.forecast_completion_date_missing_flag,
+    cpu.forecast_completion_date_missing_flag,
+    ps.forecast_before_report_flag,
+    cpu.forecast_before_report_flag,
+    ps.baseline_completion_date_unresolved_flag,
+    cp.baseline_completion_date_unresolved_flag
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS cpu
+    ON ps.project_id = cpu.project_id
+    AND cpu.report_date_clean = DATE '2026-06-30'
+LEFT JOIN construction.cleaned_projects AS cp
+    ON ps.project_id = cp.project_id
+WHERE
+ps.project_status_clean = 'active'
+    AND
+    ( ps.report_date_clean
+    IS DISTINCT FROM cpu.report_date_clean
+    OR  ps.actual_pct_complete_out_of_range_flag
+    IS DISTINCT FROM cpu.actual_pct_complete_out_of_range_flag
+    OR ps.forecast_completion_date_missing_flag
+    IS DISTINCT FROM cpu.forecast_completion_date_missing_flag
+    OR ps.forecast_before_report_flag
+    IS DISTINCT FROM cpu.forecast_before_report_flag
+    OR ps.baseline_completion_date_unresolved_flag
+    IS DISTINCT FROM cp.baseline_completion_date_unresolved_flag
+    );
+
+-- PASS: No report-date or schedule-flag differences found for active projects.
+
+-- Schedule validation is complete for construction.project_summary.
+-- All 18 active projects have usable progress gaps; 9 have usable forecast delays.
+-- The other 9 have unavailable forecast delays: 8 have forecast completion dates
+-- before the June 30 report date, and P088 has no forecast completion date.
+-- NULL forecast delays mean unavailable, not zero days late.
+
+
+-- Revenue and forecast profitability:
+-- Estimate each active project's profit at completion using information
+-- available as of June 30, 2026.
+--
+-- Revised contract revenue is the original contract value plus the total
+-- revenue changes approved by the cutoff. Billed amounts are not used.
+-- Approved changes with missing approval dates are excluded, and affected
+-- projects are flagged for review.
+--
+-- Forecast profit is revised contract revenue minus forecast final cost,
+-- which includes incurred costs and estimated cost to complete.
+-- If forecast final cost is unavailable, forecast profit remains NULL.
+
+
+-- Step 14: Sum the approved revenue changes for each project that qualify.
+SELECT
+    cp.project_id,
+    COALESCE(SUM(cco.approved_revenue_change_clean), 0) AS total_revenue_change
+FROM construction.cleaned_projects AS cp
+LEFT JOIN construction.cleaned_change_orders AS cco
+    ON cp.project_id = cco.project_id
+    AND cco.approval_date <= DATE '2026-06-30'
+    AND cco.status_clean = 'approved'
+GROUP BY cp.project_id;
+
+
+-- Step 14A: Check for approved change orders that qualify by date but have unknown amount.
+SELECT
+    change_order_id,
+    project_id,
+    approved_revenue_change_clean
+FROM construction.cleaned_change_orders
+WHERE
+    status_clean = 'approved'
+    AND approval_date <= DATE '2026-06-30'
+    AND approved_revenue_change_clean IS NULL;
+
+-- PASS: No change orders approved by June 30 have missing approved revenue amounts.
+
+
+-- Step 14B: Find approved change orders with missing approval dates.
+SELECT
+    change_order_id,
+    project_id,
+    approved_revenue_change_clean
+FROM construction.cleaned_change_orders
+WHERE approved_missing_approval_date_flag = TRUE;
+
+-- FINDING: CO0001 (P001) has $23,877.11 in approved revenue changes
+-- with no approval date. Excluded from cutoff revenue; flag P001 for review.
+
+
+-- Step 14C: List each project with approved change orders missing approval dates
+-- once, so we can flag it for review in the project summary.
+SELECT DISTINCT
+    project_id
+FROM construction.cleaned_change_orders
+WHERE approved_missing_approval_date_flag = TRUE;
+
+-- Confirmed: P001 is the only project needing the missing-approval-date review flag.
+
+
+-- Step 15: Extend project_summary with revised contract revenue,
+-- forecast profit, and a missing-approval-date review flag.
+CREATE OR REPLACE VIEW construction.project_summary AS
+WITH non_payroll_costs AS (
+    SELECT
+        project_id_clean,
+        SUM(amount_clean) AS non_payroll_incurred_cost
+    FROM construction.cleaned_cost_transactions
+    WHERE payment_status_clean IN ('paid', 'approved', 'applied')
+    AND transaction_date <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+),
+
+labor_cost AS (
+    SELECT
+        project_id_clean,
+        SUM(labor_cost_clean) AS labor_incurred_cost
+    FROM construction.cleaned_labor_entries
+    WHERE work_date_clean <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+),
+
+project_budget AS (
+    SELECT
+        project_id,
+        SUM(revised_budget_amount_clean) AS revised_budget_total
+    FROM construction.cleaned_project_budgets
+    GROUP BY project_id
+),
+
+cutoff_updates AS (
+    SELECT
+        project_id,
+        report_date_clean,
+        estimated_cost_to_complete_clean,
+        planned_pct_complete_clean,
+        actual_pct_complete_clean,
+        forecast_completion_date_clean,
+        actual_pct_complete_out_of_range_flag,
+        forecast_completion_date_missing_flag,
+        forecast_before_report_flag
+    FROM construction.cleaned_project_updates
+    WHERE report_date_clean = DATE '2026-06-30'
+),
+
+approved_revenue_changes AS (
+    SELECT
+    cp.project_id,
+    COALESCE(SUM(cco.approved_revenue_change_clean), 0) AS total_revenue_change
+FROM construction.cleaned_projects AS cp
+LEFT JOIN construction.cleaned_change_orders AS cco
+    ON cp.project_id = cco.project_id
+    AND cco.approval_date <= DATE '2026-06-30'
+    AND cco.status_clean = 'approved'
+GROUP BY cp.project_id
+),
+
+approval_date_review AS (
+    SELECT DISTINCT
+    project_id
+FROM construction.cleaned_change_orders
+WHERE approved_missing_approval_date_flag = TRUE
+)
+
+SELECT
+    cp.project_id,
+    cp.project_status_clean,
+    npc.non_payroll_incurred_cost,
+    lc.labor_incurred_cost,
+    npc.non_payroll_incurred_cost +
+    lc.labor_incurred_cost AS total_incurred_cost,
+    pb.revised_budget_total,
+    cu.report_date_clean,
+    cu.estimated_cost_to_complete_clean,
+    cu.planned_pct_complete_clean,
+    cu.actual_pct_complete_clean,
+    cu.forecast_completion_date_clean,
+    cp.baseline_completion_date_clean,
+    cu.actual_pct_complete_out_of_range_flag,
+    cu.forecast_completion_date_missing_flag,
+    cp.baseline_completion_date_unresolved_flag,
+    cu.forecast_before_report_flag,
+    total_incurred_cost + estimated_cost_to_complete_clean
+    AS forecast_final_cost,
+    forecast_final_cost - revised_budget_total
+    AS forecast_budget_variance,
+    ROUND(
+        forecast_budget_variance / NULLIF(pb.revised_budget_total, 0) * 100,
+        2
+    ) AS forecast_budget_variance_pct,
+    CASE
+        WHEN cu.planned_pct_complete_clean IS NULL
+        OR cu.actual_pct_complete_clean IS NULL
+        OR cu.planned_pct_complete_clean < 0
+        OR cu.planned_pct_complete_clean > 100
+        OR cu.actual_pct_complete_clean < 0
+        OR cu.actual_pct_complete_clean > 100 THEN NULL
+        ELSE cu.planned_pct_complete_clean - cu.actual_pct_complete_clean
+    END AS progress_gap_pp,
+    CASE
+        WHEN cu.forecast_completion_date_clean IS NULL
+        OR cp.baseline_completion_date_clean IS NULL
+        OR cp.baseline_completion_date_unresolved_flag = TRUE
+        OR cu.forecast_before_report_flag = TRUE THEN NULL
+        ELSE cu.forecast_completion_date_clean - cp.baseline_completion_date_clean
+    END AS forecast_delay_days,
+    cp.original_contract_value_clean,
+    arc.total_revenue_change,
+    cp.original_contract_value_clean +
+    arc.total_revenue_change AS revised_contract_revenue,
+    revised_contract_revenue - forecast_final_cost AS
+    forecast_profit,
+    adr.project_id IS NOT NULL AS approved_change_missing_date_flag
+FROM construction.cleaned_projects AS cp
+LEFT JOIN non_payroll_costs AS npc
+    ON cp.project_id = npc.project_id_clean
+LEFT JOIN labor_cost AS lc
+    ON cp.project_id = lc.project_id_clean
+LEFT JOIN project_budget AS pb
+    ON cp.project_id = pb.project_id
+LEFT JOIN cutoff_updates AS cu
+    ON cp.project_id = cu.project_id
+LEFT JOIN approved_revenue_changes AS arc
+    ON cp.project_id = arc.project_id
+LEFT JOIN approval_date_review AS adr
+    ON cp.project_id = adr.project_id;
+
+
+
+-- Step 15A: Check row count and project ID count in updated view.
+SELECT
+    COUNT(*) AS row_count,
+    COUNT(DISTINCT project_id) AS unique_project_ids
+FROM construction.project_summary;
+
+
+-- Step 15A: Check that the review flag reached the saved view.
+SELECT
+    project_id,
+    total_revenue_change,
+    approved_change_missing_date_flag
+FROM construction.project_summary
+WHERE approved_change_missing_date_flag = TRUE;
+
+-- PASS: Only P001 is flagged, matching soure finding.
+
+
+-- Step 15C: Compare saved revenue-change total with qualifying
+-- approved change-order total from the cleaned source.
+WITH source_revenue_change AS (
+    SELECT
+    cp.project_id,
+    COALESCE(SUM(cco.approved_revenue_change_clean), 0) AS total_revenue_change
+FROM construction.cleaned_projects AS cp
+LEFT JOIN construction.cleaned_change_orders AS cco
+    ON cp.project_id = cco.project_id
+    AND cco.approval_date <= DATE '2026-06-30'
+    AND cco.status_clean = 'approved'
+GROUP BY cp.project_id
+)
+
+SELECT
+    ps.project_id,
+    src.total_revenue_change AS source_revenue_change,
+    ps.total_revenue_change AS summary_revenue_change
+FROM construction.project_summary AS ps
+LEFT JOIN source_revenue_change AS src
+    ON ps.project_id = src.project_id
+WHERE
+    ps.total_revenue_change
+    IS DISTINCT FROM src.total_revenue_change;
+
+-- PASS: Every saved revenue change total mathes the qualifying source total.
+
+
+-- Step 15D: Check revised contract revenue and forecast profit
+-- against their expected calculations.
+SELECT *
+FROM construction.project_summary
+WHERE revised_contract_revenue IS DISTINCT FROM
+      (original_contract_value_clean + total_revenue_change)
+   OR forecast_profit IS DISTINCT FROM
+      (revised_contract_revenue - forecast_final_cost);
+
+-- PASS: No differences found between revised contract revenue,
+-- forecast profit, and their expected calculations.
+
+
+SELECT *
+FROM construction.project_summary;

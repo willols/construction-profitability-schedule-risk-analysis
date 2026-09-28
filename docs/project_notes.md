@@ -6,6 +6,77 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## September 28 — Adding and validating revenue and profitability metrics
+
+### What I worked on
+
+I completed schedule validation and added revenue and forecast profit to
+construction.project_summary.
+
+The view now includes the original contract value and four new columns:
+
+- total_revenue_change: Revenue changes approved on or before June 30, 2026,
+  summed by project. Projects with no qualifying changes receive zero.
+- revised_contract_revenue: Original contract value plus qualifying revenue changes.
+- forecast_profit: Revised contract revenue minus forecast final cost.
+  Positive means profit; negative means loss. Missing forecast costs produce NULL.
+- approved_change_missing_date_flag: Identifies projects with approved change
+  orders missing approval dates.
+
+Approved changes with missing approval dates are excluded from cutoff revenue
+and flagged for review.
+
+### Checks and what I learned
+
+Schedule inputs matched the cleaned sources. All 18 active projects have usable
+progress gaps, but only nine have usable forecast delays. Eight forecasts are
+before the report date, and P088 has no forecast completion date.
+
+The updated view retained 96 rows and 96 unique project IDs. Revenue-change
+totals matched the source calculations, and checks of revised revenue and
+forecast profit returned no differences.
+
+Only P001 was flagged for a missing approval date. Its change order CO0001,
+worth $23,877.11, was excluded because its approval timing could not be confirmed.
+
+I learned to distinguish no qualifying changes from an unknown revenue amount.
+I confirmed that no qualifying change orders had missing amounts before using
+zero for projects with no qualifying changes.
+
+### What's next
+
+Decide whether to add forecast profit margin for comparing different-sized
+projects. Also settle how to handle forecasts for completed and on-hold
+projects without June 30 updates. The current analysis focuses on active projects.
+
+## September 27 - Adding and validating schedule metrics
+
+### What I worked on
+
+I added two schedule metrics to the analytical layer using the June 30 project updates.
+
+Progress gap compares planned percentage complete with actual percentage complete. I calculate planned minus actual, measured in percentage points. Positive means behind planned progress, negative means ahead, and zero means progress matches the plan.
+
+Forecast delay compares the forecast completion date with the baseline completion date. I calculate forecast minus baseline, measured in days. Positive means forecast late, negative means early, and zero means the dates match.
+
+I saved the analytical query as construction.project_summary so I can run separate validation queries without copying the full query each time.
+
+### Checks and what I learned
+
+The view returned 96 rows and 96 unique project IDs. Checks 13B–13E returned zero failures for the schedule rules we tested.
+
+All 18 active projects have usable progress gaps, but only nine have usable forecast delays. A NULL delay means the metric is unavailable, not that the project is on time.
+
+P092 helped me understand why correct arithmetic is not enough. Its June 30 report showed unfinished work but a forecast completion date in March. I preserved the date and flag but excluded it from the forecast-delay calculation. Its progress gap remained usable.
+
+I needed help translating the rules into CASE expressions and validation filters, especially deciding when to use AND versus OR. I want more practice explaining those conditions before writing SQL.
+
+### What's next
+
+Step 13G is written but has not been run. I will inspect the nine active projects without usable forecast delays and identify which missing dates or flags caused them.
+
+Then I will reconcile the active projects' schedule inputs in the view against the cleaned source tables. Schedule validation is not yet complete.
+
 ## September 25 — Forecasting project costs
 
 ### What I worked on
