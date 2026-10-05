@@ -62,7 +62,12 @@
 -- Approved change missing date flag (approved_change_missing_date_flag):
 -- TRUE when a project has an approved change order with no approval date.
 -- That change is excluded from cutoff revenue and needs review.
-
+--
+-- Forecast profit margin (forecast_profit_margin_pct):
+-- forecast_profit / revised_contract_revenue * 100.
+-- With positive revenue: positive means profit; zero means breaking even;
+-- negative means loss.
+-- NULL when revenue is zero or missing, or forecast profit is missing.
 
 -- Attach the project database and set it as the active database.
 ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
@@ -1500,6 +1505,23 @@ SELECT
     arc.total_revenue_change AS revised_contract_revenue,
     revised_contract_revenue - forecast_final_cost AS
     forecast_profit,
+    -- Add forecast_profit_margin_pct to construction.project_summary.
+-- Purpose: Compare forecast profitability across projects of different sizes.
+-- Definition: forecast_profit / revised_contract_revenue * 100.
+-- Return NULL when revised_contract_revenue is zero or missing,
+-- or when forecast_profit is missing.
+-- With positive revenue, zero profit means breaking even;
+-- negative profit means a forecast loss.
+    CASE
+        WHEN revised_contract_revenue = 0
+            OR revised_contract_revenue IS NULL
+            OR forecast_profit IS NULL
+        THEN NULL
+        ELSE ROUND(
+            forecast_profit / revised_contract_revenue * 100,
+            2
+        )
+    END AS forecast_profit_margin_pct,
     adr.project_id IS NOT NULL AS approved_change_missing_date_flag
 FROM construction.cleaned_projects AS cp
 LEFT JOIN non_payroll_costs AS npc
@@ -1524,7 +1546,7 @@ SELECT
 FROM construction.project_summary;
 
 
--- Step 15A: Check that the review flag reached the saved view.
+-- Step 15B: Check that the review flag reached the saved view.
 SELECT
     project_id,
     total_revenue_change,
@@ -1575,6 +1597,71 @@ WHERE revised_contract_revenue IS DISTINCT FROM
 -- PASS: No differences found between revised contract revenue,
 -- forecast profit, and their expected calculations.
 
+
+-- Step 15E: Check forecast_profit_margin_pct NULL handling.
+-- Find rows where revenue is zero or missing, or forecast profit is missing,
+-- but forecast_profit_margin_pct is NOT NULL.
+-- Expected: Zero rows.
+SELECT *
+FROM construction.project_summary
+WHERE (
+    revised_contract_revenue IS NULL
+    OR revised_contract_revenue = 0
+    OR forecast_profit IS NULL
+)
+AND forecast_profit_margin_pct IS NOT NULL;
+
+-- PASS: Zero rows returned.
+
+
+-- 15F: Calculation accuracy for forecast_profit_margin_pct.
+-- Expected: Zero rows.
+SELECT *
+FROM construction.project_summary
+WHERE forecast_profit_margin_pct IS DISTINCT FROM
+    ROUND(
+        forecast_profit / NULLIF(revised_contract_revenue, 0) * 100,
+        2
+    );
+
+-- PASS: Zero rows returned.
+
+
+-- Step 16: Check June 30 update coverage by project status.
+-- Count projects with and without a June 30, 2026 update in each status.
+-- In project_summary, a NULL report_date_clean means no June 30 update matched.
+-- Use these counts to inform forecast treatment for completed and on-hold projects.
+SELECT
+    project_status_clean,
+    COUNT(*) AS totals,
+    COUNT(report_date_clean) AS projects_with_30th_report_date,
+    COUNT(*) - COUNT(report_date_clean) AS projects_without_30th_report_date
+FROM construction.project_summary
+GROUP BY project_status_clean;
+
+-- Findings:
+-- All 18 active and all 3 on-hold projects have a June 30 update.
+-- None of the 75 completed projects has a June 30 update.
+-- Completed projects therefore have NULL update fields in this view.
+-- Next: Inspect ETC values for the 3 on-hold projects.
+
+
+-- Step 16A: Inspect ETC values for the 3 on-hold projects.
+SELECT
+    project_id,
+    estimated_cost_to_complete_clean
+FROM construction.project_summary
+WHERE project_status_clean = 'on_hold';
+
+-- Findings:
+-- All three projects with status 'on_hold' contain ETCs.
+
+-- Decision:
+-- Keep all 96 projects in the analytical layer.
+-- Focus the main analysis on active projects; review on-hold projects separately.
+-- Leave unavailable forecasts for completed projects as NULL.
+-- Do not replace missing ETC with zero: missing estimates do not mean
+-- there are no remaining costs.
 
 SELECT *
 FROM construction.project_summary;

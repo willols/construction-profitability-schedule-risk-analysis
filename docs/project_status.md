@@ -1,53 +1,51 @@
 # Project status
 
-Updated September 28, 2026
+Updated October 4, 2026
 
 ## Current position
 
-Profiling and cleaning are complete. The analytical layer is saved as
-construction.project_summary in sql/15_project_analytical_layer.sql.
+Cleaning and analytical-layer work are complete.
+construction.project_summary contains 96 projects as of June 30, 2026.
 
-The view contains costs, budgets, schedule metrics, revised contract revenue,
-and forecast profit as of June 30, 2026. It retains 96 rows and 96 unique projects.
-The current analysis focuses on the 18 active projects.
+Analysis has started in sql/16_project_analysis.sql.
+The main focus is the 18 active projects. On-hold projects are reviewed separately.
+Completed projects retain NULL forecasts where inputs are unavailable.
 
-## Completed
+## Completed today
 
-- Finished schedule validation against cleaned sources.
-- Added qualifying approved revenue changes and revised contract revenue.
-- Added forecast profit and a missing-approval-date review flag.
-- Confirmed revenue totals match the source and new calculations have no differences.
-
-## Key findings and limitations
-
-- All 18 active projects have usable progress gaps; nine have usable forecast delays.
-- Eight other projects have forecasts before the report date; P088 has no forecast date.
-- P001's approved change order CO0001 has no approval date. Its $23,877.11 revenue
-  adjustment is excluded from cutoff revenue, and P001 is flagged for review.
-- NULL means unavailable, not zero or on time.
-- Budget effective dates are unavailable.
-- ETC is assumed to include all remaining costs, including labor.
-- Project status is treated as cutoff status because no status history is available.
+- Added and validated forecast profit margin.
+- Confirmed June 30 updates for all 18 active and 3 on-hold projects.
+- Confirmed all 3 on-hold projects have ETC values.
+- Agreed on seven business questions based on the client handoff.
+- Answered Question 1: active projects have $4,687,563.85 in forecast
+  profit and an 18.58% combined forecast margin.
 
 ## Next task
 
-Decide whether to add forecast profit margin, then settle forecast treatment
-for completed and on-hold projects without June 30 updates.
+Question 2: Identify active projects forecast to lose money or have
+the lowest margins.
 
-Continue with reasoning and comments first, followed by my SQL attempt.
+Write the approach first, attempt the SQL, then explain the results.
+
+## Key limitations
+
+- Only 9 active projects have usable forecast delays.
+- Completed projects have no June 30 updates.
+- Missing ETC stays NULL; it does not mean zero remaining costs.
+- ETC is assumed to include all remaining costs, including labor.
+- Budget effective dates and project status history are unavailable.
+- P001's $23,877.11 change order is excluded from cutoff revenue
+  because its approval date is missing.
 
 ## Remaining work
 
-- Finish the two analytical-layer decisions above.
-- Analyze project risks and profitability.
+- Answer Questions 2–7.
+- Correct the earlier budget-versus-actual SQL, CSV, and Excel report
+  to include employee labor before using it to investigate cost drivers.
 - Build the dashboard and recommendations.
-- Correct the earlier budget-versus-actual SQL, CSV, and Excel report,
-  which excludes employee labor.
+- Document limitations and additional data needed.
 
 ## Git closeout
 
-The last confirmed pushed commit is d74bfc5 from September 25.
-September 27–28 changes still need Git review, commit, and push confirmation.
-
-Detailed decisions and validation results are in docs/project_notes.md
-and sql/15_project_analytical_layer.sql.
+Last confirmed pushed commit: b970c4a.
+October 4 changes still need review, commit, and push.

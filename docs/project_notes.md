@@ -6,6 +6,40 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 4 — Finished forecast margin and started the analysis
+
+### What I worked on
+
+I added forecast_profit_margin_pct to construction.project_summary and validated it. This lets me compare forecast profitability across projects of different sizes.
+I checked which projects have a June 30 update. All 18 active projects and all 3 on-hold projects have one. None of the 75 completed projects has an update on that date. I then checked the on-hold projects and confirmed that all three have ETC values.
+I decided to focus the main analysis on active projects and review on-hold projects separately. All 96 projects stay in the analytical layer. Completed projects keep NULL forecasts where the June 30 inputs are unavailable. Missing ETC does not mean there are no remaining costs, so I will not replace it with zero.
+
+### Checks and what I learned
+
+Forecast profit margin is forecast_profit / revised_contract_revenue * 100, rounded to two decimal places. It returns NULL when revenue is zero or missing, or forecast profit is missing. A zero margin means breaking even; NULL means the margin cannot be calculated.
+The view still has 96 rows and 96 unique project IDs. The NULL-rule check and calculation check both returned zero violations.
+I practiced turning the client request into business questions before writing SQL. We agreed on seven questions:
+1. What are the overall forecast revenue, cost, profit, and profit margin for active projects?
+2. Which active projects are forecast to lose money or have the lowest margins?
+3. Which active projects are forecast to exceed their budgets, and by how much?
+4. Which active projects are behind planned progress or forecast to finish late?
+5. Which active projects deserve management attention first when financial and schedule risks are considered together?
+6. What appears to be driving risk in those priority projects?
+7. What recurring patterns should influence future estimating and planning?
+First analysis result
+I created sql/16_project_analysis.sql and answered Question 1. Across the 18 active projects:
+- Revised contract revenue: $25,229,253.42.
+- Forecast final cost: $20,541,689.57.
+- Forecast profit: $4,687,563.85.
+- Combined forecast profit margin: 18.58%.
+I calculated the combined margin by dividing total forecast profit by total revenue. This means about $18.58 in forecast project profit per $100 of revenue. It does not mean every project has that margin or that the profit has already been earned.
+
+### What's next
+
+Start Question 2: identify active projects forecast to lose money or have the lowest margins. Write the approach first, then attempt the SQL and explain the results.
+The earlier budget-versus-actual SQL, CSV, and Excel report still need the employee labor correction before I use them to investigate cost drivers. Today's documentation and Git closeout are still in progress.
+
+
 ## September 28 — Adding and validating revenue and profitability metrics
 
 ### What I worked on
