@@ -1,51 +1,72 @@
 # Project status
 
-Updated October 4, 2026
+Updated October 6, 2026
 
 ## Current position
 
 Cleaning and analytical-layer work are complete.
-construction.project_summary contains 96 projects as of June 30, 2026.
+`construction.project_summary` contains 96 projects with a reporting
+cutoff of June 30, 2026.
 
-Analysis has started in sql/16_project_analysis.sql.
-The main focus is the 18 active projects. On-hold projects are reviewed separately.
-Completed projects retain NULL forecasts where inputs are unavailable.
+Analysis is in `sql/16_project_analysis.sql`.
+Questions 1–4 are complete. Question 5 identifies P093, P089, P078,
+P083, and P080 for initial review, not a definitive risk ranking.
+Question 6 has begun with P093; category and schedule investigations
+are not yet complete.
+
+The main analysis focuses on 18 active projects. On-hold projects
+will be reviewed separately.
 
 ## Completed today
 
-- Added and validated forecast profit margin.
-- Confirmed June 30 updates for all 18 active and 3 on-hold projects.
-- Confirmed all 3 on-hold projects have ETC values.
-- Agreed on seven business questions based on the client handoff.
-- Answered Question 1: active projects have $4,687,563.85 in forecast
-  profit and an 18.58% combined forecast margin.
+- Planned P093's project-level and cost-category investigation.
+- Corrected `construction.budget_vs_actual_report` to include
+  employee labor through June 30, mapped to the Labor category.
+- Confirmed incurred costs of $111,386,073.69 against both sources.
+  Revised budget and pending exposure totals remained unchanged.
+- Found zero duplicate project/category groups and zero incurred-cost
+  mismatches for projects in `project_summary`.
+- Confirmed P997's Labor budget is the only row without matching
+  cost records.
+- Prepared a revised SQL file with updated definitions and validations.
 
 ## Next task
 
-Question 2: Identify active projects forecast to lose money or have
-the lowest margins.
+Save the revised `sql/10_budget_vs_actual_report.sql` locally.
+Run its updated coverage check and labor cutoff inspection.
+Re-export the CSV and validate the exported totals.
 
-Write the approach first, attempt the SQL, then explain the results.
+Then resume Q6 with P093: investigate corrected category costs and
+remaining budgets, followed by schedule concerns. Write the approach
+before SQL and distinguish evidence from possible explanations.
 
 ## Key limitations
 
-- Only 9 active projects have usable forecast delays.
+- Only 9 of 18 active projects have usable forecast delays.
+  NULL means unknown, not on time.
+- The priority shortlist requires both financial and schedule concerns
+  and may omit severe issues affecting only one side.
+- Spending versus physical progress is an investigation signal,
+  not proof of a cause.
+- Category-level progress and ETC are unavailable, limiting allocation
+  of forecast overruns to categories.
 - Completed projects have no June 30 updates.
-- Missing ETC stays NULL; it does not mean zero remaining costs.
-- ETC is assumed to include all remaining costs, including labor.
+- Missing ETC stays NULL; ETC is assumed to include remaining labor.
 - Budget effective dates and project status history are unavailable.
-- P001's $23,877.11 change order is excluded from cutoff revenue
+- P001's $23,877.11 change order remains excluded from cutoff revenue
   because its approval date is missing.
 
 ## Remaining work
 
-- Answer Questions 2–7.
-- Correct the earlier budget-versus-actual SQL, CSV, and Excel report
-  to include employee labor before using it to investigate cost drivers.
-- Build the dashboard and recommendations.
-- Document limitations and additional data needed.
+- Finish pending report checks and refresh the CSV and Excel report.
+- Complete priority-project risk investigations for Q6.
+- Identify recurring patterns for Q7.
+- Check excluded projects for severe individual risk concerns.
+- Review on-hold projects.
+- Build the dashboard and final recommendations.
+- Document evidence, limitations, and additional data needed.
 
 ## Git closeout
 
-Last confirmed pushed commit: b970c4a.
-October 4 changes still need review, commit, and push.
+Last confirmed pushed commit: `f1eee99` (October 4).
+October 5–6 changes still need review, commit, and push.

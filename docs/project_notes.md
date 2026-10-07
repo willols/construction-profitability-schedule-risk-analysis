@@ -6,6 +6,54 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 6 — Began Q6 and corrected budget versus actual
+
+### What I worked on
+
+I began Question 6 with P093, separating the project-level cost picture from the cost-category investigation.
+
+Before investigating categories, I corrected `sql/10_budget_vs_actual_report.sql` to include employee labor. I summarized labor by project through June 30, mapped all trades to the Labor category, and combined it with transaction costs using a FULL OUTER JOIN on project ID and cost category. Pending exposure remains separate.
+
+### Checks and what I learned
+
+- Revised budget remained $119,564,833.67.
+- Pending exposure remained $7,961,647.60.
+- Total incurred cost is now $111,386,073.69: $80,468,439.22 in transaction costs plus $30,917,634.47 in employee labor.
+- No duplicate project/cost-category groups were found.
+- Project incurred totals matched `construction.project_summary`, with zero mismatches.
+- P997's $42,000 Labor budget is the only row with no matching cost records. It remains visible and flagged.
+
+For P093, incurred costs are $1,720,860.62 against a revised budget of $2,457,900.00. Remaining budget is $737,039.38, while ETC is $920,841.37, producing a forecast overrun of $183,801.99.
+
+P093 has spent about 70.0% of its budget while reporting 64.6% completion. This suggests cost pressure but does not establish its cause. Physical progress and spending do not necessarily move evenly. Category spending can identify where pressure is concentrated, but without category-level progress or ETC, it cannot allocate the project’s forecast overrun reliably.
+
+I practiced matching summary grain, preserving unmatched records, using COALESCE for absent cost sources, and using IS DISTINCT FROM for NULL-safe reconciliation. I also learned that totals can reconcile correctly while a report still omits a required cost source.
+
+### What's next
+
+Run the updated report-coverage check and labor cutoff inspection in the revised SQL file. Re-export the CSV and validate its totals. The Excel report still needs updating.
+
+Then return to Q6: inspect P093's corrected category costs and remaining budgets, distinguish evidence from possible causes, and investigate its schedule concerns. Q6 is not yet complete. Git closeout remains pending.
+
+## October 5 — Analyzed profitability, overruns, and schedule risks
+
+### What I worked on
+
+I completed Questions 2–4 and documented initial review priorities for Question 5 in `sql/16_project_analysis.sql`, using the June 30, 2026 reporting cutoff.
+
+### Findings and what I learned
+
+- **Question 2:** All 18 active projects have positive forecast profit, with no missing profit values. The lowest forecast margins are P083 (7.65%), P093 (7.99%), and P078 (11.88%). A low margin alone does not establish poor performance without a target for comparison.
+- **Question 3:** Nine active projects forecast budget overruns. The largest dollar overruns are P093 ($183,801.99; 7.48%), P083 ($84,680.99; 7.59%), and P089 ($59,521.15; 6.08%). An overrun does not necessarily mean a loss: all active projects still forecast positive profit.
+- **Question 4:** Seventeen active projects are behind planned progress, forecast to finish late, or both. Of these, nine have positive forecast delays and eight have unknown delays. P089 has the largest known delay at 36 days. P078 has the largest progress gap at 16.4 percentage points behind plan.
+- **Question 5:** All nine projects forecasting overruns also have a known schedule concern. I selected P093, P089, P078, P083, and P080 for initial review, emphasizing dollar overruns and forecast delays while considering margins and progress gaps. This is a judgment-based review group, not a definitive ranking.
+
+I practiced choosing metrics, writing approach comments before SQL, and explaining results. Progress gaps measure percentage points behind or ahead of plan; forecast delays measure days relative to baseline completion. A NULL delay means unknown, not on time. Only nine of all 18 active projects have usable forecast delays.
+
+### What's next
+
+Begin Question 6 by planning how to investigate P093's financial and schedule concerns. Identify the source data needed and distinguish supported findings from possible explanations.
+
 ## October 4 — Finished forecast margin and started the analysis
 
 ### What I worked on
