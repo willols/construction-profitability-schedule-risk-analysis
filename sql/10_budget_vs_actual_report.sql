@@ -60,7 +60,6 @@ USE construction;
 
 -- Aggregate budget lines to one row per project and cost category.
 -- Preserve both data-quality flags across each group.
-
 SELECT
     project_id,
     cost_category_clean,
@@ -75,13 +74,11 @@ GROUP BY
 -- Observed result: 673 project/category groups.
 
 
-
 -- SECTION 3: STANDALONE TRANSACTION-COST SUMMARY
 
 -- Aggregate transactions to one row per cleaned project ID
 -- and cleaned cost category.
 -- Calculate pending exposure and incurred cost separately.
-
 SELECT
     project_id_clean,
     cost_category_clean,
@@ -222,7 +219,6 @@ LEFT JOIN construction.cleaned_projects AS p
 -- 5A: INSPECT THE MISSING ORIGINAL BUDGET
 
 -- Inspect the source fields and cleaned values for the flagged line.
-
 SELECT *
 FROM construction.cleaned_project_budgets
 WHERE original_budget_missing_flag = TRUE;
@@ -251,13 +247,14 @@ SELECT
     ) AS rows_without_budget_amount
 FROM construction.budget_vs_actual_report;
 
--- Pending: Run the updated coverage check and record observed counts.
+-- Passed: 673 project/category rows; 672 have budget amounts and matching
+-- cost records, 1 is budget-only, and 0 lack a revised budget amount.
+-- The budget-only row was previously confirmed as P997 / Labor.
 
 
 -- 5C: CALCULATE THE BUDGET TOTAL BEFORE JOINING
 
 -- Include all cleaned budget records, including orphan budgets.
-
 SELECT
     SUM(revised_budget_amount_clean) AS revised_budget_total_before
 FROM construction.cleaned_project_budgets;
@@ -311,7 +308,8 @@ FROM construction.cleaned_labor_entries
 WHERE work_date_clean > DATE '2026-06-30'
    OR work_date_clean IS NULL;
 
--- Pending: Record labor entries after the cutoff or with a NULL work date.
+-- Passed: 0 labor entries dated after the cutoff or with a NULL work date.
+-- The cutoff filter excludes no labor entries from the current dataset.
 
 
 -- 5F: CHECK TOTALS FROM THE UPDATED REPORT
@@ -421,6 +419,6 @@ SELECT
     SUM(incurred_cost) AS incurred_cost_total
 FROM read_csv_auto ('outputs/budget_vs_actual_2026-06-30.csv');
 
--- Expected: Revised budget = 119,564,833.67; pending exposure = 7,961,647.60;
+-- Passed: Exported CSV totals match the expected totals to the cent.
+-- Revised budget = 119,564,833.67; pending exposure = 7,961,647.60;
 -- incurred cost = 111,386,073.69.
--- Pending: Re-export the updated view, run this check, and record results.

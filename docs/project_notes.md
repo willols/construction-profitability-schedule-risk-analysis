@@ -6,6 +6,36 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 7 — Finished report checks and reviewed three priority projects
+
+### What I worked on
+
+I completed the remaining budget-versus-actual checks and CSV validation, then continued Q6 in `sql/16_project_analysis.sql`. I finished initial reviews of P093, P089, and P078 using category spending, schedule history, reported delay reasons, and progress-decrease flags.
+
+### Checks and findings
+
+- Report coverage: 673 project/category rows; 672 with budget amounts and matching costs, 1 budget-only row (P997 / Labor), and 0 without budget amounts.
+- No labor entries were dated after June 30 or had missing work dates.
+- Exported CSV totals matched SQL to the cent: revised budget $119,564,833.67, pending exposure $7,961,647.60, and incurred cost $111,386,073.69.
+
+**P093:** Forecast overrun of $183,801.99. No category is currently over budget. The progress gap widened to 13.3 percentage points, and forecast completion moved 20 days later across updates, ending 32 days later than baseline. All seven updates report Labor availability.
+
+**P089:** Forecast overrun of $59,521.15. No category is currently over budget. Forecast completion moved 15 days later across updates, ending 36 days later than baseline. All three updates report Labor availability. Actual completion fell from 18.6% to 12.7% in the final update and was flagged; this needs clarification before attributing the larger progress gap entirely to slower work.
+
+**P078:** Forecast overrun of $55,444.24. No category is currently over budget; Labor and Subcontractors have used about 89% of their budgets. Forecast completion moved 23 days later across updates. The final progress gap increased from 7.1 to 16.4 percentage points while actual completion fell from 80.4% to 78.6%. The final update reports Owner decision / change order; a scope revision is a possible explanation to verify.
+
+### What I learned and decided
+
+Category spending does not establish category forecast overruns without category-level progress and ETC. Reported delay reasons guide follow-up but are not verified causes. A forecast-date shift across updates is different from delay against baseline.
+
+I shortened repetitive comments and focused on new findings, exceptions, and useful follow-up. Recommendations will become actions in the fictional case-study report; no requests are being sent.
+
+### What's next
+
+Continue Q6 with P083's category spending and update history, then review P080. After the five priority reviews, move to Q7's recurring patterns.
+
+Excel refresh remains pending. Save the SQL and documentation changes and confirm Git commit/push.
+
 ## October 6 — Began Q6 and corrected budget versus actual
 
 ### What I worked on

@@ -1,55 +1,55 @@
 # Project status
 
-Updated October 6, 2026
+Updated October 7, 2026
 
 ## Current position
 
 Cleaning and analytical-layer work are complete.
-`construction.project_summary` contains 96 projects with a reporting
-cutoff of June 30, 2026.
+`construction.project_summary` contains 96 projects at the
+June 30, 2026 reporting cutoff.
 
 Analysis is in `sql/16_project_analysis.sql`.
 Questions 1–4 are complete. Question 5 identifies P093, P089, P078,
 P083, and P080 for initial review, not a definitive risk ranking.
-Question 6 has begun with P093; category and schedule investigations
-are not yet complete.
 
-The main analysis focuses on 18 active projects. On-hold projects
-will be reviewed separately.
+Q6 initial reviews are complete for P093, P089, and P078.
+P083 and P080 remain. The main analysis covers 18 active projects;
+on-hold projects will be reviewed separately.
 
-## Completed today
+## Completed this session
 
-- Planned P093's project-level and cost-category investigation.
-- Corrected `construction.budget_vs_actual_report` to include
-  employee labor through June 30, mapped to the Labor category.
-- Confirmed incurred costs of $111,386,073.69 against both sources.
-  Revised budget and pending exposure totals remained unchanged.
-- Found zero duplicate project/category groups and zero incurred-cost
-  mismatches for projects in `project_summary`.
-- Confirmed P997's Labor budget is the only row without matching
-  cost records.
-- Prepared a revised SQL file with updated definitions and validations.
+- Completed report coverage and labor cutoff checks.
+- Re-exported the corrected budget-versus-actual CSV and confirmed
+  all three totals match SQL to the cent.
+- Reviewed category spending and schedule history for three projects.
+- P093: all seven updates report Labor availability; schedule
+  deterioration is documented.
+- P089: all three updates report Labor availability; the June 30
+  progress decrease is flagged and requires clarification.
+- P078: the final update reports Owner decision / change order;
+  a scope revision may explain its flagged progress decrease.
+- Documented findings, limitations, and follow-up recommendations.
+- Shortened repetitive comments to emphasize new evidence and exceptions.
 
 ## Next task
 
-Save the revised `sql/10_budget_vs_actual_report.sql` locally.
-Run its updated coverage check and labor cutoff inspection.
-Re-export the CSV and validate the exported totals.
+Start P083's category-spending review, then inspect its update history
+through June 30, including reported delay reasons and progress flags.
+Interpret the results and document only useful findings and exceptions.
 
-Then resume Q6 with P093: investigate corrected category costs and
-remaining budgets, followed by schedule concerns. Write the approach
-before SQL and distinguish evidence from possible explanations.
+Repeat for P080, then move to Q7's recurring patterns.
 
 ## Key limitations
 
 - Only 9 of 18 active projects have usable forecast delays.
   NULL means unknown, not on time.
-- The priority shortlist requires both financial and schedule concerns
-  and may omit severe issues affecting only one side.
-- Spending versus physical progress is an investigation signal,
-  not proof of a cause.
-- Category-level progress and ETC are unavailable, limiting allocation
-  of forecast overruns to categories.
+- The priority shortlist may omit severe issues affecting only
+  financial performance or schedule.
+- Category-level progress and ETC are unavailable; category spending
+  cannot establish causes or allocate forecast overruns.
+- Reported delay reasons require verification.
+- Progress decreases may reflect corrections or scope changes;
+  their causes remain unconfirmed.
 - Completed projects have no June 30 updates.
 - Missing ETC stays NULL; ETC is assumed to include remaining labor.
 - Budget effective dates and project status history are unavailable.
@@ -58,15 +58,15 @@ before SQL and distinguish evidence from possible explanations.
 
 ## Remaining work
 
-- Finish pending report checks and refresh the CSV and Excel report.
-- Complete priority-project risk investigations for Q6.
+- Refresh the Excel report from the corrected CSV.
+- Finish Q6 reviews for P083 and P080.
 - Identify recurring patterns for Q7.
 - Check excluded projects for severe individual risk concerns.
 - Review on-hold projects.
 - Build the dashboard and final recommendations.
-- Document evidence, limitations, and additional data needed.
+- Preserve evidence, limitations, and additional data needs.
 
 ## Git closeout
 
 Last confirmed pushed commit: `f1eee99` (October 4).
-October 5–6 changes still need review, commit, and push.
+October 5–7 changes still need confirmed commit/push.
