@@ -1,30 +1,34 @@
 # Project status
 
-Updated October 8, 2026
+Updated October 9, 2026
 
 ## Current position
 
 Cleaning and analytical-layer work are complete.
 Reporting cutoff: June 30, 2026. Main scope: 18 active projects.
 
-Q1–Q6 are complete, including five detailed priority reviews,
-broader risk screening, and targeted schedule reviews of
-P079, P090, and P081. Targeted validation checks passed.
+Q1–Q7 are complete, including five priority reviews, broader
+risk screening, and targeted schedule reviews of P079, P090,
+and P081. Prior validation checks passed.
 
-Q7's approach is drafted; investigation has not started.
+Q7 identified:
+- Cutoff completion decreases in 12 active projects, outdated
+  forecasts in eight, and a missing forecast in one. Counts overlap.
+- Narrower progress gaps alongside later forecast finishes
+  in 29 updates across 14 active projects.
+- Labor availability and Material lead time as the most
+  frequently reported delay reasons.
 
 ## Next task
 
-Begin Q7 reporting reliability: summarize cutoff completion
-decreases and missing/outdated finish forecasts across all
-18 active projects. Reuse existing checks.
-
-Then examine schedule trends and reported delay reasons.
+Review the three on-hold projects: assess financial exposure
+and determine whether available updates support forecasting.
 
 ## Key limitations
 
-- Only 9 active projects have usable forecast delays; NULL means unknown.
+- Only nine active projects have usable forecast delays; NULL means unknown.
 - Completion decreases and reported delay reasons require clarification.
+- Some historical forecast shifts involve outdated dates.
 - Category-level progress and ETC are unavailable.
 - Missing ETC remains NULL; ETC is assumed to include remaining labor.
 - Budget effective dates and project status history are unavailable.
@@ -33,12 +37,12 @@ Then examine schedule trends and reported delay reasons.
 
 ## Remaining work
 
-- Complete Q7 and review on-hold projects.
+- Review on-hold projects.
 - Refresh Excel from the corrected CSV.
 - Build the dashboard and final report/recommendations.
-- Update documentation and complete Git closeout.
+- Complete documentation and Git closeout.
 
 ## Git closeout
 
-Last confirmed pushed commit: `6b737bb` (October 7 work).
-October 8 changes await commit/push confirmation.
+Last confirmed pushed commit: `19cf15e` (October 8).
+October 9 SQL and documentation changes await commit/push.

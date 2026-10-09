@@ -6,6 +6,28 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 9
+
+### Completed 
+
+Q7: Recurring patterns
+
+### Findings
+
+- Reporting reliability: At cutoff, 12 of 18 active projects reported completion decreases, eight had outdated forecasts, and one had a missing forecast. Counts overlap.
+- Schedule trends: Across histories through June 30, 29 updates across 14 active projects showed narrower progress gaps alongside later forecast finishes. Gap improvement does not establish schedule recovery.
+- Reported constraints: Labor availability was most common (5 projects), followed by Material lead time (4), Unforeseen site condition (3), and Subcontractor availability (3).
+
+### Limitations and follow-up
+
+Completion decreases may reflect corrections or scope changes; reported delay reasons remain unverified. Some historical forecast shifts involve outdated dates, limiting their usefulness.
+
+Project managers should explain completion decreases, confirm remaining work, update unusable forecasts, and verify staffing and procurement constraints. Prioritize follow-up by project risk as well as reason frequency.
+
+### Next task
+
+Review on-hold projects and their financial exposure.
+
 ## October 8 — Finished priority reviews and analysis checks
 
 ### Completed

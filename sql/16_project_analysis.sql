@@ -15,6 +15,12 @@
 -- I will sum all three of these and filter to active
 -- projects using project_status_clean.
 
+
+-- Attach the project database and set it as the active database.
+ATTACH IF NOT EXISTS 'construction.duckdb' AS construction;
+USE construction;
+
+
 -- Summarize revenue, forecast final cost, forecast profit,
 -- and overall forecast profit margin for active projects.
 SELECT
@@ -926,3 +932,171 @@ ORDER BY report_date_clean;
 -- 3. Reported constraints: Delay reasons at cutoff, treated as
 --    unverified explanations rather than confirmed causes.
 -- Use detailed project reviews as supporting examples.
+
+
+-- Q7.1: Summarize reporting reliability for active projects at June 30, 2026.
+-- Join project_summary to each project's cutoff update.
+-- Count total projects, completion decreases, outdated forecasts,
+-- and missing forecasts. Issue counts may overlap.
+
+SELECT
+    COUNT(*) AS total_projects,
+    COUNT(*) FILTER (
+        WHERE u.progress_decrease_flag = TRUE
+    ) AS projects_with_decrease_completion_count,
+    COUNT(*) FILTER (
+        WHERE ps.forecast_before_report_flag = TRUE
+    ) AS projects_with_forecast_before_report_count,
+    COUNT(*) FILTER (
+        WHERE ps.forecast_completion_date_missing_flag = TRUE
+    ) AS projects_with_missing_date_flag
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS u
+    ON ps.project_id = u.project_id
+    AND u.report_date_clean = DATE '2026-06-30'
+WHERE ps.project_status_clean = 'active';
+
+-- Findings:
+-- At June 30, 2026, 12 of 18 active projects reported a completion
+-- decrease from their previous update. Eight had outdated forecast
+-- completion dates, and one had a missing forecast completion date.
+-- These counts overlap.
+--
+-- Limitations:
+-- Reported completion decreases do not establish that physical work
+-- went backward. They may reflect reporting corrections or scope changes;
+-- the available data does not establish the reason.
+--
+-- Follow-up:
+-- Ask project managers to explain the completion decreases, confirm
+-- remaining work, and provide current forecast completion dates
+-- where forecasts are outdated or missing.
+
+
+-- Q7.2: Identify updates where the progress gap narrowed while
+-- the forecast finish moved later.
+-- Use active projects' update histories through June 30, 2026.
+-- Calculate progress_gap_pp as planned minus actual completion.
+-- Use LAG() to compare each update with its previous update.
+
+
+-- List updates where the gap narrowed but the forecast finish moved later.
+WITH update_metrics AS (
+    SELECT
+        u.project_id,
+        u.report_date_clean,
+        u.planned_pct_complete_clean - u.actual_pct_complete_clean
+            AS progress_gap_pp,
+        u.forecast_completion_date_clean
+    FROM construction.cleaned_project_updates AS u
+    JOIN construction.project_summary AS ps
+        ON u.project_id = ps.project_id
+    WHERE ps.project_status_clean = 'active'
+        AND u.report_date_clean <= DATE '2026-06-30'
+),
+updates_with_previous AS (
+    SELECT
+        project_id,
+        report_date_clean,
+        progress_gap_pp,
+        forecast_completion_date_clean,
+        LAG(progress_gap_pp) OVER (
+            PARTITION BY project_id
+            ORDER BY report_date_clean
+        ) AS previous_progress_gap_pp,
+        LAG(forecast_completion_date_clean) OVER (
+            PARTITION BY project_id
+            ORDER BY report_date_clean
+        ) AS previous_forecast_completion_date
+    FROM update_metrics
+)
+SELECT *
+FROM updates_with_previous
+WHERE progress_gap_pp < previous_progress_gap_pp
+    AND forecast_completion_date_clean > previous_forecast_completion_date
+ORDER BY project_id, report_date_clean;
+
+-- Summary:
+-- Repeat the CTEs because their scope ends with the detail statement.
+WITH update_metrics AS (
+    SELECT
+        u.project_id,
+        u.report_date_clean,
+        u.planned_pct_complete_clean - u.actual_pct_complete_clean
+            AS progress_gap_pp,
+        u.forecast_completion_date_clean
+    FROM construction.cleaned_project_updates AS u
+    JOIN construction.project_summary AS ps
+        ON u.project_id = ps.project_id
+    WHERE ps.project_status_clean = 'active'
+        AND u.report_date_clean <= DATE '2026-06-30'
+),
+updates_with_previous AS (
+    SELECT
+        project_id,
+        report_date_clean,
+        progress_gap_pp,
+        forecast_completion_date_clean,
+        LAG(progress_gap_pp) OVER (
+            PARTITION BY project_id
+            ORDER BY report_date_clean
+        ) AS previous_progress_gap_pp,
+        LAG(forecast_completion_date_clean) OVER (
+            PARTITION BY project_id
+            ORDER BY report_date_clean
+        ) AS previous_forecast_completion_date
+    FROM update_metrics
+)
+SELECT
+    COUNT(*) AS matching_update_count,
+    COUNT(DISTINCT project_id) AS matching_project_count
+FROM updates_with_previous
+WHERE progress_gap_pp < previous_progress_gap_pp
+    AND forecast_completion_date_clean > previous_forecast_completion_date;
+
+-- Findings:
+-- Across histories through June 30, 2026, 29 updates across 14 active
+-- projects showed a narrower progress gap alongside a later forecast finish.
+-- At cutoff, P079's gap narrowed from 15.9 to 8.5 pp, an improvement
+-- of 7.4 pp, while its forecast finish moved five days later,
+-- from July 29 to August 3.
+-- Management should consider both metrics: a narrower progress gap
+-- does not establish that lost schedule time has been recovered.
+--
+-- Limitation:
+-- Some matching updates contain outdated forecasts. Their date changes
+-- describe reported movements but are not usable forecasts of remaining work.
+
+
+-- Q7.3: Count active projects by reported primary delay reason at cutoff.
+-- Join cleaned_project_updates to project_summary for project status.
+-- Filter to June 30, 2026, and active projects.
+-- Group by primary_delay_reason and count project rows in each group.
+-- Reported reasons do not establish verified causes of delays.
+SELECT
+    u.primary_delay_reason,
+    COUNT(*) AS project_count
+FROM construction.cleaned_project_updates AS u
+JOIN construction.project_summary AS ps
+    ON u.project_id = ps.project_id
+WHERE ps.project_status_clean = 'active'
+    AND u.report_date_clean = DATE '2026-06-30'
+GROUP BY u.primary_delay_reason
+ORDER BY project_count DESC;
+
+-- Findings:
+-- All 18 active projects are represented at cutoff.
+-- Labor availability was the most common reported delay reason
+-- (5 projects), followed by Material lead time (4).
+-- Unforeseen site condition and Subcontractor availability
+-- were each reported for 3 projects.
+--
+-- Follow-up:
+-- Review staffing and procurement constraints with project managers,
+-- starting with projects reporting Labor availability and Material lead time.
+-- Confirm effects on remaining work and forecast finish dates;
+-- prioritize action using project risk as well as reason frequency.
+--
+-- Limitation:
+-- Reported reasons are unverified explanations. Their frequency
+-- does not establish their impact on schedule or cost.
