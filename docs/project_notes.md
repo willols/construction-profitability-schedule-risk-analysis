@@ -6,6 +6,31 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 8 — Finished priority reviews and analysis checks
+
+### Completed
+
+- Finished P083 and P080, completing the five priority-project reviews.
+- Confirmed complete financial metrics and positive forecast profit for all 18 active projects.
+- Reconciled category budgets and incurred costs to project totals for all five reviewed projects; zero differences.
+- Added a cleaned-view project/report-date uniqueness check; passed.
+- Screened the other 13 active projects and completed targeted schedule reviews of P079, P090, and P081.
+
+### Main findings
+
+- P083 is already $6,480.89 over budget and forecasts an $84,680.99 overrun. Completion decreased, and its finish forecast is outdated.
+- P080 forecasts a $22,126.97 overrun. Its final progress gap improved, but forecast finish moved later.
+- P079 forecasts a 29-day delay despite forecast costs remaining below budget.
+- P090 and P081 had cutoff completion decreases requiring clarification. P090 also needs an updated finish forecast.
+
+### Decisions and next task
+
+Keep the five initial priorities and document additional schedule follow-up. Reported delay reasons remain unverified.
+
+Drafted Q7 around reporting reliability, schedule trends, and reported constraints across all 18 active projects. Investigation has not started.
+
+Next: Begin Q7 reporting reliability using cutoff completion decreases and missing/outdated forecasts. Reuse existing checks.
+
 ## October 7 — Finished report checks and reviewed three priority projects
 
 ### What I worked on

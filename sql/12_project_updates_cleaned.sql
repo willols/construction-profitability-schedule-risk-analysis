@@ -605,7 +605,7 @@ cleaned_output AS (
 )
 
 SELECT *
-FROM cleaned_outputs;
+FROM cleaned_output;
 
 -- PASS: All cleaned outputs match the data types intended.
 
@@ -828,3 +828,17 @@ FROM construction.cleaned_project_updates;
 
 -- PASS: both returned 725.
 
+
+-- View validation 2: Chack uniqueness of project and report date.
+-- Expected: zero rows.
+SELECT
+    project_id,
+    report_date_clean,
+    COUNT(*) AS update_count
+FROM construction.cleaned_project_updates
+GROUP BY
+    project_id,
+    report_date_clean
+HAVING COUNT(*) > 1;
+
+-- PASS: Zero duplicate project/report-date pairs returned.

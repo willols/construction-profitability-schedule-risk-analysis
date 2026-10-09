@@ -622,4 +622,307 @@ ORDER BY report_date_clean;
 -- the forecast budget overrun of 55,444.24.
 
 
--- Next: Project P083. same process so, less commenting.
+-- Next: Project P083. same process as the above projects.
+
+-- Project-level query for P083
+SELECT
+    project_id,
+    total_incurred_cost,
+    revised_budget_total,
+    actual_pct_complete_clean,
+    estimated_cost_to_complete_clean
+FROM construction.project_summary
+WHERE project_id = 'P083';
+
+-- Findings for P083:
+-- incurred $1,121,480.89
+-- revised_budget_total $1,115,000.00
+-- pct_complete 93.2%
+-- estimate to complete $78,200.10
+-- estimated overrun $84,680.99
+
+-- P083: Incurred cost is already $6,480.89
+-- with ETC it is $84,680.99.
+-- Next: Inspect category spending for current budget pressure.
+SELECT
+    cost_category,
+    revised_budget,
+    incurred_cost,
+    budget_remaining,
+    ROUND(incurred_cost / NULLIF(revised_budget, 0) * 100, 2
+      )AS budget_spent_pct
+FROM construction.budget_vs_actual_report
+WHERE project_id = 'P083'
+ORDER BY budget_spent_pct DESC;
+
+-- Findings:
+-- Materials, Subcontractors, and Labor exceed budget by $28,360.61 combined,
+-- led by Materials ($19,855.30). Other categories have $21,879.72 remaining,
+-- leaving a net incurred overrun of $6,480.89.
+-- Category-level ETC is unavailable, so remaining forecast costs cannot be allocated.
+
+-- Next: Schedule investigation into P083.
+
+-- Inspect P083's cleaned updates through June 30th.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    primary_delay_reason,
+    progress_decrease_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P083'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- The progress gap reached zero, then rose to 6.8 pp at cutoff as reported
+-- completion fell from 100% to 93.2%. Weather is the reported cutoff delay reason.
+-- The March 6 forecast finish predates the June 30 report despite incomplete work.
+-- Follow-up: clarify the completion decrease and obtain an updated finish forecast.
+
+
+--====--
+
+-- Next: Project P080. same process as the above projects.
+
+-- Project-level query for P080
+SELECT
+    project_id,
+    total_incurred_cost,
+    revised_budget_total,
+    actual_pct_complete_clean,
+    estimated_cost_to_complete_clean
+FROM construction.project_summary
+WHERE project_id = 'P080';
+
+-- Findings for P080:
+-- At 74.8% reported completion, incurred costs remain below budget.
+-- ETC ($118,900.81) exceeds remaining budget ($96,773.84),
+-- producing a forecast overrun of $22,126.97.
+-- Next: Inspect category spending for current budget pressure.
+SELECT
+    cost_category,
+    revised_budget,
+    incurred_cost,
+    budget_remaining,
+    ROUND(incurred_cost / NULLIF(revised_budget, 0) * 100, 2
+      )AS budget_spent_pct
+FROM construction.budget_vs_actual_report
+WHERE project_id = 'P080'
+ORDER BY budget_spent_pct DESC;
+
+-- Findings:
+-- No category's incurred costs exceed its revised budget.
+-- Labor has the highest budget utilization (87.20%), followed by
+-- General Conditions (81.37%) and Equipment (80.47%).
+
+-- Next: Schedule investigation into P080.
+
+-- Inspect P080's cleaned updates through June 30th.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    primary_delay_reason,
+    progress_decrease_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P080'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- Actual completion increased throughout, with no progress decreases flagged.
+-- The progress gap narrowed from 9.0 to 7.8 pp in the final update,
+-- but forecast finish shifted 14 days later across updates, to August 20.
+-- All updates report Labor availability; this explanation remains unverified.
+-- Follow-up: confirm staffing constraints and their effect on remaining cost and schedule.
+
+
+
+-- Analysis validations
+-- V1: Active-project financial metric coverage and profit classification.
+-- V2: Category totals reconcile to project totals for the five reviewed projects.
+
+
+-- V1: Check active-project financial metric coverage and profit classification.
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(revised_contract_revenue) AS populated_revised_contract_revenue,
+    COUNT(forecast_final_cost) AS populated_forecast_final_cost,
+    COUNT(forecast_profit_margin_pct) AS populated_forecast_profit_margin_pct,
+    COUNT(forecast_profit) AS populated_forecast_profit,
+    COUNT (*) FILTER (
+        WHERE forecast_profit > 0
+    ) AS positive_profit_counts,
+    COUNT(*) FILTER (
+        WHERE forecast_profit = 0
+    ) AS zero_forecast_profits,
+    COUNT(*) FILTER (
+        WHERE forecast_profit < 0
+    ) AS negative_forecast_profits
+FROM construction.project_summary
+WHERE project_status_clean = 'active';
+
+-- PASS: All 18 active projects have revenue, forecast cost, profit, and margin populated.
+-- All 18 forecast positive profit; zero forecast zero profit or losses.
+
+
+-- V2: Reconcile agreegated revised_budget and incurred_cost
+-- from budget_vs_actual to totals in project.summary.
+WITH category_totals AS (
+SELECT
+    project_id,
+    SUM(revised_budget) AS revised_budget_total_report,
+    SUM(incurred_cost) AS incurred_cost_total_report
+FROM construction.budget_vs_actual_report
+GROUP BY project_id
+)
+
+SELECT
+    ps.project_id,
+    ps.revised_budget_total AS revised_budget_total_summary,
+    ps.total_incurred_cost AS incurred_cost_total_summary,
+    b.revised_budget_total_report,
+    b.incurred_cost_total_report,
+    b.revised_budget_total_report - ps.revised_budget_total AS budget_difference,
+    b.incurred_cost_total_report - ps.total_incurred_cost AS incurred_difference
+FROM construction.project_summary AS ps
+LEFT JOIN category_totals AS b
+    ON b.project_id = ps.project_id
+WHERE ps.project_id IN ('P093', 'P089', 'P078', 'P083', 'P080');
+
+-- PASS: Category budget and incurred-cost totals match project_summary
+-- to the cent for all five reviewed projects.
+
+
+-- Next:
+-- Review unexamined active projects for risks that could change review priorities.
+-- Show Q5 metrics without positive-risk filters, excluding the five reviewed projects.
+SELECT
+    project_id,
+    forecast_budget_variance,
+    forecast_budget_variance_pct,
+    forecast_profit_margin_pct,
+    forecast_delay_days,
+    progress_gap_pp
+FROM construction.project_summary
+WHERE project_status_clean = 'active'
+    AND project_id NOT IN ('P093', 'P089', 'P078', 'P083', 'P080')
+ORDER BY forecast_budget_variance DESC;
+
+-- Findings:
+-- P079 forecasts a 29-day delay despite forecast costs being below budget.
+-- P090 is 14.9 pp behind plan; its outdated finish forecast needs updating.
+-- P081 forecasts a 22-day delay and is 14.4 pp behind plan.
+
+-- Recommendation:
+-- Retain the five initial priorities and add targeted schedule reviews
+-- for P079, P090, and P081. Expand investigation if those reviews
+-- reveal additional financial exposure or unresolved reporting conflicts.
+
+
+-- Next: Inspect P079's schedule trends, reported delay reasons,
+-- and reporting exceptions.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    primary_delay_reason,
+    progress_decrease_flag,
+    forecast_before_report_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P079'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- P079's progress gap narrowed from 15.9 to 8.5 pp in the final update,
+-- while forecast finish moved five days later to August 3.
+-- The final two updates report Unforeseen site condition; verify its
+-- effect on remaining work and the 29-day forecast delay against baseline.
+
+
+-- Next: Inspect P090's schedule trends, reported delay reasons,
+-- and reporting exceptions.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    primary_delay_reason,
+    progress_decrease_flag,
+    forecast_before_report_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P090'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- Forecast finish first predates the report on January 2 and remains
+-- outdated through cutoff. Final reported completion falls from 100%
+-- to 85.1%, reopening a 14.9 pp progress gap.
+-- All updates report Labor availability; it does not establish
+-- the cause of the completion decrease.
+--
+-- Follow-up:
+-- Clarify the completion decrease and remaining work, obtain an updated
+-- finish forecast, and verify whether labor availability constrains that work.
+
+
+-- Next: Inspect P081's schedule trends, reported delay reasons,
+-- and reporting exceptions.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    primary_delay_reason,
+    progress_decrease_flag,
+    forecast_before_report_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P081'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- P081's final progress gap widened from 4.2 to 14.4 pp as reported
+-- completion fell from 74.8% to 70.7%, triggering the decrease flag.
+-- Forecast finish shifted 14 days later across updates, to August 28,
+-- which is 22 days after baseline. The cutoff reason is Unforeseen site condition.
+--
+-- Follow-up:
+-- Clarify the completion decrease and verify the reported site condition's
+-- effect on remaining work and schedule.
+
+
+-- Question 7: What recurring patterns should inform future
+-- estimating, planning, and reporting?
+--
+-- Approach:
+-- Examine all 18 active projects across three themes.
+-- 1. Reporting reliability: Completion decreases and missing
+--    or outdated finish forecasts at cutoff.
+-- 2. Schedule deterioration: Forecast finish shifts across updates,
+--    including cases where progress gaps improve.
+-- 3. Reported constraints: Delay reasons at cutoff, treated as
+--    unverified explanations rather than confirmed causes.
+-- Use detailed project reviews as supporting examples.
