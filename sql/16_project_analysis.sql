@@ -1100,3 +1100,163 @@ ORDER BY project_count DESC;
 -- Limitation:
 -- Reported reasons are unverified explanations. Their frequency
 -- does not establish their impact on schedule or cost.
+
+
+-- Next: Inspect on-hold projects.
+
+-- Approach:
+-- 1. Assess the current financial position by comparing incurred cost with
+--    revised budget and showing pending exposure separately.
+-- 2. Inspect ETC, forecast final cost, forecast budget variance, and forecast
+--    profit margin where available. Preserve missing values as NULL.
+-- 3. Review report dates, completion percentages, forecast finish dates,
+--    reliability flags, and reported delay reasons to assess forecast usability.
+
+
+-- 1. Projects on-hold current financial position.
+WITH pending_by_project AS(
+    SELECT
+        project_id_clean,
+        SUM(CASE
+            WHEN payment_status_clean = 'pending'
+                THEN amount_clean
+                ELSE 0
+            END) AS pending_exposures_total
+    FROM construction.cleaned_cost_transactions
+    WHERE transaction_date <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+)
+
+SELECT
+    ps.project_id,
+    ps.total_incurred_cost,
+    ps.revised_budget_total,
+    p.pending_exposures_total
+FROM construction.project_summary AS ps
+LEFT JOIN pending_by_project AS p
+    ON ps.project_id = p.project_id_clean
+WHERE ps.project_status_clean = 'on_hold';
+
+-- Findings:
+-- Three projects are on hold: P096, P094, and P095.
+-- P096: incurred cost $669,547.59; revised budget $2,207,100.00;
+-- pending exposure $53,277.32. Incurred cost is 30.34% of revised budget.
+-- P094: incurred cost $904,391.81; revised budget $1,888,931.20;
+-- pending exposure $34,950.30. Incurred cost is 47.88% of revised budget.
+-- P095: incurred cost $397,469.14; revised budget $530,000.00;
+-- pending exposure $30,577.71. Incurred cost is 74.99% of revised budget.
+-- P095 has consumed the largest percentage of its revised budget.
+-- These percentages alone do not establish forecast budget overruns.
+
+
+-- Part 2: Assess the reported financial outlook by inspecting ETC, forecast
+-- final cost, forecast budget variance, and forecast profit margin.
+-- Compare ETC with remaining budget to identify forecast overruns.
+-- Preserve missing values as NULL.
+WITH pending_by_project AS(
+    SELECT
+        project_id_clean,
+        SUM(CASE
+            WHEN payment_status_clean = 'pending'
+                THEN amount_clean
+                ELSE 0
+            END) AS pending_exposures_total
+    FROM construction.cleaned_cost_transactions
+    WHERE transaction_date <= DATE '2026-06-30'
+    GROUP BY project_id_clean
+)
+
+SELECT
+    ps.project_id,
+    ps.total_incurred_cost,
+    ps.revised_budget_total,
+    p.pending_exposures_total,
+    ps.estimated_cost_to_complete_clean,
+    ps.forecast_final_cost,
+    ps.forecast_budget_variance,
+    ps.forecast_profit_margin_pct,
+    ps.revised_contract_revenue
+FROM construction.project_summary AS ps
+LEFT JOIN pending_by_project AS p
+    ON ps.project_id = p.project_id_clean
+WHERE ps.project_status_clean = 'on_hold';
+
+-- Findings:
+-- P096 forecasts $56,192.66 under budget and the highest forecast profit
+-- in dollars ($648,092.66), with a forecast profit margin of 23.15%.
+-- P095 forecasts $46,563.45 under budget and the highest forecast profit
+-- margin (29.84%), with forecast profit of $205,563.45.
+-- P094 forecasts a budget overrun of $185,660.56 and the lowest forecast
+-- profit margin (7.82%). It still forecasts profit of $175,934.68 because
+-- revised contract revenue exceeds forecast final cost.
+-- Part 3 will assess reporting reliability and whether these estimates
+-- are usable for evaluating the on-hold projects.
+
+
+-- Part 3: Review report dates, completion percentages, forecast finish dates,
+-- reliability flags, and reported delay reasons to assess forecast usability.
+SELECT
+    ps.project_id,
+    ps.report_date_clean,
+    ps.actual_pct_complete_clean,
+    ps.forecast_completion_date_clean,
+    pu.primary_delay_reason,
+    pu.progress_decrease_flag,
+    ps.forecast_before_report_flag,
+    ps.forecast_completion_date_missing_flag
+FROM construction.project_summary AS ps
+LEFT JOIN construction.cleaned_project_updates AS pu
+    ON  ps.project_id = pu.project_id
+    AND ps.report_date_clean = pu.report_date_clean
+WHERE ps.project_status_clean = 'on_hold';
+
+-- Findings:
+-- All three on-hold projects have June 30 reports and forecast finish dates
+-- that are present and later than the report date.
+-- P094 is the only project with a completion decrease flagged.
+-- This flag, combined with its forecast budget overrun of $185,660.56
+-- and the lowest forecast profit margin (7.82%), warrants further investigation.
+-- P095 and P096 have none of the three reporting issues flagged.
+-- These checks do not confirm that forecasts account for the hold or restart.
+
+
+
+-- Inspect P094's update history.
+SELECT
+    project_id,
+    report_date_clean,
+    planned_pct_complete_clean,
+    actual_pct_complete_clean,
+    planned_pct_complete_clean - actual_pct_complete_clean
+      AS progress_gap_pp,
+    forecast_completion_date_clean,
+    estimated_cost_to_complete_clean,
+    primary_delay_reason,
+    progress_decrease_flag
+FROM construction.cleaned_project_updates
+WHERE project_id = 'P094'
+    AND report_date_clean <= DATE '2026-06-30'
+ORDER BY report_date_clean;
+
+-- Findings:
+-- P094 reports Inspection / approval delay in every update.
+-- Between June 16 and June 30, actual completion decreased from 52.1%
+-- to 43.3%, while planned completion increased from 64.8% to 71.3%.
+-- The progress gap widened from 12.7 to 28.0 percentage points.
+-- Over the same period, ETC decreased from $1,283,714.97 to $1,170,199.95.
+--
+-- Follow-up:
+-- Ask the project manager to explain the completion decrease and ETC
+-- reduction, and confirm whether the estimates reflect the hold and restart.
+
+
+-- Recommendations for on-hold projects:
+-- Prioritize P094 for management review because of its forecast budget
+-- overrun of $185,660.56 and the decrease in reported completion alongside
+-- a decrease in ETC.
+-- Ask the manager to explain these changes and confirm the reason for the hold.
+-- For all three projects, confirm whether ETC and forecast finish dates
+-- reflect the hold, remaining work, and expected restart.
+-- Treat the forecasts as provisional until these assumptions are confirmed.
+-- P095 and P096 have none of the three reporting issues flagged, but this
+-- does not establish forecast reliability.

@@ -6,7 +6,28 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
-## October 9
+## October 10 — Completed on-hold project review
+
+### Completed
+
+- Reviewed financial exposure, forecasts, and reporting reliability for all three on-hold projects.
+- Refreshed the Excel source table and PivotTable to include employee payroll.
+  All four financial totals match SQL; updated workbook report notes.
+
+### Findings
+
+- P094 is the priority: forecast overrun of $185,660.56 and profit margin of 7.82%. Completion fell from 52.1% to 43.3% while ETC also decreased.
+- P095 and P096 forecast under budget with positive margins and none of the three reporting issues flagged.
+
+### Limitations and follow-up
+
+Ask the manager to explain P094’s completion and ETC decreases. For all three projects, confirm hold reasons and whether estimates reflect the pause and restart. Treat forecasts as provisional.
+
+### Next task
+
+Plan the dashboard: define its audience, key decisions, metrics, and layout.
+
+## October 9 - Completed analysis of question 7
 
 ### Completed 
 
