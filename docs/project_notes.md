@@ -6,6 +6,44 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 12 — Building the Tableau dashboard
+
+Created the dashboard export for the 18 active projects and checked the CSV. Kept the nine unknown forecast delays blank rather than turning them into zero.
+
+Built budget variance and progress gap bar charts and a forecast delay table in Tableau Public. Combined them into one dashboard, with budget above the schedule views, and saved the workbook locally.
+
+Hover highlighting works across the three views. Started a custom version because I did not like the yellow highlight. Created the project set and hover action, then confirmed the hovered project updates correctly.
+
+### What's Next:
+
+Finish the custom hover colors, fix the schedule-row alignment, and test the dashboard before publishing the updated version.
+
+## October 11 — Dashboard planning and tool selection
+
+### Completed
+
+- Confirmed Git closeout: commit `986e0a5` is pushed, and the working tree is clean.
+- Identified Rachel Kim, Director of Operations, as the dashboard’s primary audience.
+- Defined the main decision: which active projects need management attention first.
+- Watched a beginner Power BI tutorial and explored dashboard workflows and sharing options.
+
+### Decisions and what I learned
+
+Selected Tableau Public for this portfolio project because it fits my Mac and budget. The fictional project data is suitable for public sharing.
+
+Clean data and a clear business purpose make dashboard building easier. Charts still need validation: totals, percentages, and filters must represent the intended metrics correctly.
+
+Keep the dashboard simple enough to explain in an interview. Continue using DuckDB for data preparation, with the 18 active projects as the main scope and on-hold projects reviewed separately.
+
+### Limitations and follow-up
+
+Power BI setup stalled after the Microsoft 365 Business Basic trial became disabled. Support follow-up remains pending; trial restoration and billing status are unconfirmed.
+
+No project dashboard was built today. Metrics and layout remain undecided.
+
+### Next task
+
+Review the Tableau beginner tutorial, then propose three metrics that would help Rachel prioritize projects and explain why each matters. Choose visuals only after agreeing on the metrics.
 ## October 10 — Completed on-hold project review
 
 ### Completed
