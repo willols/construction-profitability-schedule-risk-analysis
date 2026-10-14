@@ -28,15 +28,32 @@ WHERE project_status_clean = 'active';
 -- 9 usable forecast delays and 9 NULL forecast delays.
 
 
+-- Add revised contract revenue, forecast profit, and project profit margin
+-- for Tableau summary cards and individual project tooltips.
+-- Keep one row per active project.
+-- Calculate portfolio margin in Tableau as total forecast profit
+-- divided by total revised contract revenue, not an average of project margins.
+
+
 -- Export active-project dashboard metrics to CSV for Tableau.
 COPY (
     SELECT
         project_id,
         forecast_budget_variance,
         progress_gap_pp,
-        forecast_delay_days
+        forecast_delay_days,
+        revised_contract_revenue,
+        forecast_profit,
+        forecast_profit_margin_pct
     FROM construction.project_summary
     WHERE project_status_clean = 'active'
 )
 TO 'outputs/active_project_dashboard_2026-06-30.csv'
 (FORMAT CSV, HEADER);
+
+-- Export validation:
+-- 18 rows, 18 unique projects, 7 columns, and 9 NULL delays.
+-- Total revised contract revenue: $25,229,253.42.
+-- Total forecast profit: $4,687,563.85.
+-- Portfolio forecast profit margin: 18.58% (total profit / total revenue).
+-- Projects forecast over budget: 9 of 18.

@@ -6,6 +6,20 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+
+## October 13 - Dashboard work
+
+### Completed: 
+
+Custom hover colors, clearer metric explanations and tooltips, published dashboard testing, expanded CSV, and four financial KPI cards.
+
+### What I learned:
+
+Budget overruns and profitability answer different questions. Portfolio margin uses total forecast profit ÷ total revised contract revenue, rather than averaging project margins.
+### Next task:
+
+Add project revenue, profit, and margin to the budget tooltip; verify published schedule alignment after the padding adjustment.
+
 ## October 12 — Building the Tableau dashboard
 
 Created the dashboard export for the 18 active projects and checked the CSV. Kept the nine unknown forecast delays blank rather than turning them into zero.
