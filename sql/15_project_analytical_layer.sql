@@ -1008,6 +1008,7 @@ FROM project_summary;
 -- schedule risk for active projects.
 -- Include source values and data-quality flags to make the results
 -- traceable, and return NULL when schedule inputs are missing or invalid.
+CREATE OR REPLACE VIEW construction.project_summary AS
 WITH non_payroll_costs AS (
     SELECT
         project_id_clean,

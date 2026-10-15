@@ -6,6 +6,67 @@ The reporting cutoff is June 30, 2026. Detailed queries and checks are in `sql/`
 
 I shortened these notes on September 25 and grouped some older sessions by topic. The original notes through September 24 are preserved in `project_notes_archive_2026-09-24.md`. Older findings below describe the data at that stage, before later cleaning and corrections.
 
+## October 15 — Completed report, README, and fresh-database rebuild
+
+### Completed
+
+- Completed the final report’s limitations and reviewed its findings against the analysis SQL’s documented results.
+- Confirmed P089’s forecast profit margin of 18.31% by querying the database.
+- Added P089’s reported completion decrease and additional schedule reviews for P079, P090, and P081.
+- Clarified the report’s active-project scope, defined ETC, and documented percentage calculations.
+- Expanded the README with the project overview, tools, key findings, Tableau Public link, report link, dashboard preview, and execution instructions.
+- Regenerated the budget-versus-actual CSV with the current 10-column SQL export structure, removing spreadsheet-added validation columns from the CSV.
+
+### Rebuild test and fix
+
+Tested the documented workflow in a separate project copy after removing its database files.
+
+Script 15 failed because Step 13 calculated the project summary without saving it, while subsequent validation queries referenced the saved view. Added `CREATE OR REPLACE VIEW construction.project_summary AS` before Step 13’s query and applied the same fix to the original project.
+
+Completed the rebuild in this order:
+
+`01–06 → 07, 08, 09, 11, 12, 13 → 14 → 15 → 10 → 16 → 17`
+
+All scripts executed successfully after the fix. Rebuilt active-project forecast profit and portfolio margin matched the report: $4,687,563.85 and 18.58%.
+
+### What I learned
+
+- Successful execution against an existing database can hide missing creation steps and dependencies.
+- Script 10 requires script 15’s project summary for reconciliation; script 16 requires script 10’s budget-versus-actual view.
+- Keep spreadsheet calculations in the Excel workbook and preserve the CSV as a reproducible SQL export.
+
+### Remaining work
+
+Update project status, review the Git changes, commit and push, then check the README image and links on GitHub.
+
+## October 14 — Dashboard validation and final report draft
+
+### Completed
+
+- Added revised contract revenue, forecast profit, and forecast profit margin to the budget tooltip. Standardized fonts, spacing, and currency formatting.
+- Cleaned up the four KPI titles and published the updated dashboard.
+- Checked hover behavior for known and Unknown delays; portfolio KPIs stayed unchanged during hover.
+- Confirmed published progress and delay rows align from top to bottom.
+- Matched P093 and P077 financial tooltip values to the CSV, including margin formatting. Confirmed P077’s NULL delay displays as Unknown.
+- Created `docs/final_report.md` and drafted the portfolio overview, five priority-project reviews, recommended actions, and methodology.
+
+### Decisions and what I learned
+
+- Keep project financial details in the budget tooltip and schedule tooltips focused on their own measures.
+- Forecast profit equals revised contract revenue minus forecast final cost, including estimated remaining costs.
+- An overrun does not necessarily mean a loss. Unknown delay does not mean zero delay.
+- Usable forecasts are not guaranteed accurate. Reported delay reasons require verification and do not prove the cause of cost overruns.
+- Review priorities reflect financial exposure, schedule deterioration, and reporting concerns rather than a formal risk score.
+
+### Remaining work
+
+- Draft report limitations, then review report structure and validate remaining figures against SQL.
+- Update the README and add the Tableau Public link.
+- Git closeout for today remains pending.
+
+### Exact next task
+
+Draft `### Limitations` in `docs/final_report.md`, covering Unknown finish forecasts, missing category-level ETC, unverified reported causes, and forecast uncertainty.
 
 ## October 13 - Dashboard work
 
@@ -50,8 +111,6 @@ Clean data and a clear business purpose make dashboard building easier. Charts s
 Keep the dashboard simple enough to explain in an interview. Continue using DuckDB for data preparation, with the 18 active projects as the main scope and on-hold projects reviewed separately.
 
 ### Limitations and follow-up
-
-Power BI setup stalled after the Microsoft 365 Business Basic trial became disabled. Support follow-up remains pending; trial restoration and billing status are unconfirmed.
 
 No project dashboard was built today. Metrics and layout remain undecided.
 
