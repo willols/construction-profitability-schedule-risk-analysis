@@ -55,7 +55,7 @@
 
 
 ### Methodology:
-- The report covers 18 active projects as of June 30, 2026. For each project, the latest update with a report date on or before the cutoff was selected.
+- The report covers 18 active projects as of June 30, 2026. The analytical layer selects updates dated June 30, 2026; all 18 active projects have an update on that date.
 - Forecast final cost equals incurred non-payroll costs plus employee labor costs plus the estimate to complete from the selected project update, using the cleaned data layers.
 - Revised contract revenue equals the original contract value plus approved change orders with approval dates on or before the cutoff.
 - Forecast profit equals revised contract revenue minus forecast final cost.
@@ -71,3 +71,4 @@
 - Missing category-level ETC and progress: Estimates to complete are available only at the project level. Without category-level ETC and progress, forecast overruns cannot be reliably attributed to specific cost categories. Current category spending alone does not establish the cause.
 - Unverified reporting: Reported delay reasons require confirmation. Decreases in reported completion also need investigation before being interpreted as lost progress or rework.
 - Uncertainty in forecasts: Forecast profit and completion dates depend on estimates that may change. They represent expectations as of June 30, 2026, rather than guaranteed outcomes.
+- Budget timing: Revised budgets have no effective dates or version history. The analysis uses the supplied revised amounts, but their validity as of June 30, 2026, cannot be independently confirmed.

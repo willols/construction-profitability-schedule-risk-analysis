@@ -1,6 +1,7 @@
 # Construction Profitability and Schedule-Risk Analysis
 
 ## Overview
+- This is a fictional construction case study using synthetic data to analyze project profitability and schedule risk.
 - The leadership team needs a cross-project view of profitability and schedule performance to identify which active projects need management attention, investigate potential risk drivers, and inform future estimating and planning.
 - I used DuckDB and SQL to clean, validate, and analyze project budgets, costs, labor entries, progress updates, and change orders, then built a Tableau Public dashboard to communicate the findings.
 - The analysis recommends priority project reviews and specific follow-up actions based on forecast budget overruns, schedule concerns, and reporting limitations.
