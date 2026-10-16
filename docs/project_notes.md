@@ -37,7 +37,7 @@ All scripts executed successfully after the fix. Rebuilt active-project forecast
 
 ### Remaining work
 
-Update project status, review the Git changes, commit and push, then check the README image and links on GitHub.
+None
 
 ## October 14 — Dashboard validation and final report draft
 

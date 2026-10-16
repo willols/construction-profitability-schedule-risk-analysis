@@ -4,7 +4,7 @@ Updated October 15, 2026
 
 ## Current position
 
-Cleaning, analytical-layer work, Q1–Q7, on-hold reviews, Excel reporting, the Tableau dashboard, final report, and README are complete locally.
+Cleaning, analytical-layer work, Q1–Q7, on-hold reviews, Excel reporting, the Tableau dashboard, final report, and README are complete. Project files are published on GitHub, and the dashboard is published on Tableau Public.
 
 Reporting cutoff: June 30, 2026.
 Main scope: 18 active projects; three on-hold projects reviewed separately.
@@ -65,18 +65,10 @@ completion alongside declining ETC.
 
 ## Exact next task
 
-Review and stage the intended changes in the original repository,
-then commit and push.
+Commit and push the documentation closeout corrections.
 
 ## Remaining work
 
-- Complete Git closeout for October 14–15 changes.
-- Check the README dashboard image and report link on GitHub after pushing.
-- Check that the Tableau Public link opens the intended dashboard.
-
-## Git closeout
-
-Last confirmed pushed commit:
-`45a77c5 — Add profitability cards and refine Tableau risk dashboard`.
-
-October 14–15 changes remain uncommitted and unpushed.
+No further construction case-study work is currently planned.
+The README dashboard image, final report link, and Tableau Public
+destination have all been checked.
